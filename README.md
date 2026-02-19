@@ -14,6 +14,7 @@ Dispatch application for a Swiss medical transport service (*Fahrdienst*). Opera
 - [Development Workflow](#development-workflow)
 - [Database](#database)
 - [Release & Deployment](#release--deployment)
+- [Testing](#testing)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -260,6 +261,8 @@ Each entity (patients, drivers, destinations, rides, users) follows the same pat
 | `npm run build` | Production build |
 | `npm run start` | Start production server |
 | `npm run lint` | Run ESLint |
+| `npm test` | Run all tests once (Vitest) |
+| `npm run test:watch` | Run tests in watch mode |
 | `npm run db:types` | Regenerate Supabase TypeScript types |
 | `npm run db:types:check` | Verify types are in sync (CI use) |
 
@@ -294,6 +297,51 @@ Rules:
 - Never add `DELETE` policies -- use soft delete (`is_active = false`)
 - `SECURITY DEFINER` functions must include `SET search_path = public`
 - Auth helper functions need `REVOKE ALL FROM PUBLIC` + `GRANT EXECUTE TO authenticated`
+
+---
+
+## Testing
+
+The project uses [Vitest](https://vitest.dev/) for unit and integration tests. The `@/` path alias is configured in `vitest.config.ts`.
+
+### Running Tests
+
+```bash
+# Run all tests once
+npm test
+
+# Run tests in watch mode (re-runs on file changes)
+npm run test:watch
+```
+
+### Test File Conventions
+
+- Test files use the `*.test.ts` suffix
+- Tests live in `__tests__/` directories next to the source they cover
+- Example structure:
+
+```
+src/lib/validations/
+  patients.ts
+  __tests__/
+    patients.test.ts
+src/lib/rides/
+  status-machine.ts
+  __tests__/
+    status-machine.test.ts
+src/actions/
+  rides.ts
+  __tests__/
+    rides.test.ts          # integration smoke tests with mocked Supabase
+```
+
+### What's Tested
+
+| Area | Coverage |
+|---|---|
+| Ride status machine | State transitions, role-based permissions, terminal statuses |
+| Zod validation schemas | Required fields, empty-to-null transforms, enum values, max length, cross-field refinements |
+| Server Actions (smoke) | `updateRideStatus` with mocked Supabase — invalid transitions, unauthorized roles, happy path |
 
 ---
 
