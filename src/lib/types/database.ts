@@ -56,44 +56,53 @@ export type Database = {
       destinations: {
         Row: {
           city: string | null
+          comment: string | null
+          contact_first_name: string | null
+          contact_last_name: string | null
+          contact_phone: string | null
           created_at: string
           department: string | null
+          display_name: string
+          facility_type: Database["public"]["Enums"]["facility_type"]
           house_number: string | null
           id: string
           is_active: boolean
-          name: string
-          notes: string | null
           postal_code: string | null
           street: string | null
-          type: Database["public"]["Enums"]["destination_type"]
           updated_at: string
         }
         Insert: {
           city?: string | null
+          comment?: string | null
+          contact_first_name?: string | null
+          contact_last_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           department?: string | null
+          display_name: string
+          facility_type?: Database["public"]["Enums"]["facility_type"]
           house_number?: string | null
           id?: string
           is_active?: boolean
-          name: string
-          notes?: string | null
           postal_code?: string | null
           street?: string | null
-          type?: Database["public"]["Enums"]["destination_type"]
           updated_at?: string
         }
         Update: {
           city?: string | null
+          comment?: string | null
+          contact_first_name?: string | null
+          contact_last_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           department?: string | null
+          display_name?: string
+          facility_type?: Database["public"]["Enums"]["facility_type"]
           house_number?: string | null
           id?: string
           is_active?: boolean
-          name?: string
-          notes?: string | null
           postal_code?: string | null
           street?: string | null
-          type?: Database["public"]["Enums"]["destination_type"]
           updated_at?: string
         }
         Relationships: []
@@ -462,7 +471,7 @@ export type Database = {
         | "friday"
         | "saturday"
         | "sunday"
-      destination_type: "hospital" | "doctor" | "therapy" | "other"
+      facility_type: "practice" | "hospital" | "therapy_center" | "day_care" | "other"
       impairment_type: "rollator" | "wheelchair" | "stretcher" | "companion"
       recurrence_type: "daily" | "weekly" | "biweekly" | "monthly"
       ride_direction: "outbound" | "return" | "both"
@@ -615,7 +624,7 @@ export const Constants = {
         "saturday",
         "sunday",
       ],
-      destination_type: ["hospital", "doctor", "therapy", "other"],
+      facility_type: ["practice", "hospital", "therapy_center", "day_care", "other"],
       impairment_type: ["rollator", "wheelchair", "stretcher", "companion"],
       recurrence_type: ["daily", "weekly", "biweekly", "monthly"],
       ride_direction: ["outbound", "return", "both"],

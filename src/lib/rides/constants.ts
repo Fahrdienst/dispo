@@ -140,10 +140,11 @@ export const VEHICLE_TYPE_LABELS: Record<Enums<"vehicle_type">, string> = {
   stretcher:  "Liegefahrzeug",
 }
 
-/** Destination type labels in German. */
-export const DESTINATION_TYPE_LABELS: Record<Enums<"destination_type">, string> = {
-  hospital: "Krankenhaus",
-  doctor:   "Arzt",
-  therapy:  "Therapie",
-  other:    "Sonstiges",
+/** Facility type labels in German. */
+export const FACILITY_TYPE_LABELS: Record<Enums<"facility_type">, string> = {
+  practice:       "Praxis",
+  hospital:       "Spital",
+  therapy_center: "Therapiezentrum",
+  day_care:       "Tagesheim",
+  other:          "Sonstiges",
 }

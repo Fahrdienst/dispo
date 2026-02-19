@@ -2,14 +2,17 @@ import { describe, it, expect } from "vitest"
 import { destinationSchema } from "../destinations"
 
 const validDestination = {
-  name: "Universitätsspital Zürich",
-  type: "hospital" as const,
-  street: "Rämistrasse",
+  display_name: "Universitaetsspital Zuerich",
+  facility_type: "hospital" as const,
+  contact_first_name: "Anna",
+  contact_last_name: "Mueller",
+  contact_phone: "044 255 11 11",
+  street: "Raemistrasse",
   house_number: "100",
   postal_code: "8091",
-  city: "Zürich",
+  city: "Zuerich",
   department: "Radiologie",
-  notes: "",
+  comment: "",
 }
 
 describe("destinationSchema", () => {
@@ -18,104 +21,125 @@ describe("destinationSchema", () => {
     expect(result.success).toBe(true)
   })
 
-  // --- Required fields ---
-
-  it("rejects empty name", () => {
-    const result = destinationSchema.safeParse({ ...validDestination, name: "" })
+  it("rejects empty display_name", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, display_name: "" })
     expect(result.success).toBe(false)
   })
 
-  // --- Max length ---
-
-  it("rejects name over 200 chars", () => {
-    const result = destinationSchema.safeParse({ ...validDestination, name: "A".repeat(201) })
+  it("rejects empty contact_first_name", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, contact_first_name: "" })
     expect(result.success).toBe(false)
   })
 
-  it("rejects notes over 1000 chars", () => {
-    const result = destinationSchema.safeParse({ ...validDestination, notes: "A".repeat(1001) })
+  it("rejects empty contact_last_name", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, contact_last_name: "" })
     expect(result.success).toBe(false)
   })
 
-  // --- Empty-to-null transforms ---
+  it("rejects empty contact_phone", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, contact_phone: "" })
+    expect(result.success).toBe(false)
+  })
 
-  it("transforms empty street to null", () => {
+  it("rejects empty street", () => {
     const result = destinationSchema.safeParse({ ...validDestination, street: "" })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.street).toBeNull()
-    }
+    expect(result.success).toBe(false)
   })
 
-  it("transforms empty house_number to null", () => {
+  it("rejects empty house_number", () => {
     const result = destinationSchema.safeParse({ ...validDestination, house_number: "" })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.house_number).toBeNull()
-    }
+    expect(result.success).toBe(false)
   })
 
-  it("transforms empty postal_code to null", () => {
+  it("rejects empty postal_code", () => {
     const result = destinationSchema.safeParse({ ...validDestination, postal_code: "" })
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.postal_code).toBeNull()
-    }
+    expect(result.success).toBe(false)
   })
 
-  it("transforms empty city to null", () => {
+  it("rejects empty city", () => {
     const result = destinationSchema.safeParse({ ...validDestination, city: "" })
+    expect(result.success).toBe(false)
+  })
+
+  it("accepts valid 4-digit CH postal code", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, postal_code: "3000" })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.city).toBeNull()
-    }
+  })
+
+  it("rejects 5-digit postal code", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, postal_code: "80911" })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects 3-digit postal code", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, postal_code: "809" })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects postal code with letters", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, postal_code: "AB12" })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects display_name over 200 chars", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, display_name: "A".repeat(201) })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects contact_first_name over 100 chars", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, contact_first_name: "A".repeat(101) })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects contact_last_name over 100 chars", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, contact_last_name: "A".repeat(101) })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects contact_phone over 50 chars", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, contact_phone: "1".repeat(51) })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects comment over 2000 chars", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, comment: "A".repeat(2001) })
+    expect(result.success).toBe(false)
   })
 
   it("transforms empty department to null", () => {
     const result = destinationSchema.safeParse({ ...validDestination, department: "" })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.department).toBeNull()
-    }
+    if (result.success) expect(result.data.department).toBeNull()
   })
 
-  it("transforms empty notes to null", () => {
-    const result = destinationSchema.safeParse({ ...validDestination, notes: "" })
+  it("transforms empty comment to null", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, comment: "" })
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.notes).toBeNull()
-    }
+    if (result.success) expect(result.data.comment).toBeNull()
   })
 
   it("preserves non-empty optional values", () => {
     const result = destinationSchema.safeParse(validDestination)
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.street).toBe("Rämistrasse")
-      expect(result.data.department).toBe("Radiologie")
-    }
+    if (result.success) expect(result.data.department).toBe("Radiologie")
   })
 
-  // --- Type enum ---
-
-  it("accepts all valid destination types", () => {
-    for (const type of ["hospital", "doctor", "therapy", "other"] as const) {
-      const result = destinationSchema.safeParse({ ...validDestination, type })
+  it("accepts all valid facility types", () => {
+    for (const ft of ["practice", "hospital", "therapy_center", "day_care", "other"] as const) {
+      const result = destinationSchema.safeParse({ ...validDestination, facility_type: ft })
       expect(result.success).toBe(true)
     }
   })
 
-  it("rejects invalid destination type", () => {
-    const result = destinationSchema.safeParse({ ...validDestination, type: "pharmacy" })
+  it("rejects invalid facility type", () => {
+    const result = destinationSchema.safeParse({ ...validDestination, facility_type: "pharmacy" })
     expect(result.success).toBe(false)
   })
 
-  it("defaults type to other when omitted", () => {
-    const { type: _, ...withoutType } = validDestination
+  it("defaults facility_type to other when omitted", () => {
+    const { facility_type: _, ...withoutType } = validDestination
     const result = destinationSchema.safeParse(withoutType)
     expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.type).toBe("other")
-    }
+    if (result.success) expect(result.data.facility_type).toBe("other")
   })
 })

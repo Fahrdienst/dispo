@@ -48,7 +48,7 @@ export default async function RidesPage({ searchParams }: RidesPageProps) {
     supabase
       .from("rides")
       .select(
-        "*, patients(id, first_name, last_name), destinations(id, name), drivers(id, first_name, last_name)"
+        "*, patients(id, first_name, last_name), destinations(id, display_name), drivers(id, first_name, last_name)"
       )
       .eq("date", selectedDate)
       .order("pickup_time"),

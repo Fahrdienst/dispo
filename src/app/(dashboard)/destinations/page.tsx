@@ -12,7 +12,7 @@ export default async function DestinationsPage() {
   const { data: destinations } = await supabase
     .from("destinations")
     .select("*")
-    .order("name")
+    .order("display_name")
 
   return (
     <div className="space-y-6">

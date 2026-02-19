@@ -46,7 +46,7 @@ export default async function DashboardPage() {
         .eq("is_active", true),
       supabase
         .from("rides")
-        .select("*, patients(first_name, last_name), destinations(name)")
+        .select("*, patients(first_name, last_name), destinations(display_name)")
         .eq("date", today)
         .not("status", "in", "(completed,cancelled,no_show)")
         .gte("pickup_time", now)
@@ -55,7 +55,7 @@ export default async function DashboardPage() {
         .limit(5),
       supabase
         .from("rides")
-        .select("*, patients(first_name, last_name), destinations(name)")
+        .select("*, patients(first_name, last_name), destinations(display_name)")
         .eq("date", today)
         .in("status", ["unplanned", "rejected"])
         .eq("is_active", true)
@@ -141,7 +141,7 @@ export default async function DashboardPage() {
               <div className="space-y-3">
                 {upcomingRides.map((ride) => {
                   const patient = ride.patients as { first_name: string; last_name: string } | null;
-                  const destination = ride.destinations as { name: string } | null;
+                  const destination = ride.destinations as { display_name: string } | null;
                   return (
                     <div
                       key={ride.id}
@@ -156,7 +156,7 @@ export default async function DashboardPage() {
                             {patient ? `${patient.last_name}, ${patient.first_name}` : "–"}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {destination?.name ?? "–"}
+                            {destination?.display_name ?? "–"}
                           </p>
                         </div>
                       </div>
@@ -186,7 +186,7 @@ export default async function DashboardPage() {
               <div className="space-y-3">
                 {attentionRides.map((ride) => {
                   const patient = ride.patients as { first_name: string; last_name: string } | null;
-                  const destination = ride.destinations as { name: string } | null;
+                  const destination = ride.destinations as { display_name: string } | null;
                   return (
                     <div
                       key={ride.id}
@@ -197,7 +197,7 @@ export default async function DashboardPage() {
                           {patient ? `${patient.last_name}, ${patient.first_name}` : "–"}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {destination?.name ?? "–"}
+                          {destination?.display_name ?? "–"}
                         </p>
                       </div>
                       <RideStatusBadge status={ride.status as Enums<"ride_status">} />

@@ -38,7 +38,7 @@ import type { Tables, Enums } from "@/lib/types/database"
 
 type RideWithRelations = Tables<"rides"> & {
   patients: Pick<Tables<"patients">, "id" | "first_name" | "last_name">
-  destinations: Pick<Tables<"destinations">, "id" | "name">
+  destinations: Pick<Tables<"destinations">, "id" | "display_name">
   drivers: Pick<Tables<"drivers">, "id" | "first_name" | "last_name"> | null
 }
 
@@ -71,7 +71,7 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
     const term = search.toLowerCase()
     if (!term) return true
     const patientName = `${r.patients.last_name} ${r.patients.first_name}`.toLowerCase()
-    const destinationName = r.destinations.name.toLowerCase()
+    const destinationName = r.destinations.display_name.toLowerCase()
     const driverName = r.drivers
       ? `${r.drivers.last_name} ${r.drivers.first_name}`.toLowerCase()
       : ""
@@ -146,7 +146,7 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
                     <TableCell className="font-medium">
                       {ride.patients.last_name}, {ride.patients.first_name}
                     </TableCell>
-                    <TableCell>{ride.destinations.name}</TableCell>
+                    <TableCell>{ride.destinations.display_name}</TableCell>
                     <TableCell>
                       {ride.drivers
                         ? `${ride.drivers.last_name}, ${ride.drivers.first_name}`

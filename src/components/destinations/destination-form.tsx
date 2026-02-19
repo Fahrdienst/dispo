@@ -47,38 +47,43 @@ export function DestinationForm({ destination }: DestinationFormProps) {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="display_name">
+                Einrichtungsname <span className="text-destructive">*</span>
+              </Label>
               <Input
-                id="name"
-                name="name"
+                id="display_name"
+                name="display_name"
                 required
-                defaultValue={destination?.name ?? ""}
+                defaultValue={destination?.display_name ?? ""}
               />
-              {fieldErrors?.name && (
+              {fieldErrors?.display_name && (
                 <p className="text-sm text-destructive">
-                  {fieldErrors.name[0]}
+                  {fieldErrors.display_name[0]}
                 </p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="type">Typ</Label>
+              <Label htmlFor="facility_type">
+                Einrichtungstyp <span className="text-destructive">*</span>
+              </Label>
               <Select
-                name="type"
-                defaultValue={destination?.type ?? "other"}
+                name="facility_type"
+                defaultValue={destination?.facility_type ?? "other"}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="hospital">Krankenhaus</SelectItem>
-                  <SelectItem value="doctor">Arzt</SelectItem>
-                  <SelectItem value="therapy">Therapie</SelectItem>
+                  <SelectItem value="practice">Praxis</SelectItem>
+                  <SelectItem value="hospital">Spital</SelectItem>
+                  <SelectItem value="therapy_center">Therapiezentrum</SelectItem>
+                  <SelectItem value="day_care">Tagesheim</SelectItem>
                   <SelectItem value="other">Sonstiges</SelectItem>
                 </SelectContent>
               </Select>
-              {fieldErrors?.type && (
+              {fieldErrors?.facility_type && (
                 <p className="text-sm text-destructive">
-                  {fieldErrors.type[0]}
+                  {fieldErrors.facility_type[0]}
                 </p>
               )}
             </div>
@@ -101,19 +106,75 @@ export function DestinationForm({ destination }: DestinationFormProps) {
           <AddressFields
             defaultValues={destination}
             errors={fieldErrors}
+            required
           />
 
+          <fieldset className="space-y-4">
+            <legend className="text-sm font-medium">Kontaktperson</legend>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="contact_first_name">
+                  Vorname <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="contact_first_name"
+                  name="contact_first_name"
+                  required
+                  defaultValue={destination?.contact_first_name ?? ""}
+                />
+                {fieldErrors?.contact_first_name && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.contact_first_name[0]}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="contact_last_name">
+                  Nachname <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="contact_last_name"
+                  name="contact_last_name"
+                  required
+                  defaultValue={destination?.contact_last_name ?? ""}
+                />
+                {fieldErrors?.contact_last_name && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.contact_last_name[0]}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contact_phone">
+                Telefon <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="contact_phone"
+                name="contact_phone"
+                type="tel"
+                required
+                defaultValue={destination?.contact_phone ?? ""}
+              />
+              {fieldErrors?.contact_phone && (
+                <p className="text-sm text-destructive">
+                  {fieldErrors.contact_phone[0]}
+                </p>
+              )}
+            </div>
+          </fieldset>
+
           <div className="space-y-2">
-            <Label htmlFor="notes">Notizen</Label>
+            <Label htmlFor="comment">Kommentar</Label>
             <Textarea
-              id="notes"
-              name="notes"
+              id="comment"
+              name="comment"
               rows={3}
-              defaultValue={destination?.notes ?? ""}
+              defaultValue={destination?.comment ?? ""}
             />
-            {fieldErrors?.notes && (
+            {fieldErrors?.comment && (
               <p className="text-sm text-destructive">
-                {fieldErrors.notes[0]}
+                {fieldErrors.comment[0]}
               </p>
             )}
           </div>

@@ -23,7 +23,7 @@ interface RideFormProps {
   ride?: Tables<"rides">
   defaultDate?: string
   patients: Pick<Tables<"patients">, "id" | "first_name" | "last_name">[]
-  destinations: Pick<Tables<"destinations">, "id" | "name">[]
+  destinations: Pick<Tables<"destinations">, "id" | "display_name">[]
   drivers: Pick<Tables<"drivers">, "id" | "first_name" | "last_name">[]
 }
 
@@ -81,7 +81,7 @@ export function RideForm({ ride, defaultDate, patients, destinations, drivers }:
                 <SelectContent>
                   {destinations.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
-                      {d.name}
+                      {d.display_name}
                     </SelectItem>
                   ))}
                 </SelectContent>

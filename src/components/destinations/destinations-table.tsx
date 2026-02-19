@@ -6,6 +6,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Table,
   TableBody,
   TableCell,
@@ -25,10 +32,11 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { toggleDestinationActive } from "@/actions/destinations"
 import type { Tables } from "@/lib/types/database"
 
-const destinationTypeLabels: Record<string, string> = {
-  hospital: "Krankenhaus",
-  doctor: "Arzt",
-  therapy: "Therapie",
+const facilityTypeLabels: Record<string, string> = {
+  practice: "Praxis",
+  hospital: "Spital",
+  therapy_center: "Therapiezentrum",
+  day_care: "Tagesheim",
   other: "Sonstiges",
 }
 
@@ -38,17 +46,21 @@ interface DestinationsTableProps {
 
 export function DestinationsTable({ destinations }: DestinationsTableProps) {
   const [search, setSearch] = useState("")
+  const [typeFilter, setTypeFilter] = useState("all")
   const [showInactive, setShowInactive] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   const filtered = destinations.filter((d) => {
     if (!showInactive && !d.is_active) return false
+    if (typeFilter !== "all" && d.facility_type !== typeFilter) return false
     const term = search.toLowerCase()
     if (!term) return true
     return (
-      d.name.toLowerCase().includes(term) ||
+      d.display_name.toLowerCase().includes(term) ||
       (d.city ?? "").toLowerCase().includes(term) ||
-      (d.department ?? "").toLowerCase().includes(term)
+      (d.department ?? "").toLowerCase().includes(term) ||
+      (d.contact_last_name ?? "").toLowerCase().includes(term) ||
+      (d.contact_phone ?? "").toLowerCase().includes(term)
     )
   })
 
@@ -61,12 +73,27 @@ export function DestinationsTable({ destinations }: DestinationsTableProps) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <Input
-          placeholder="Suchen..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <Input
+            placeholder="Suchen..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="max-w-sm"
+          />
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Typen</SelectItem>
+              <SelectItem value="practice">Praxis</SelectItem>
+              <SelectItem value="hospital">Spital</SelectItem>
+              <SelectItem value="therapy_center">Therapiezentrum</SelectItem>
+              <SelectItem value="day_care">Tagesheim</SelectItem>
+              <SelectItem value="other">Sonstiges</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex items-center gap-2">
           <Checkbox
             id="show-inactive"
@@ -88,8 +115,8 @@ export function DestinationsTable({ destinations }: DestinationsTableProps) {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Typ</TableHead>
-                <TableHead>Abteilung</TableHead>
-                <TableHead>Stadt</TableHead>
+                <TableHead>Kontakt</TableHead>
+                <TableHead>Ort</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[80px]" />
               </TableRow>
@@ -100,12 +127,18 @@ export function DestinationsTable({ destinations }: DestinationsTableProps) {
                   key={dest.id}
                   className={!dest.is_active ? "opacity-50" : undefined}
                 >
-                  <TableCell className="font-medium">{dest.name}</TableCell>
-                  <TableCell>
-                    {destinationTypeLabels[dest.type] ?? dest.type}
+                  <TableCell className="font-medium">
+                    {dest.display_name}
                   </TableCell>
-                  <TableCell>{dest.department ?? "–"}</TableCell>
-                  <TableCell>{dest.city ?? "–"}</TableCell>
+                  <TableCell>
+                    {facilityTypeLabels[dest.facility_type] ?? dest.facility_type}
+                  </TableCell>
+                  <TableCell>
+                    {dest.contact_last_name
+                      ? `${dest.contact_last_name}, ${dest.contact_phone ?? ""}`
+                      : "\u2013"}
+                  </TableCell>
+                  <TableCell>{dest.city ?? "\u2013"}</TableCell>
                   <TableCell>
                     <ActiveBadge isActive={dest.is_active} />
                   </TableCell>
