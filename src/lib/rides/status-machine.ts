@@ -11,6 +11,7 @@
 import type { Enums } from '@/lib/types/database'
 
 type RideStatus = Enums<'ride_status'>
+type UserRole = Enums<'user_role'>
 
 /**
  * Valid status transitions. Each key maps to the list of statuses
@@ -94,6 +95,95 @@ export function assertTransition(from: RideStatus, to: RideStatus): void {
     throw new Error(
       `Invalid ride status transition: '${from}' -> '${to}'. ` +
         `Allowed transitions from '${from}': [${VALID_TRANSITIONS[from].join(', ')}]`
+    )
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Role-aware transitions
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-role transition permissions. A transition must be valid in BOTH
+ * VALID_TRANSITIONS (state machine) and ROLE_TRANSITIONS (authorization)
+ * to be allowed.
+ *
+ * Staff (admin/operator): dispatch authority — confirm, re-plan, cancel.
+ * Driver: execution chain — reject, start, progress, complete, no-show.
+ */
+const ROLE_TRANSITIONS: Record<UserRole, Partial<Record<RideStatus, readonly RideStatus[]>>> = {
+  admin: {
+    unplanned: ['planned', 'cancelled'],
+    planned: ['confirmed', 'cancelled'],
+    rejected: ['planned', 'cancelled'],
+    confirmed: ['cancelled'],
+    in_progress: ['cancelled'],
+    picked_up: ['cancelled'],
+    arrived: ['cancelled'],
+  },
+  operator: {
+    unplanned: ['planned', 'cancelled'],
+    planned: ['confirmed', 'cancelled'],
+    rejected: ['planned', 'cancelled'],
+    confirmed: ['cancelled'],
+    in_progress: ['cancelled'],
+    picked_up: ['cancelled'],
+    arrived: ['cancelled'],
+  },
+  driver: {
+    planned: ['rejected'],
+    confirmed: ['in_progress'],
+    in_progress: ['picked_up', 'no_show'],
+    picked_up: ['arrived'],
+    arrived: ['completed'],
+  },
+}
+
+/**
+ * Check whether a transition is allowed for a given role.
+ * Checks BOTH the state machine AND role permissions.
+ */
+export function canTransitionForRole(
+  from: RideStatus,
+  to: RideStatus,
+  role: UserRole
+): boolean {
+  if (!canTransition(from, to)) return false
+  const roleAllowed = ROLE_TRANSITIONS[role][from]
+  if (!roleAllowed) return false
+  return roleAllowed.includes(to)
+}
+
+/**
+ * Get valid transitions for a given role from a given status.
+ * Returns intersection of valid state transitions and role permissions.
+ */
+export function getValidTransitionsForRole(
+  status: RideStatus,
+  role: UserRole
+): readonly RideStatus[] {
+  const stateTransitions = VALID_TRANSITIONS[status]
+  const roleAllowed = ROLE_TRANSITIONS[role][status]
+  if (!roleAllowed) return []
+  return stateTransitions.filter((t) => roleAllowed.includes(t))
+}
+
+/**
+ * Assert that a transition is valid for a given role. Throws if not.
+ */
+export function assertTransitionForRole(
+  from: RideStatus,
+  to: RideStatus,
+  role: UserRole
+): void {
+  if (!canTransition(from, to)) {
+    throw new Error(
+      `Ungültiger Statusübergang: '${from}' → '${to}'.`
+    )
+  }
+  if (!canTransitionForRole(from, to, role)) {
+    throw new Error(
+      `Rolle '${role}' darf den Übergang '${from}' → '${to}' nicht durchführen.`
     )
   }
 }

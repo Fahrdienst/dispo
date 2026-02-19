@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { RidesTable } from "@/components/rides/rides-table"
 import { Button } from "@/components/ui/button"
+import type { Enums } from "@/lib/types/database"
 
 export const metadata: Metadata = {
   title: "Fahrten - Dispo",
@@ -42,20 +43,30 @@ export default async function RidesPage({ searchParams }: RidesPageProps) {
   const nextDate = addDays(selectedDate, 1)
 
   const supabase = await createClient()
-  const { data: rides } = await supabase
-    .from("rides")
-    .select(
-      "*, patients(id, first_name, last_name), destinations(id, name), drivers(id, first_name, last_name)"
-    )
-    .eq("date", selectedDate)
-    .order("pickup_time")
+
+  const [{ data: rides }, { data: profile }] = await Promise.all([
+    supabase
+      .from("rides")
+      .select(
+        "*, patients(id, first_name, last_name), destinations(id, name), drivers(id, first_name, last_name)"
+      )
+      .eq("date", selectedDate)
+      .order("pickup_time"),
+    supabase
+      .from("profiles")
+      .select("role")
+      .single(),
+  ])
+
+  const userRole: Enums<"user_role"> = profile?.role ?? "driver"
+  const isStaff = userRole === "admin" || userRole === "operator"
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Fahrten"
         description="Verwalten Sie Ihre Fahrten."
-        createHref={`/rides/new?date=${selectedDate}`}
+        createHref={isStaff ? `/rides/new?date=${selectedDate}` : undefined}
         createLabel="Neue Fahrt"
       />
 
@@ -80,7 +91,7 @@ export default async function RidesPage({ searchParams }: RidesPageProps) {
         )}
       </div>
 
-      <RidesTable rides={rides ?? []} />
+      <RidesTable rides={rides ?? []} userRole={userRole} />
     </div>
   )
 }

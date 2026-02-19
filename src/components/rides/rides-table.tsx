@@ -29,7 +29,7 @@ import { Button } from "@/components/ui/button"
 import { RideStatusBadge } from "@/components/shared/ride-status-badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import { toggleRideActive, updateRideStatus } from "@/actions/rides"
-import { getValidTransitions } from "@/lib/rides/status-machine"
+import { getValidTransitionsForRole } from "@/lib/rides/status-machine"
 import {
   RIDE_STATUS_LABELS,
   RIDE_DIRECTION_LABELS,
@@ -44,6 +44,7 @@ type RideWithRelations = Tables<"rides"> & {
 
 interface RidesTableProps {
   rides: RideWithRelations[]
+  userRole: Enums<"user_role">
 }
 
 const ALL_STATUSES: Enums<"ride_status">[] = [
@@ -59,7 +60,8 @@ const ALL_STATUSES: Enums<"ride_status">[] = [
   "no_show",
 ]
 
-export function RidesTable({ rides }: RidesTableProps) {
+export function RidesTable({ rides, userRole }: RidesTableProps) {
+  const isStaff = userRole === "admin" || userRole === "operator"
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isPending, startTransition] = useTransition()
@@ -134,7 +136,7 @@ export function RidesTable({ rides }: RidesTableProps) {
             </TableHeader>
             <TableBody>
               {filtered.map((ride) => {
-                const transitions = getValidTransitions(ride.status)
+                const transitions = getValidTransitionsForRole(ride.status, userRole)
                 return (
                   <TableRow
                     key={ride.id}
@@ -168,14 +170,16 @@ export function RidesTable({ rides }: RidesTableProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/rides/${ride.id}/edit`}>
-                              Bearbeiten
-                            </Link>
-                          </DropdownMenuItem>
+                          {isStaff && (
+                            <DropdownMenuItem asChild>
+                              <Link href={`/rides/${ride.id}/edit`}>
+                                Bearbeiten
+                              </Link>
+                            </DropdownMenuItem>
+                          )}
                           {transitions.length > 0 && (
                             <>
-                              <DropdownMenuSeparator />
+                              {isStaff && <DropdownMenuSeparator />}
                               {transitions.map((t) => (
                                 <DropdownMenuItem
                                   key={t}
@@ -188,14 +192,18 @@ export function RidesTable({ rides }: RidesTableProps) {
                               ))}
                             </>
                           )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() =>
-                              handleToggle(ride.id, ride.is_active)
-                            }
-                          >
-                            {ride.is_active ? "Deaktivieren" : "Aktivieren"}
-                          </DropdownMenuItem>
+                          {isStaff && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  handleToggle(ride.id, ride.is_active)
+                                }
+                              >
+                                {ride.is_active ? "Deaktivieren" : "Aktivieren"}
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { requireAuth } from "@/lib/auth/require-auth"
 import { rideSchema } from "@/lib/validations/rides"
-import { assertTransition } from "@/lib/rides/status-machine"
+import { assertTransitionForRole } from "@/lib/rides/status-machine"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables, Enums } from "@/lib/types/database"
 
@@ -12,13 +13,9 @@ export async function createRide(
   _prevState: ActionResult<Tables<"rides">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"rides">>> {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: "Nicht authentifiziert" }
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
   }
 
   const raw = Object.fromEntries(formData)
@@ -38,6 +35,7 @@ export async function createRide(
     ? "planned"
     : "unplanned"
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from("rides")
     .insert({ ...result.data, status })
@@ -57,13 +55,9 @@ export async function updateRide(
   _prevState: ActionResult<Tables<"rides">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"rides">>> {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: "Nicht authentifiziert" }
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
   }
 
   const raw = Object.fromEntries(formData)
@@ -78,6 +72,8 @@ export async function updateRide(
       >,
     }
   }
+
+  const supabase = await createClient()
 
   // Fetch current ride to check for auto-transition
   const { data: currentRide } = await supabase
@@ -119,18 +115,15 @@ export async function updateRideStatus(
   rideId: string,
   newStatus: Enums<"ride_status">
 ): Promise<ActionResult> {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: "Nicht authentifiziert" }
+  const auth = await requireAuth()
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
   }
 
+  const supabase = await createClient()
   const { data: ride } = await supabase
     .from("rides")
-    .select("status")
+    .select("status, driver_id")
     .eq("id", rideId)
     .single()
 
@@ -138,8 +131,13 @@ export async function updateRideStatus(
     return { success: false, error: "Fahrt nicht gefunden" }
   }
 
+  // Drivers can only update status on their own assigned rides
+  if (auth.role === "driver" && ride.driver_id !== auth.driverId) {
+    return { success: false, error: "Keine Berechtigung für diese Fahrt" }
+  }
+
   try {
-    assertTransition(ride.status, newStatus)
+    assertTransitionForRole(ride.status, newStatus, auth.role)
   } catch {
     return { success: false, error: "Ungültiger Statusübergang" }
   }
@@ -161,15 +159,12 @@ export async function toggleRideActive(
   id: string,
   isActive: boolean
 ): Promise<ActionResult> {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: "Nicht authentifiziert" }
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
   }
 
+  const supabase = await createClient()
   const { error } = await supabase
     .from("rides")
     .update({ is_active: isActive })
