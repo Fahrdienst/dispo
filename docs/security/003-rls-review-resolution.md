@@ -6,7 +6,7 @@
 **Migration files reviewed:**
 - `supabase/migrations/20260218_000001_initial_schema.sql`
 - `supabase/migrations/20260219_000001_add_email_to_profiles.sql`
-- `supabase/migrations/20260219_000002_fix_sec006_destinations_deactivated_users.sql` (this review)
+- `supabase/migrations/20260220_000001_fix_sec006_destinations_deactivated_users.sql` (this review)
 
 **Classification:** INTERNAL — VERTRAULICH
 
