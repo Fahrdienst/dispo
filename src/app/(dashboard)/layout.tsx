@@ -9,7 +9,7 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-background">
       <header className="h-14 border-b bg-white">
         <div className="mx-auto flex h-full max-w-7xl items-center gap-8 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-lg font-semibold">Dispo</h1>
+          <h1 className="text-lg font-semibold">Fahrdienst</h1>
           <DashboardNav />
         </div>
       </header>
