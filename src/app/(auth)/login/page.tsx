@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
-  title: "Anmelden - Dispo",
+  title: "Anmelden - Fahrdienst",
 };
 
 export default function LoginPage(): React.ReactElement {
@@ -13,9 +14,7 @@ export default function LoginPage(): React.ReactElement {
           Melden Sie sich mit Ihrem Konto an
         </p>
       </div>
-      <div className="text-center text-sm text-gray-500">
-        <p>Anmeldeformular wird hier implementiert.</p>
-      </div>
+      <LoginForm />
     </div>
   );
 }
