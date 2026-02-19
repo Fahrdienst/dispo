@@ -10,6 +10,7 @@ const navItems = [
   { href: "/drivers", label: "Fahrer" },
   { href: "/destinations", label: "Ziele" },
   { href: "/patients", label: "Patienten" },
+  { href: "/users", label: "Benutzer" },
 ]
 
 export function DashboardNav() {

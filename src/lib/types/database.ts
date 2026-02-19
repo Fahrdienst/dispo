@@ -14,6 +14,7 @@ export type Database = {
       profiles: {
         Row: {
           id: string
+          email: string
           role: Database['public']['Enums']['user_role']
           display_name: string
           driver_id: string | null
@@ -23,6 +24,7 @@ export type Database = {
         }
         Insert: {
           id: string
+          email: string
           role?: Database['public']['Enums']['user_role']
           display_name: string
           driver_id?: string | null
@@ -32,6 +34,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          email?: string
           role?: Database['public']['Enums']['user_role']
           display_name?: string
           driver_id?: string | null
