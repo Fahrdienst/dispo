@@ -18,7 +18,8 @@ export async function createPatient(
     return { success: false, error: "Nicht authentifiziert" }
   }
 
-  const raw = Object.fromEntries(formData)
+  const impairments = formData.getAll("impairments") as string[]
+  const raw = { ...Object.fromEntries(formData), impairments }
   const result = patientSchema.safeParse(raw)
 
   if (!result.success) {
@@ -28,14 +29,31 @@ export async function createPatient(
     }
   }
 
-  const { error } = await supabase
+  const { impairments: validatedImpairments, ...patientData } = result.data
+
+  const { data: patient, error } = await supabase
     .from("patients")
-    .insert(result.data)
+    .insert(patientData)
     .select()
     .single()
 
   if (error) {
     return { success: false, error: error.message }
+  }
+
+  if (validatedImpairments.length > 0 && patient) {
+    const { error: impError } = await supabase
+      .from("patient_impairments")
+      .insert(
+        validatedImpairments.map((type) => ({
+          patient_id: patient.id,
+          impairment_type: type,
+        }))
+      )
+
+    if (impError) {
+      return { success: false, error: impError.message }
+    }
   }
 
   revalidatePath("/patients")
@@ -54,7 +72,8 @@ export async function updatePatient(
     return { success: false, error: "Nicht authentifiziert" }
   }
 
-  const raw = Object.fromEntries(formData)
+  const impairments = formData.getAll("impairments") as string[]
+  const raw = { ...Object.fromEntries(formData), impairments }
   const result = patientSchema.safeParse(raw)
 
   if (!result.success) {
@@ -64,15 +83,42 @@ export async function updatePatient(
     }
   }
 
+  const { impairments: validatedImpairments, ...patientData } = result.data
+
   const { error } = await supabase
     .from("patients")
-    .update(result.data)
+    .update(patientData)
     .eq("id", id)
     .select()
     .single()
 
   if (error) {
     return { success: false, error: error.message }
+  }
+
+  // Replace-all strategy: delete existing, then insert new
+  const { error: deleteError } = await supabase
+    .from("patient_impairments")
+    .delete()
+    .eq("patient_id", id)
+
+  if (deleteError) {
+    return { success: false, error: deleteError.message }
+  }
+
+  if (validatedImpairments.length > 0) {
+    const { error: impError } = await supabase
+      .from("patient_impairments")
+      .insert(
+        validatedImpairments.map((type) => ({
+          patient_id: id,
+          impairment_type: type,
+        }))
+      )
+
+    if (impError) {
+      return { success: false, error: impError.message }
+    }
   }
 
   revalidatePath("/patients")

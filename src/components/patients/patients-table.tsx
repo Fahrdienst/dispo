@@ -26,8 +26,19 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { togglePatientActive } from "@/actions/patients"
 import type { Tables } from "@/lib/types/database"
 
+const IMPAIRMENT_LABELS: Record<string, string> = {
+  rollator: "Rollator",
+  wheelchair: "Rollstuhl",
+  stretcher: "Liegendtransport",
+  companion: "Begleitperson",
+}
+
+type PatientWithImpairments = Tables<"patients"> & {
+  patient_impairments: Tables<"patient_impairments">[]
+}
+
 interface PatientsTableProps {
-  patients: Tables<"patients">[]
+  patients: PatientWithImpairments[]
 }
 
 export function PatientsTable({ patients }: PatientsTableProps) {
@@ -43,6 +54,7 @@ export function PatientsTable({ patients }: PatientsTableProps) {
       p.first_name.toLowerCase().includes(term) ||
       p.last_name.toLowerCase().includes(term) ||
       (p.city ?? "").toLowerCase().includes(term) ||
+      (p.postal_code ?? "").toLowerCase().includes(term) ||
       (p.phone ?? "").toLowerCase().includes(term)
     )
   })
@@ -83,8 +95,8 @@ export function PatientsTable({ patients }: PatientsTableProps) {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Telefon</TableHead>
-                <TableHead>Stadt</TableHead>
-                <TableHead>Anforderungen</TableHead>
+                <TableHead>Ort</TableHead>
+                <TableHead>Beeinträchtigungen</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[80px]" />
               </TableRow>
@@ -99,18 +111,18 @@ export function PatientsTable({ patients }: PatientsTableProps) {
                     {patient.last_name}, {patient.first_name}
                   </TableCell>
                   <TableCell>{patient.phone ?? "–"}</TableCell>
-                  <TableCell>{patient.city ?? "–"}</TableCell>
+                  <TableCell>
+                    {patient.postal_code || patient.city
+                      ? `${patient.postal_code ?? ""} ${patient.city ?? ""}`.trim()
+                      : "–"}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1 flex-wrap">
-                      {patient.needs_wheelchair && (
-                        <Badge variant="outline">Rollstuhl</Badge>
-                      )}
-                      {patient.needs_stretcher && (
-                        <Badge variant="outline">Trage</Badge>
-                      )}
-                      {patient.needs_companion && (
-                        <Badge variant="outline">Begleitperson</Badge>
-                      )}
+                      {patient.patient_impairments.map((pi) => (
+                        <Badge key={pi.id} variant="outline">
+                          {IMPAIRMENT_LABELS[pi.impairment_type] ?? pi.impairment_type}
+                        </Badge>
+                      ))}
                     </div>
                   </TableCell>
                   <TableCell>

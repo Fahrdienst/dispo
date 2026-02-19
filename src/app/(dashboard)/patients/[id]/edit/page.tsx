@@ -18,7 +18,7 @@ export default async function EditPatientPage({
   const supabase = await createClient()
   const { data: patient } = await supabase
     .from("patients")
-    .select("*")
+    .select("*, patient_impairments(*)")
     .eq("id", id)
     .single()
 

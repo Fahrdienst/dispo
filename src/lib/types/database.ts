@@ -178,18 +178,47 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_impairments: {
+        Row: {
+          id: string
+          patient_id: string
+          impairment_type: Database["public"]["Enums"]["impairment_type"]
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          impairment_type: Database["public"]["Enums"]["impairment_type"]
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          impairment_type?: Database["public"]["Enums"]["impairment_type"]
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_impairments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           city: string | null
+          comment: string | null
           created_at: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           first_name: string
           house_number: string | null
           id: string
           is_active: boolean
           last_name: string
-          needs_companion: boolean
-          needs_stretcher: boolean
-          needs_wheelchair: boolean
           notes: string | null
           phone: string | null
           postal_code: string | null
@@ -198,15 +227,15 @@ export type Database = {
         }
         Insert: {
           city?: string | null
+          comment?: string | null
           created_at?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           first_name: string
           house_number?: string | null
           id?: string
           is_active?: boolean
           last_name: string
-          needs_companion?: boolean
-          needs_stretcher?: boolean
-          needs_wheelchair?: boolean
           notes?: string | null
           phone?: string | null
           postal_code?: string | null
@@ -215,15 +244,15 @@ export type Database = {
         }
         Update: {
           city?: string | null
+          comment?: string | null
           created_at?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           first_name?: string
           house_number?: string | null
           id?: string
           is_active?: boolean
           last_name?: string
-          needs_companion?: boolean
-          needs_stretcher?: boolean
-          needs_wheelchair?: boolean
           notes?: string | null
           phone?: string | null
           postal_code?: string | null
@@ -434,6 +463,7 @@ export type Database = {
         | "saturday"
         | "sunday"
       destination_type: "hospital" | "doctor" | "therapy" | "other"
+      impairment_type: "rollator" | "wheelchair" | "stretcher" | "companion"
       recurrence_type: "daily" | "weekly" | "biweekly" | "monthly"
       ride_direction: "outbound" | "return" | "both"
       ride_status:
@@ -586,6 +616,7 @@ export const Constants = {
         "sunday",
       ],
       destination_type: ["hospital", "doctor", "therapy", "other"],
+      impairment_type: ["rollator", "wheelchair", "stretcher", "companion"],
       recurrence_type: ["daily", "weekly", "biweekly", "monthly"],
       ride_direction: ["outbound", "return", "both"],
       ride_status: [

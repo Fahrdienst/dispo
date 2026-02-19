@@ -9,18 +9,22 @@ interface AddressFieldsProps {
     city?: string | null
   }
   errors?: Record<string, string[] | undefined>
+  required?: boolean
 }
 
-export function AddressFields({ defaultValues, errors }: AddressFieldsProps) {
+export function AddressFields({ defaultValues, errors, required }: AddressFieldsProps) {
   return (
     <fieldset className="space-y-4">
       <legend className="text-sm font-medium">Adresse</legend>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <div className="sm:col-span-3 space-y-2">
-          <Label htmlFor="street">Straße</Label>
+          <Label htmlFor="street">
+            Strasse{required && <span className="text-destructive"> *</span>}
+          </Label>
           <Input
             id="street"
             name="street"
+            required={required}
             defaultValue={defaultValues?.street ?? ""}
           />
           {errors?.street && (
@@ -28,10 +32,13 @@ export function AddressFields({ defaultValues, errors }: AddressFieldsProps) {
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="house_number">Hausnr.</Label>
+          <Label htmlFor="house_number">
+            Hausnr.{required && <span className="text-destructive"> *</span>}
+          </Label>
           <Input
             id="house_number"
             name="house_number"
+            required={required}
             defaultValue={defaultValues?.house_number ?? ""}
           />
           {errors?.house_number && (
@@ -43,10 +50,13 @@ export function AddressFields({ defaultValues, errors }: AddressFieldsProps) {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="space-y-2">
-          <Label htmlFor="postal_code">PLZ</Label>
+          <Label htmlFor="postal_code">
+            PLZ{required && <span className="text-destructive"> *</span>}
+          </Label>
           <Input
             id="postal_code"
             name="postal_code"
+            required={required}
             defaultValue={defaultValues?.postal_code ?? ""}
           />
           {errors?.postal_code && (
@@ -54,10 +64,13 @@ export function AddressFields({ defaultValues, errors }: AddressFieldsProps) {
           )}
         </div>
         <div className="sm:col-span-2 space-y-2">
-          <Label htmlFor="city">Stadt</Label>
+          <Label htmlFor="city">
+            Ort{required && <span className="text-destructive"> *</span>}
+          </Label>
           <Input
             id="city"
             name="city"
+            required={required}
             defaultValue={defaultValues?.city ?? ""}
           />
           {errors?.city && (

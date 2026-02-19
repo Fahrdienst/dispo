@@ -1,54 +1,48 @@
 import { z } from "zod"
 
+const emptyToNull = (v: string) => (v === "" ? null : v)
+
 export const patientSchema = z.object({
   first_name: z.string().min(1, "Vorname ist erforderlich").max(100),
   last_name: z.string().min(1, "Nachname ist erforderlich").max(100),
   phone: z
     .string()
     .max(50)
-    .transform((v) => (v === "" ? null : v))
+    .transform(emptyToNull)
     .nullable()
     .optional(),
-  street: z
-    .string()
-    .max(200)
-    .transform((v) => (v === "" ? null : v))
-    .nullable()
-    .optional(),
-  house_number: z
-    .string()
-    .max(20)
-    .transform((v) => (v === "" ? null : v))
-    .nullable()
-    .optional(),
+  street: z.string().min(1, "Strasse ist erforderlich").max(200),
+  house_number: z.string().min(1, "Hausnummer ist erforderlich").max(20),
   postal_code: z
     .string()
-    .max(10)
-    .transform((v) => (v === "" ? null : v))
+    .min(1, "PLZ ist erforderlich")
+    .regex(/^\d{4}$/, "PLZ muss 4-stellig sein (CH)"),
+  city: z.string().min(1, "Ort ist erforderlich").max(100),
+  emergency_contact_name: z
+    .string()
+    .max(200)
+    .transform(emptyToNull)
     .nullable()
     .optional(),
-  city: z
+  emergency_contact_phone: z
     .string()
-    .max(100)
-    .transform((v) => (v === "" ? null : v))
+    .max(50)
+    .transform(emptyToNull)
     .nullable()
     .optional(),
-  needs_wheelchair: z
+  comment: z
     .string()
-    .optional()
-    .transform((v) => v === "on"),
-  needs_stretcher: z
-    .string()
-    .optional()
-    .transform((v) => v === "on"),
-  needs_companion: z
-    .string()
-    .optional()
-    .transform((v) => v === "on"),
+    .max(2000)
+    .transform(emptyToNull)
+    .nullable()
+    .optional(),
+  impairments: z
+    .array(z.enum(["rollator", "wheelchair", "stretcher", "companion"]))
+    .default([]),
   notes: z
     .string()
     .max(1000)
-    .transform((v) => (v === "" ? null : v))
+    .transform(emptyToNull)
     .nullable()
     .optional(),
 })
