@@ -38,7 +38,7 @@ export function LoginForm() {
         />
       </div>
 
-      <SubmitButton pendingText="Anmelden...">Anmelden</SubmitButton>
+      <SubmitButton pendingText="Anmelden..." className="w-full">Anmelden</SubmitButton>
     </form>
   )
 }
