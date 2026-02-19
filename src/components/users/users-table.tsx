@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { ActiveBadge } from "@/components/shared/active-badge"
 import { EmptyState } from "@/components/shared/empty-state"
+import { useToast } from "@/hooks/use-toast"
 import { toggleUserActive } from "@/actions/users"
 import type { Tables } from "@/lib/types/database"
 
@@ -39,6 +40,7 @@ export function UsersTable({ users }: UsersTableProps) {
   const [search, setSearch] = useState("")
   const [showInactive, setShowInactive] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const { toast } = useToast()
 
   const filtered = users.filter((u) => {
     if (!showInactive && !u.is_active) return false
@@ -52,7 +54,14 @@ export function UsersTable({ users }: UsersTableProps) {
 
   function handleToggle(id: string, currentActive: boolean) {
     startTransition(async () => {
-      await toggleUserActive(id, !currentActive)
+      const result = await toggleUserActive(id, !currentActive)
+      if (!result.success) {
+        toast({
+          title: "Fehler",
+          description: result.error ?? "Status konnte nicht geändert werden",
+          variant: "destructive",
+        })
+      }
     })
   }
 

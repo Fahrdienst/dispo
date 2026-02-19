@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:types": "supabase gen types typescript --project-id dfeegcebvalolsfniwmc > src/lib/types/database.ts",
+    "db:types:check": "supabase gen types typescript --project-id dfeegcebvalolsfniwmc | diff src/lib/types/database.ts - || (echo 'Types are out of sync. Run: npm run db:types' && exit 1)"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",

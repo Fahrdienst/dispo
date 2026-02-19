@@ -34,6 +34,27 @@ export async function createUser(
 
   const { email, password, display_name, role, driver_id } = result.data
 
+  // Validate driver_id if provided
+  if (driver_id) {
+    const supabase = await createClient()
+    const { data: driver } = await supabase
+      .from("drivers")
+      .select("id")
+      .eq("id", driver_id)
+      .single()
+    if (!driver) {
+      return { success: false, error: "Der ausgewählte Fahrer existiert nicht" }
+    }
+    const { data: linkedProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("driver_id", driver_id)
+      .single()
+    if (linkedProfile) {
+      return { success: false, error: "Dieser Fahrer ist bereits einem anderen Benutzer zugeordnet" }
+    }
+  }
+
   // Create auth user via admin client
   const adminClient = createAdminClient()
   const { data: authData, error: authError } =
@@ -65,6 +86,8 @@ export async function createUser(
 
   if (profileError) {
     console.error("Failed to update profile:", profileError)
+    // Rollback: delete the orphaned auth user
+    await adminClient.auth.admin.deleteUser(authData.user.id)
     return { success: false, error: "Profil konnte nicht aktualisiert werden" }
   }
 
@@ -98,9 +121,10 @@ export async function updateUser(
 
   const { display_name, role, driver_id } = result.data
 
+  const supabase = await createClient()
+
   // Self-demotion check
   if (id === auth.userId) {
-    const supabase = await createClient()
     const { data: currentProfile } = await supabase
       .from("profiles")
       .select("role")
@@ -117,7 +141,6 @@ export async function updateUser(
 
   // Last-admin check
   if (role !== "admin") {
-    const supabase = await createClient()
     const { data: currentProfile } = await supabase
       .from("profiles")
       .select("role")
@@ -140,8 +163,28 @@ export async function updateUser(
     }
   }
 
+  // Validate driver_id if provided
+  if (driver_id) {
+    const { data: driver } = await supabase
+      .from("drivers")
+      .select("id")
+      .eq("id", driver_id)
+      .single()
+    if (!driver) {
+      return { success: false, error: "Der ausgewählte Fahrer existiert nicht" }
+    }
+    const { data: linkedProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("driver_id", driver_id)
+      .neq("id", id)
+      .single()
+    if (linkedProfile) {
+      return { success: false, error: "Dieser Fahrer ist bereits einem anderen Benutzer zugeordnet" }
+    }
+  }
+
   // Clear driver_id if role changed away from driver
-  const supabase = await createClient()
   const { error } = await supabase
     .from("profiles")
     .update({
