@@ -407,7 +407,7 @@ export function RideForm({
                 <SelectValue placeholder="Kein Fahrer" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Kein Fahrer</SelectItem>
+                <SelectItem value="__none__">Kein Fahrer</SelectItem>
                 {drivers.map((d) => (
                   <SelectItem key={d.id} value={d.id}>
                     {d.last_name}, {d.first_name}

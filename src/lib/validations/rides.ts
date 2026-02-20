@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-const emptyToNull = (v: string) => (v === "" ? null : v)
+const emptyToNull = (v: string) => (v === "" || v === "__none__" ? null : v)
 
 /**
  * Default buffer (minutes) between appointment_end_time and return_pickup_time.
