@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import Link from "next/link"
 import { MoreHorizontal } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -87,7 +88,10 @@ export function FareVersionsTable({ fareVersions }: FareVersionsTableProps) {
                 return (
                   <TableRow
                     key={fv.id}
-                    className={!fv.is_active ? "opacity-50" : undefined}
+                    className={cn(
+                      "cursor-pointer transition-colors hover:bg-muted/60",
+                      !fv.is_active && "opacity-50"
+                    )}
                   >
                     <TableCell className="font-medium">{fv.name}</TableCell>
                     <TableCell>{formatDate(fv.valid_from)}</TableCell>

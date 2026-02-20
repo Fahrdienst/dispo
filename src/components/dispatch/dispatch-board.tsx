@@ -2,10 +2,18 @@
 
 import { useTransition, useMemo, useState, useCallback } from "react"
 import Link from "next/link"
+import { Check, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { RideStatusBadge } from "@/components/shared/ride-status-badge"
 import {
   RIDE_STATUS_LABELS,
@@ -106,6 +114,20 @@ const ALL_STATUSES: RideStatus[] = [
   "no_show",
 ]
 
+/** Active chip background colors per status. */
+const STATUS_CHIP_COLORS: Record<RideStatus, string> = {
+  unplanned:   "bg-gray-600 text-white",
+  planned:     "bg-blue-500 text-white",
+  confirmed:   "bg-indigo-500 text-white",
+  rejected:    "bg-red-500 text-white",
+  in_progress: "bg-amber-500 text-white",
+  picked_up:   "bg-orange-500 text-white",
+  arrived:     "bg-teal-500 text-white",
+  completed:   "bg-green-600 text-white",
+  cancelled:   "bg-slate-400 text-white",
+  no_show:     "bg-rose-600 text-white",
+}
+
 // ---------------------------------------------------------------------------
 // Day Navigation Helpers
 // ---------------------------------------------------------------------------
@@ -151,38 +173,55 @@ function DriverSelect({
   isPending,
   onAssign,
 }: DriverSelectProps) {
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value
-    onAssign(rideId, value === "" ? null : value)
+  const handleChange = (value: string) => {
+    onAssign(rideId, value === "__none__" ? null : value)
   }
 
-  return (
-    <select
-      value={currentDriverId ?? ""}
-      onChange={handleChange}
-      disabled={isPending}
-      className={cn(
-        "h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm",
-        "focus:outline-none focus:ring-1 focus:ring-ring",
-        "disabled:cursor-not-allowed disabled:opacity-50"
-      )}
-      aria-label="Fahrer zuweisen"
-    >
-      <option value="">-- Kein Fahrer --</option>
-      {drivers.map((driver) => {
-        const isAvailable = rideSlot !== null && availableSlots.has(rideSlot + ":" + driver.id)
-        const hasConflict = conflictDriverIds.has(driver.id)
-        const label = `${driver.last_name}, ${driver.first_name} (${VEHICLE_TYPE_LABELS[driver.vehicle_type]})`
-        const indicator = isAvailable ? " \u2713" : " \u2013"
-        const conflictIndicator = hasConflict ? " \u26A0" : ""
+  const isUnassigned = currentDriverId === null
 
-        return (
-          <option key={driver.id} value={driver.id}>
-            {label}{indicator}{conflictIndicator}
-          </option>
-        )
-      })}
-    </select>
+  return (
+    <Select
+      value={currentDriverId ?? "__none__"}
+      onValueChange={handleChange}
+      disabled={isPending}
+    >
+      <SelectTrigger
+        className={cn(
+          isUnassigned && "border-amber-300 bg-amber-50/50"
+        )}
+        aria-label="Fahrer zuweisen"
+      >
+        <SelectValue placeholder={"— Fahrer zuweisen —"} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none__">— Kein Fahrer —</SelectItem>
+        {drivers.map((driver) => {
+          const isAvailable =
+            rideSlot !== null &&
+            availableSlots.has(rideSlot + ":" + driver.id)
+          const hasConflict = conflictDriverIds.has(driver.id)
+
+          return (
+            <SelectItem key={driver.id} value={driver.id}>
+              <span className="flex items-center gap-2">
+                {isAvailable && (
+                  <Check className="h-3.5 w-3.5 shrink-0 text-green-600" />
+                )}
+                {hasConflict && (
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                )}
+                <span>
+                  {driver.last_name}, {driver.first_name}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {VEHICLE_TYPE_LABELS[driver.vehicle_type]}
+                </span>
+              </span>
+            </SelectItem>
+          )
+        })}
+      </SelectContent>
+    </Select>
   )
 }
 
@@ -366,14 +405,15 @@ export function DispatchBoard({
         {ALL_STATUSES.map((status) => {
           const count = statusCounts[status] ?? 0
           if (count === 0) return null
+          const isActive = statusFilter === status
           return (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
               className={cn(
                 "rounded-md px-3 py-1 text-xs font-medium transition-colors",
-                statusFilter === status
-                  ? "bg-foreground text-background"
+                isActive
+                  ? STATUS_CHIP_COLORS[status]
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
             >

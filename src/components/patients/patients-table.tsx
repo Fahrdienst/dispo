@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import Link from "next/link"
 import { MoreHorizontal } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -106,7 +107,10 @@ export function PatientsTable({ patients }: PatientsTableProps) {
               {filtered.map((patient) => (
                 <TableRow
                   key={patient.id}
-                  className={!patient.is_active ? "opacity-50" : undefined}
+                  className={cn(
+                    "cursor-pointer transition-colors hover:bg-muted/60",
+                    !patient.is_active && "opacity-50"
+                  )}
                 >
                   <TableCell className="font-medium">
                     {patient.last_name}, {patient.first_name}

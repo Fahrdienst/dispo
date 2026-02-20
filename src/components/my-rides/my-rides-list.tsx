@@ -3,6 +3,7 @@
 import { useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { RideStatusBadge } from "@/components/shared/ride-status-badge"
@@ -67,66 +68,78 @@ export function MyRidesList({ rides }: MyRidesListProps) {
         return (
           <Card
             key={ride.id}
-            className={`border-l-4 ${RIDE_STATUS_BORDER_COLORS[ride.status]}`}
+            className={cn(
+              "border-l-[5px]",
+              RIDE_STATUS_BORDER_COLORS[ride.status]
+            )}
           >
             <CardContent className="p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                {/* Left: ride info */}
-                <div className="space-y-1">
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg font-semibold tabular-nums">
-                      {ride.pickup_time.slice(0, 5)}
-                    </span>
-                    <RideStatusBadge status={ride.status} />
-                  </div>
-                  <p className="text-sm font-medium">
-                    {ride.patient_last_name}, {ride.patient_first_name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {ride.destination_name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {RIDE_DIRECTION_LABELS[ride.direction]}
-                  </p>
-                  {ride.notes && (
-                    <p className="text-xs text-muted-foreground italic">
-                      {ride.notes}
-                    </p>
-                  )}
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0 text-xs"
-                    asChild
-                  >
-                    <Link href={`/rides/${ride.id}`}>Details anzeigen</Link>
-                  </Button>
-                </div>
-
-                {/* Right: action buttons */}
-                {transitions.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {transitions.map((targetStatus) => {
-                      const isDestructive =
-                        targetStatus === "no_show" || targetStatus === "rejected"
-                      return (
-                        <Button
-                          key={targetStatus}
-                          size="sm"
-                          variant={isDestructive ? "outline" : "default"}
-                          disabled={isPending}
-                          onClick={() =>
-                            handleStatusChange(ride.id, targetStatus)
-                          }
-                        >
-                          {TRANSITION_BUTTON_LABELS[targetStatus] ??
-                            RIDE_STATUS_LABELS[targetStatus]}
-                        </Button>
-                      )
-                    })}
-                  </div>
-                )}
+              {/* Time + Status Badge */}
+              <div className="flex items-start justify-between">
+                <span className="text-3xl font-bold tabular-nums">
+                  {ride.pickup_time.slice(0, 5)}
+                </span>
+                <RideStatusBadge status={ride.status} />
               </div>
+
+              {/* Ride info */}
+              <div className="mt-2 space-y-1">
+                <p className="text-sm font-medium">
+                  {ride.patient_last_name}, {ride.patient_first_name}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {ride.destination_name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {RIDE_DIRECTION_LABELS[ride.direction]}
+                </p>
+              </div>
+
+              {/* Notes */}
+              {ride.notes && (
+                <div className="mt-2 rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                  {ride.notes}
+                </div>
+              )}
+
+              {/* Details link */}
+              <Button
+                variant="link"
+                size="sm"
+                className="mt-1 h-auto p-0 text-xs"
+                asChild
+              >
+                <Link href={`/rides/${ride.id}`}>Details anzeigen</Link>
+              </Button>
+
+              {/* Action buttons */}
+              {transitions.length > 0 && (
+                <div className="mt-4 flex flex-col gap-2">
+                  {transitions.map((targetStatus) => {
+                    const isDestructive =
+                      targetStatus === "no_show" || targetStatus === "rejected"
+                    return (
+                      <Button
+                        key={targetStatus}
+                        size="lg"
+                        variant={isDestructive ? "outline" : "default"}
+                        disabled={isPending}
+                        onClick={() =>
+                          handleStatusChange(ride.id, targetStatus)
+                        }
+                        className={cn(
+                          "h-12 w-full text-base font-semibold",
+                          isDestructive &&
+                            "border-red-300 text-red-700 hover:bg-red-50"
+                        )}
+                      >
+                        {TRANSITION_BUTTON_LABELS[targetStatus] ??
+                          RIDE_STATUS_LABELS[targetStatus]}
+                      </Button>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         )

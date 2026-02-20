@@ -174,7 +174,10 @@ export function BillingTable({ rows, summary }: BillingTableProps) {
               {filtered.map((row) => (
                 <TableRow
                   key={row.ride_id}
-                  className={getPriceRowClass(row)}
+                  className={cn(
+                    "cursor-pointer transition-colors hover:bg-muted/60",
+                    getPriceRowClass(row)
+                  )}
                 >
                   <TableCell className="whitespace-nowrap">
                     {row.date}

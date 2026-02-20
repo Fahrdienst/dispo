@@ -113,72 +113,80 @@ export function PatientForm({ patient }: PatientFormProps) {
             required
           />
 
-          <fieldset className="space-y-4">
-            <legend className="text-sm font-medium">Notfallkontakt</legend>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="emergency_contact_name">Name Notfallkontakt</Label>
-                <Input
-                  id="emergency_contact_name"
-                  name="emergency_contact_name"
-                  defaultValue={patient?.emergency_contact_name ?? ""}
-                />
-                {fieldErrors?.emergency_contact_name && (
-                  <p className="text-sm text-destructive">
-                    {fieldErrors.emergency_contact_name[0]}
-                  </p>
-                )}
+          <div className="rounded-lg border bg-muted/30 p-4">
+            <fieldset className="space-y-4">
+              <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Notfallkontakt
+              </legend>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="emergency_contact_name">Name Notfallkontakt</Label>
+                  <Input
+                    id="emergency_contact_name"
+                    name="emergency_contact_name"
+                    defaultValue={patient?.emergency_contact_name ?? ""}
+                  />
+                  {fieldErrors?.emergency_contact_name && (
+                    <p className="text-sm text-destructive">
+                      {fieldErrors.emergency_contact_name[0]}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emergency_contact_phone">Telefon Notfallkontakt</Label>
+                  <Input
+                    id="emergency_contact_phone"
+                    name="emergency_contact_phone"
+                    type="tel"
+                    defaultValue={patient?.emergency_contact_phone ?? ""}
+                  />
+                  {fieldErrors?.emergency_contact_phone && (
+                    <p className="text-sm text-destructive">
+                      {fieldErrors.emergency_contact_phone[0]}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="emergency_contact_phone">Telefon Notfallkontakt</Label>
-                <Input
-                  id="emergency_contact_phone"
-                  name="emergency_contact_phone"
-                  type="tel"
-                  defaultValue={patient?.emergency_contact_phone ?? ""}
-                />
-                {fieldErrors?.emergency_contact_phone && (
-                  <p className="text-sm text-destructive">
-                    {fieldErrors.emergency_contact_phone[0]}
-                  </p>
-                )}
-              </div>
-            </div>
-          </fieldset>
+            </fieldset>
+          </div>
 
-          <fieldset className="space-y-3">
-            <legend className="text-sm font-medium">Beeinträchtigungen</legend>
-            {IMPAIRMENT_OPTIONS.map((option) => (
-              <div key={option.value} className="flex items-center gap-2">
-                <Checkbox
-                  id={`impairment_${option.value}`}
-                  checked={checkedImpairments.includes(option.value)}
-                  onCheckedChange={(checked) =>
-                    toggleImpairment(option.value, checked === true)
-                  }
+          <div className="rounded-lg border bg-muted/30 p-4">
+            <fieldset className="space-y-3">
+              <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Beeinträchtigungen
+              </legend>
+              {IMPAIRMENT_OPTIONS.map((option) => (
+                <div key={option.value} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`impairment_${option.value}`}
+                    checked={checkedImpairments.includes(option.value)}
+                    onCheckedChange={(checked) =>
+                      toggleImpairment(option.value, checked === true)
+                    }
+                  />
+                  <Label
+                    htmlFor={`impairment_${option.value}`}
+                    className="text-sm font-normal"
+                  >
+                    {option.label}
+                  </Label>
+                </div>
+              ))}
+              {checkedImpairments.map((value) => (
+                <input
+                  key={value}
+                  type="hidden"
+                  name="impairments"
+                  value={value}
                 />
-                <Label
-                  htmlFor={`impairment_${option.value}`}
-                  className="text-sm font-normal"
-                >
-                  {option.label}
-                </Label>
-              </div>
-            ))}
-            {checkedImpairments.map((value) => (
-              <input
-                key={value}
-                type="hidden"
-                name="impairments"
-                value={value}
-              />
-            ))}
-            {fieldErrors?.impairments && (
-              <p className="text-sm text-destructive">
-                {fieldErrors.impairments[0]}
-              </p>
-            )}
-          </fieldset>
+              ))}
+              {fieldErrors?.impairments && (
+                <p className="text-sm text-destructive">
+                  {fieldErrors.impairments[0]}
+                </p>
+              )}
+            </fieldset>
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="comment">Kommentar</Label>

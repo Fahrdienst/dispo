@@ -320,8 +320,8 @@ export function RideForm({
           </div>
 
           {/* --- Appointment Times (ADR-008) --- */}
-          <fieldset className="space-y-4 rounded-md border px-4 pb-4 pt-2">
-            <legend className="px-1 text-sm font-medium text-muted-foreground">
+          <fieldset className="space-y-4 rounded-lg border bg-muted/30 p-4">
+            <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Termin
             </legend>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -439,8 +439,8 @@ export function RideForm({
           </div>
 
           {/* --- Price Override (ADR-010, Issue #60) --- */}
-          <fieldset className="space-y-4 rounded-md border px-4 pb-4 pt-2">
-            <legend className="px-1 text-sm font-medium text-muted-foreground">
+          <fieldset className="space-y-4 rounded-lg border bg-muted/30 p-4">
+            <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Preis
             </legend>
 

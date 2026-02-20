@@ -112,8 +112,8 @@ export function AvailabilityGrid({ driverId, initialSlots }: AvailabilityGridPro
                           onClick={() => toggleSlot(day, time)}
                           className={`h-10 w-full rounded-md border transition-colors ${
                             isActive
-                              ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-muted/30 border-border hover:bg-muted"
+                              ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                              : "bg-muted/30 border-border hover:bg-muted hover:border-muted-foreground/30"
                           } ${isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                           aria-label={`${WEEKDAY_LABELS[day]} ${SLOT_LABELS[time]}: ${isActive ? "aktiv" : "inaktiv"}`}
                         />
@@ -124,6 +124,17 @@ export function AvailabilityGrid({ driverId, initialSlots }: AvailabilityGridPro
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded-sm bg-primary" />
+            Verfügbar
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded-sm border border-border bg-muted/30" />
+            Nicht verfügbar
+          </span>
         </div>
 
         <div className="mt-6 flex gap-3">

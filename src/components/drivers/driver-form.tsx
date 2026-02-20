@@ -149,38 +149,42 @@ export function DriverForm({ driver }: DriverFormProps) {
           </div>
 
           {/* --- Notfallkontakt --- */}
-          <fieldset className="space-y-4">
-            <legend className="text-sm font-medium">Notfallkontakt</legend>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="emergency_contact_name">Name</Label>
-                <Input
-                  id="emergency_contact_name"
-                  name="emergency_contact_name"
-                  defaultValue={driver?.emergency_contact_name ?? ""}
-                />
-                {fieldErrors?.emergency_contact_name && (
-                  <p className="text-sm text-destructive">
-                    {fieldErrors.emergency_contact_name[0]}
-                  </p>
-                )}
+          <div className="rounded-lg border bg-muted/30 p-4">
+            <fieldset className="space-y-4">
+              <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Notfallkontakt
+              </legend>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="emergency_contact_name">Name</Label>
+                  <Input
+                    id="emergency_contact_name"
+                    name="emergency_contact_name"
+                    defaultValue={driver?.emergency_contact_name ?? ""}
+                  />
+                  {fieldErrors?.emergency_contact_name && (
+                    <p className="text-sm text-destructive">
+                      {fieldErrors.emergency_contact_name[0]}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emergency_contact_phone">Telefon</Label>
+                  <Input
+                    id="emergency_contact_phone"
+                    name="emergency_contact_phone"
+                    type="tel"
+                    defaultValue={driver?.emergency_contact_phone ?? ""}
+                  />
+                  {fieldErrors?.emergency_contact_phone && (
+                    <p className="text-sm text-destructive">
+                      {fieldErrors.emergency_contact_phone[0]}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="emergency_contact_phone">Telefon</Label>
-                <Input
-                  id="emergency_contact_phone"
-                  name="emergency_contact_phone"
-                  type="tel"
-                  defaultValue={driver?.emergency_contact_phone ?? ""}
-                />
-                {fieldErrors?.emergency_contact_phone && (
-                  <p className="text-sm text-destructive">
-                    {fieldErrors.emergency_contact_phone[0]}
-                  </p>
-                )}
-              </div>
-            </div>
-          </fieldset>
+            </fieldset>
+          </div>
 
           {/* --- Notizen --- */}
           <div className="space-y-2">

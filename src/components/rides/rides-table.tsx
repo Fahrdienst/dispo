@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import Link from "next/link"
 import { MoreHorizontal } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -148,7 +149,10 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
                 return (
                   <TableRow
                     key={ride.id}
-                    className={!ride.is_active ? "opacity-50" : undefined}
+                    className={cn(
+                      "cursor-pointer transition-colors hover:bg-muted/60",
+                      !ride.is_active && "opacity-50"
+                    )}
                   >
                     <TableCell>{ride.pickup_time.slice(0, 5)}</TableCell>
                     <TableCell className="font-medium">

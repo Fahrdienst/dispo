@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import Link from "next/link"
 import { MoreHorizontal } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -101,7 +102,10 @@ export function DriversTable({ drivers }: DriversTableProps) {
               {filtered.map((driver) => (
                 <TableRow
                   key={driver.id}
-                  className={!driver.is_active ? "opacity-50" : undefined}
+                  className={cn(
+                    "cursor-pointer transition-colors hover:bg-muted/60",
+                    !driver.is_active && "opacity-50"
+                  )}
                 >
                   <TableCell className="font-medium">
                     {driver.last_name}, {driver.first_name}

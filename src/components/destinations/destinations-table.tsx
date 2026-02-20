@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import Link from "next/link"
 import { MoreHorizontal } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -126,7 +127,10 @@ export function DestinationsTable({ destinations }: DestinationsTableProps) {
               {filtered.map((dest) => (
                 <TableRow
                   key={dest.id}
-                  className={!dest.is_active ? "opacity-50" : undefined}
+                  className={cn(
+                    "cursor-pointer transition-colors hover:bg-muted/60",
+                    !dest.is_active && "opacity-50"
+                  )}
                 >
                   <TableCell className="font-medium">
                     {dest.display_name}
