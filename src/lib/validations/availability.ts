@@ -28,7 +28,25 @@ export const weeklyAvailabilitySchema = z.object({
     ),
 })
 
+/**
+ * Schema for date-specific availability.
+ * Input: a driver_id, a specific_date (YYYY-MM-DD), and an array of start_times.
+ * The server action will compute end_time = start_time + 2h.
+ */
+export const dateSpecificAvailabilitySchema = z.object({
+  driver_id: z.string().uuid("Ungueltige Fahrer-ID"),
+  specific_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Ungueltiges Datum (YYYY-MM-DD)"),
+  slots: z
+    .array(z.enum(SLOT_START_TIMES))
+    .max(5, "Maximal 5 Slots pro Tag")
+    .refine(
+      (slots) => new Set(slots).size === slots.length,
+      { message: "Doppelte Slots sind nicht erlaubt" }
+    ),
+})
+
 export type WeeklyAvailabilityValues = z.infer<typeof weeklyAvailabilitySchema>
+export type DateSpecificAvailabilityValues = z.infer<typeof dateSpecificAvailabilitySchema>
 export type SlotValue = z.infer<typeof slotSchema>
 
 /** Constants for UI rendering */

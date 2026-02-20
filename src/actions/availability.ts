@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/require-auth"
-import { weeklyAvailabilitySchema } from "@/lib/validations/availability"
+import {
+  weeklyAvailabilitySchema,
+  dateSpecificAvailabilitySchema,
+} from "@/lib/validations/availability"
 import type { ActionResult } from "@/actions/shared"
 
 /** Compute end_time from start_time (add 2 hours) */
@@ -65,6 +68,76 @@ export async function saveWeeklyAvailability(
       day_of_week: slot.day_of_week,
       start_time: slot.start_time,
       end_time: slotEndTime(slot.start_time),
+    }))
+
+    const { error: insertError } = await supabase
+      .from("driver_availability")
+      .insert(rows)
+
+    if (insertError) {
+      return { success: false, error: insertError.message }
+    }
+  }
+
+  revalidatePath(`/drivers/${driver_id}/availability`)
+  revalidatePath(`/drivers/${driver_id}`)
+  revalidatePath("/my/availability")
+  return { success: true, data: undefined }
+}
+
+/**
+ * Replace-all strategy for a specific date: delete all slots for that date,
+ * then insert the new set.
+ *
+ * Callable by:
+ * - Staff (admin/operator) for any driver
+ * - Driver for their own availability
+ */
+export async function saveDateSpecificAvailability(
+  input: { driver_id: string; specific_date: string; slots: string[] }
+): Promise<ActionResult> {
+  const auth = await requireAuth()
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
+  }
+
+  const result = dateSpecificAvailabilitySchema.safeParse(input)
+  if (!result.success) {
+    const errors = result.error.flatten()
+    return {
+      success: false,
+      error: errors.formErrors[0] ?? "Validierungsfehler",
+      fieldErrors: errors.fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  const { driver_id, specific_date, slots } = result.data
+
+  // Authorization check: drivers can only manage their own availability
+  if (auth.role === "driver" && auth.driverId !== driver_id) {
+    return { success: false, error: "Keine Berechtigung fuer diesen Fahrer" }
+  }
+
+  const supabase = await createClient()
+
+  // Step 1: Delete all existing slots for this specific date
+  const { error: deleteError } = await supabase
+    .from("driver_availability")
+    .delete()
+    .eq("driver_id", driver_id)
+    .eq("specific_date", specific_date)
+
+  if (deleteError) {
+    return { success: false, error: deleteError.message }
+  }
+
+  // Step 2: Insert new slots
+  if (slots.length > 0) {
+    const rows = slots.map((startTime) => ({
+      driver_id,
+      specific_date,
+      start_time: startTime,
+      end_time: slotEndTime(startTime),
     }))
 
     const { error: insertError } = await supabase
