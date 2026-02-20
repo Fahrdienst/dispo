@@ -24,6 +24,11 @@ function formatDateDE(dateStr: string): string {
   })
 }
 
+function formatTime(time: string | null): string | null {
+  if (!time) return null
+  return time.slice(0, 5) + " Uhr"
+}
+
 interface RideDetailPageProps {
   params: Promise<{ id: string }>
 }
@@ -58,6 +63,30 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
     if (ride.driver_id !== auth.driverId) {
       notFound()
     }
+  }
+
+  // Fetch linked rides (children = return rides linked to this outbound ride)
+  const { data: childRides } = await supabase
+    .from("rides")
+    .select("id, pickup_time, direction, status, date")
+    .eq("parent_ride_id", id)
+    .order("pickup_time")
+
+  // Fetch parent ride if this is a return ride
+  let parentRide: {
+    id: string
+    pickup_time: string
+    direction: string
+    status: string
+    date: string
+  } | null = null
+  if (ride.parent_ride_id) {
+    const { data } = await supabase
+      .from("rides")
+      .select("id, pickup_time, direction, status, date")
+      .eq("id", ride.parent_ride_id)
+      .single()
+    parentRide = data
   }
 
   // Fetch communication log with author names
@@ -101,8 +130,12 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
     phone: string | null
   } | null
 
-  const backHref = isStaff ? `/rides?date=${ride.date}` : `/my/rides?date=${ride.date}`
-  const backLabel = isStaff ? "Zurueck zu Fahrten" : "Zurueck zu Meine Fahrten"
+  const backHref = isStaff
+    ? `/rides?date=${ride.date}`
+    : `/my/rides?date=${ride.date}`
+  const backLabel = isStaff
+    ? "Zurueck zu Fahrten"
+    : "Zurueck zu Meine Fahrten"
 
   return (
     <div className="space-y-6">
@@ -136,10 +169,52 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
               label="Richtung"
               value={RIDE_DIRECTION_LABELS[ride.direction]}
             />
+            {ride.appointment_time && (
+              <DetailItem
+                label="Terminbeginn"
+                value={formatTime(ride.appointment_time) ?? ""}
+              />
+            )}
+            {ride.appointment_end_time && (
+              <DetailItem
+                label="Terminende"
+                value={formatTime(ride.appointment_end_time) ?? ""}
+              />
+            )}
+            {ride.return_pickup_time && (
+              <DetailItem
+                label="Rueckfahrt-Abholzeit"
+                value={formatTime(ride.return_pickup_time) ?? ""}
+              />
+            )}
             {ride.notes && <DetailItem label="Notizen" value={ride.notes} />}
           </dl>
         </CardContent>
       </Card>
+
+      {/* Linked rides */}
+      {(parentRide || (childRides && childRides.length > 0)) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Verknuepfte Fahrten</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {parentRide && (
+              <LinkedRideCard
+                label="Hinfahrt"
+                ride={parentRide}
+              />
+            )}
+            {childRides?.map((child) => (
+              <LinkedRideCard
+                key={child.id}
+                label="Heimfahrt"
+                ride={child}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Patient */}
       <Card>
@@ -235,6 +310,37 @@ function DetailItem({ label, value }: { label: string; value: string }) {
   )
 }
 
+function LinkedRideCard({
+  label,
+  ride,
+}: {
+  label: string
+  ride: {
+    id: string
+    pickup_time: string
+    direction: string
+    status: string
+    date: string
+  }
+}) {
+  return (
+    <Link
+      href={`/rides/${ride.id}`}
+      className="block rounded-md border px-4 py-3 transition-colors hover:bg-muted/50"
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="text-sm font-medium">{label}</span>
+          <span className="ml-2 text-sm text-muted-foreground">
+            {ride.pickup_time.slice(0, 5)} Uhr
+          </span>
+        </div>
+        <RideStatusBadge status={ride.status as Parameters<typeof RideStatusBadge>[0]["status"]} />
+      </div>
+    </Link>
+  )
+}
+
 function formatAddress(dest: {
   street: string | null
   house_number: string | null
@@ -243,7 +349,9 @@ function formatAddress(dest: {
 }): string {
   const parts: string[] = []
   if (dest.street) {
-    parts.push(dest.house_number ? `${dest.street} ${dest.house_number}` : dest.street)
+    parts.push(
+      dest.house_number ? `${dest.street} ${dest.house_number}` : dest.street
+    )
   }
   if (dest.postal_code || dest.city) {
     const cityPart = [dest.postal_code, dest.city].filter(Boolean).join(" ")

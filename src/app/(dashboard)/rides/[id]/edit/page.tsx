@@ -15,7 +15,7 @@ export default async function EditRidePage({ params }: EditRidePageProps) {
   const { id } = await params
   const supabase = await createClient()
 
-  const [rideRes, patientsRes, destinationsRes, driversRes] =
+  const [rideRes, patientsRes, destinationsRes, driversRes, childRidesRes] =
     await Promise.all([
       supabase.from("rides").select("*").eq("id", id).single(),
       supabase
@@ -33,6 +33,11 @@ export default async function EditRidePage({ params }: EditRidePageProps) {
         .select("id, first_name, last_name")
         .eq("is_active", true)
         .order("last_name"),
+      // Count child rides (return rides linked to this ride)
+      supabase
+        .from("rides")
+        .select("id", { count: "exact", head: true })
+        .eq("parent_ride_id", id),
     ])
 
   if (!rideRes.data) {
@@ -46,6 +51,8 @@ export default async function EditRidePage({ params }: EditRidePageProps) {
         patients={patientsRes.data ?? []}
         destinations={destinationsRes.data ?? []}
         drivers={driversRes.data ?? []}
+        linkedRideCount={childRidesRes.count ?? 0}
+        hasParentRide={!!rideRes.data.parent_ride_id}
       />
     </div>
   )

@@ -70,7 +70,8 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
     if (statusFilter !== "all" && r.status !== statusFilter) return false
     const term = search.toLowerCase()
     if (!term) return true
-    const patientName = `${r.patients.last_name} ${r.patients.first_name}`.toLowerCase()
+    const patientName =
+      `${r.patients.last_name} ${r.patients.first_name}`.toLowerCase()
     const destinationName = r.destinations.display_name.toLowerCase()
     const driverName = r.drivers
       ? `${r.drivers.last_name} ${r.drivers.first_name}`.toLowerCase()
@@ -82,7 +83,10 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
     )
   })
 
-  function handleStatusChange(rideId: string, newStatus: Enums<"ride_status">) {
+  function handleStatusChange(
+    rideId: string,
+    newStatus: Enums<"ride_status">
+  ) {
     startTransition(async () => {
       await updateRideStatus(rideId, newStatus)
     })
@@ -136,7 +140,10 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
             </TableHeader>
             <TableBody>
               {filtered.map((ride) => {
-                const transitions = getValidTransitionsForRole(ride.status, userRole)
+                const transitions = getValidTransitionsForRole(
+                  ride.status,
+                  userRole
+                )
                 return (
                   <TableRow
                     key={ride.id}
@@ -150,10 +157,18 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
                     <TableCell>
                       {ride.drivers
                         ? `${ride.drivers.last_name}, ${ride.drivers.first_name}`
-                        : "–"}
+                        : "\u2013"}
                     </TableCell>
                     <TableCell>
-                      {RIDE_DIRECTION_LABELS[ride.direction]}
+                      <span className="flex items-center gap-1.5">
+                        {RIDE_DIRECTION_LABELS[ride.direction]}
+                        {ride.parent_ride_id && (
+                          <span
+                            className="inline-block h-2 w-2 rounded-full bg-indigo-400"
+                            title="Verknuepfte Hinfahrt"
+                          />
+                        )}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <RideStatusBadge status={ride.status} />
@@ -171,9 +186,7 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link href={`/rides/${ride.id}`}>
-                              Details
-                            </Link>
+                            <Link href={`/rides/${ride.id}`}>Details</Link>
                           </DropdownMenuItem>
                           {isStaff && (
                             <DropdownMenuItem asChild>
@@ -205,7 +218,9 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
                                   handleToggle(ride.id, ride.is_active)
                                 }
                               >
-                                {ride.is_active ? "Deaktivieren" : "Aktivieren"}
+                                {ride.is_active
+                                  ? "Deaktivieren"
+                                  : "Aktivieren"}
                               </DropdownMenuItem>
                             </>
                           )}

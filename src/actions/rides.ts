@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/require-auth"
-import { rideSchema } from "@/lib/validations/rides"
+import {
+  rideSchema,
+  addMinutesToTime,
+  DEFAULT_RETURN_BUFFER_MINUTES,
+} from "@/lib/validations/rides"
 import { assertTransitionForRole } from "@/lib/rides/status-machine"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables, Enums } from "@/lib/types/database"
@@ -31,14 +35,17 @@ export async function createRide(
     }
   }
 
-  const status: Enums<"ride_status"> = result.data.driver_id
+  const { create_return_ride, ...rideData } = result.data
+  const status: Enums<"ride_status"> = rideData.driver_id
     ? "planned"
     : "unplanned"
 
   const supabase = await createClient()
-  const { data, error } = await supabase
+
+  // 1. Create the outbound ride
+  const { data: outboundRide, error } = await supabase
     .from("rides")
-    .insert({ ...result.data, status })
+    .insert({ ...rideData, status })
     .select()
     .single()
 
@@ -46,8 +53,39 @@ export async function createRide(
     return { success: false, error: error.message }
   }
 
+  // 2. Optionally create return ride
+  if (create_return_ride && rideData.direction === "outbound") {
+    const returnPickupTime =
+      rideData.return_pickup_time ??
+      (rideData.appointment_end_time
+        ? addMinutesToTime(
+            rideData.appointment_end_time,
+            DEFAULT_RETURN_BUFFER_MINUTES
+          )
+        : null)
+
+    if (returnPickupTime) {
+      const { error: returnError } = await supabase.from("rides").insert({
+        patient_id: rideData.patient_id,
+        destination_id: rideData.destination_id,
+        date: rideData.date,
+        pickup_time: returnPickupTime,
+        direction: "return" as const,
+        status: "unplanned" as const,
+        parent_ride_id: outboundRide.id,
+      })
+
+      if (returnError) {
+        // Outbound ride was created successfully. Log return ride error
+        // but still redirect -- the dispatcher can create it manually.
+        console.error("Failed to create return ride:", returnError.message)
+      }
+    }
+  }
+
   revalidatePath("/rides")
-  redirect(`/rides?date=${result.data.date}`)
+  revalidatePath("/dispatch")
+  redirect(`/rides?date=${rideData.date}`)
 }
 
 export async function updateRide(
@@ -73,6 +111,9 @@ export async function updateRide(
     }
   }
 
+  // Strip transient field before DB update
+  const { create_return_ride: _, ...rideData } = result.data
+
   const supabase = await createClient()
 
   // Fetch current ride to check for auto-transition
@@ -86,12 +127,12 @@ export async function updateRide(
     return { success: false, error: "Fahrt nicht gefunden" }
   }
 
-  // Auto-transition: unplanned → planned when driver is newly assigned
-  const updateData: Record<string, unknown> = { ...result.data }
+  // Auto-transition: unplanned -> planned when driver is newly assigned
+  const updateData: Record<string, unknown> = { ...rideData }
   if (
     currentRide.status === "unplanned" &&
     !currentRide.driver_id &&
-    result.data.driver_id
+    rideData.driver_id
   ) {
     updateData.status = "planned"
   }
@@ -108,7 +149,8 @@ export async function updateRide(
   }
 
   revalidatePath("/rides")
-  redirect(`/rides?date=${result.data.date}`)
+  revalidatePath("/dispatch")
+  redirect(`/rides?date=${rideData.date}`)
 }
 
 export async function updateRideStatus(
@@ -179,11 +221,14 @@ export async function assignDriver(
   }
 
   // Build update payload
-  const updateData: { driver_id: string | null; status?: Enums<"ride_status"> } = {
+  const updateData: {
+    driver_id: string | null
+    status?: Enums<"ride_status">
+  } = {
     driver_id: driverId,
   }
 
-  // Auto-transition: unplanned → planned when driver is newly assigned
+  // Auto-transition: unplanned -> planned when driver is newly assigned
   if (
     currentRide.status === "unplanned" &&
     !currentRide.driver_id &&
@@ -192,7 +237,7 @@ export async function assignDriver(
     updateData.status = "planned"
   }
 
-  // Auto-transition: planned → unplanned when driver is removed
+  // Auto-transition: planned -> unplanned when driver is removed
   if (
     currentRide.status === "planned" &&
     currentRide.driver_id &&

@@ -394,6 +394,8 @@ export type Database = {
       }
       rides: {
         Row: {
+          appointment_time: string | null
+          appointment_end_time: string | null
           created_at: string
           date: string
           destination_id: string
@@ -402,13 +404,17 @@ export type Database = {
           id: string
           is_active: boolean
           notes: string | null
+          parent_ride_id: string | null
           patient_id: string
           pickup_time: string
+          return_pickup_time: string | null
           ride_series_id: string | null
           status: Database["public"]["Enums"]["ride_status"]
           updated_at: string
         }
         Insert: {
+          appointment_time?: string | null
+          appointment_end_time?: string | null
           created_at?: string
           date: string
           destination_id: string
@@ -417,13 +423,17 @@ export type Database = {
           id?: string
           is_active?: boolean
           notes?: string | null
+          parent_ride_id?: string | null
           patient_id: string
           pickup_time: string
+          return_pickup_time?: string | null
           ride_series_id?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
           updated_at?: string
         }
         Update: {
+          appointment_time?: string | null
+          appointment_end_time?: string | null
           created_at?: string
           date?: string
           destination_id?: string
@@ -432,8 +442,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           notes?: string | null
+          parent_ride_id?: string | null
           patient_id?: string
           pickup_time?: string
+          return_pickup_time?: string | null
           ride_series_id?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
           updated_at?: string
@@ -451,6 +463,13 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rides_parent_ride_id_fkey"
+            columns: ["parent_ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
             referencedColumns: ["id"]
           },
           {
