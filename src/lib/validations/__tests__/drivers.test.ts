@@ -168,6 +168,34 @@ describe("driverSchema", () => {
     }
   })
 
+  // --- Email validation ---
+
+  it("accepts valid email", () => {
+    const result = driverSchema.safeParse({ ...validDriver, email: "hans@example.com" })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.email).toBe("hans@example.com")
+    }
+  })
+
+  it("rejects invalid email", () => {
+    const result = driverSchema.safeParse({ ...validDriver, email: "not-an-email" })
+    expect(result.success).toBe(false)
+  })
+
+  it("transforms empty email to null", () => {
+    const result = driverSchema.safeParse({ ...validDriver, email: "" })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.email).toBeNull()
+    }
+  })
+
+  it("allows email to be omitted", () => {
+    const result = driverSchema.safeParse(validDriver)
+    expect(result.success).toBe(true)
+  })
+
   // --- Vehicle type enum ---
 
   it("accepts all valid vehicle types", () => {

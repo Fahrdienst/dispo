@@ -11,6 +11,10 @@ export const driverSchema = z.object({
     .transform(emptyToNull)
     .nullable()
     .optional(),
+  email: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().email("Ungueltige E-Mail-Adresse").max(255).nullable().optional()
+  ),
   vehicle_type: z.enum(["standard", "wheelchair", "stretcher"]).default("standard"),
   // Adresse -- erforderlich im Zod, DB erlaubt NULL fuer Altdaten
   street: z.string().min(1, "Strasse ist erforderlich").max(200),

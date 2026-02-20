@@ -42,26 +42,51 @@ export async function sendDriverNotification(
     return
   }
 
-  // 2. Load driver email via profiles join
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("email, display_name")
-    .eq("driver_id", driverId)
+  // 2. Load driver (direct email + name)
+  const { data: driver, error: driverError } = await supabase
+    .from("drivers")
+    .select("first_name, last_name, email")
+    .eq("id", driverId)
     .single()
 
-  if (profileError || !profile) {
-    console.error("No profile found for driver:", driverId)
-
+  if (driverError || !driver) {
+    console.error("No driver found:", driverId)
     await supabase.from("mail_log").insert({
       ride_id: rideId,
       driver_id: driverId,
       template: "driver-assignment",
       recipient: "unknown",
       status: "failed",
-      error: "No profile/email found for driver",
+      error: "Driver not found",
     })
     return
   }
+
+  // 2b. Resolve email: prefer drivers.email, fallback to profiles
+  let recipientEmail = driver.email
+  if (!recipientEmail) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("driver_id", driverId)
+      .single()
+    recipientEmail = profile?.email ?? null
+  }
+
+  if (!recipientEmail) {
+    console.error("No email found for driver:", driverId)
+    await supabase.from("mail_log").insert({
+      ride_id: rideId,
+      driver_id: driverId,
+      template: "driver-assignment",
+      recipient: "unknown",
+      status: "failed",
+      error: "No email found for driver",
+    })
+    return
+  }
+
+  const driverName = `${driver.first_name} ${driver.last_name}`
 
   // 3. Create token
   const token = await createAssignmentToken(rideId, driverId)
@@ -80,7 +105,7 @@ export async function sendDriverNotification(
   const destination = ride.destinations as unknown as { display_name: string }
 
   const { subject, html } = driverAssignmentEmail({
-    driverName: profile.display_name,
+    driverName,
     patientName: `${patient.first_name} ${patient.last_name}`,
     destinationName: destination.display_name,
     date: formatDate(ride.date),
@@ -94,7 +119,7 @@ export async function sendDriverNotification(
   try {
     await mailTransport.sendMail({
       from: process.env.MAIL_FROM ?? process.env.GMAIL_USER,
-      to: profile.email,
+      to: recipientEmail,
       subject,
       html,
     })
@@ -104,7 +129,7 @@ export async function sendDriverNotification(
       ride_id: rideId,
       driver_id: driverId,
       template: "driver-assignment",
-      recipient: profile.email,
+      recipient: recipientEmail,
       status: "sent",
     })
   } catch (err) {
@@ -116,7 +141,7 @@ export async function sendDriverNotification(
       ride_id: rideId,
       driver_id: driverId,
       template: "driver-assignment",
-      recipient: profile.email,
+      recipient: recipientEmail,
       status: "failed",
       error: errorMessage,
     })

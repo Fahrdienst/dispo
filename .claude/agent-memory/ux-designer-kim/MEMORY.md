@@ -82,6 +82,24 @@
 - Vehicle labels: PKW / Rollstuhlfahrzeug / Liegefahrzeug
 - Destination labels: Krankenhaus / Arzt / Therapie / Sonstiges
 
+## Email Notification System (Session 3 — Design complete)
+- Trigger: Operator assigns driver to ride → driver gets email
+- Email content: pickup time (large), patient (firstname + last initial), pickup addr, destination, optional appointment time, return flag, distance/duration, 2 action buttons, 48h expiry notice
+- Email tech: React Email (npm @react-email/components) — TypeScript, inline CSS, Nodemailer-compatible
+- Email layout: single-column only, table-based, NO flexbox/grid — Gmail compatibility
+- Font in email: System font stack (NOT Inter — Gmail blocks web fonts)
+- Button hierarchy: "Annehmen" = solid green (#16A34A), "Ablehnen" = outline with #EF4444 border + #B91C1C text (WCAG AA: 5.4:1)
+- Ablehnen button text must be #B91C1C NOT #EF4444 (contrast fail on white)
+- Expired/invalid link banner: GRAY (not red) — not a user error, no alarm needed
+- Rejection result page: intentionally minimal, NO ride summary shown (ride is irrelevant after rejection)
+- Result page route: src/app/(public)/rides/respond/page.tsx — single route, state via ?status= query param
+- Status values: accepted | rejected | expired | invalid | already_used
+- Token URL pattern: /api/rides/respond?token=[TOKEN]&action=accept|reject
+- Token must be single-use, invalidated immediately after click
+- Email subject pattern: "Neue Fahrt zugewiesen – Di., 24.02.2026, 07:15 Uhr"
+- Email template file: src/emails/ride-assigned.tsx
+- See design-system.md section 10 for full spec (to be added)
+
 ## Next Steps for Peter (Component Build Order)
 1. Create src/components/shared/ride-status-badge.tsx (uses constants.ts)
 2. Create src/components/shared/active-badge.tsx (green/gray, uses shadcn Badge)
@@ -91,3 +109,4 @@
 6. Create src/components/dashboard/page-header.tsx
 7. Entity tables and forms per the CRUD pattern
 8. Map integration: install @vis.gl/react-google-maps, build dispatch-map.tsx
+9. Email system: npm install @react-email/components react-email, build src/emails/ride-assigned.tsx

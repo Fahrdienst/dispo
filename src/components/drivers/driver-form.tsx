@@ -73,7 +73,7 @@ export function DriverForm({ driver }: DriverFormProps) {
             </div>
           </div>
 
-          {/* --- Telefon / Fahrzeugtyp --- */}
+          {/* --- Telefon / E-Mail --- */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="phone">Telefon</Label>
@@ -87,6 +87,22 @@ export function DriverForm({ driver }: DriverFormProps) {
                 <p className="text-sm text-destructive">{fieldErrors.phone[0]}</p>
               )}
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">E-Mail</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                defaultValue={driver?.email ?? ""}
+              />
+              {fieldErrors?.email && (
+                <p className="text-sm text-destructive">{fieldErrors.email[0]}</p>
+              )}
+            </div>
+          </div>
+
+          {/* --- Fahrzeugtyp --- */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="vehicle_type">Fahrzeugtyp <span className="text-destructive">*</span></Label>
               <Select

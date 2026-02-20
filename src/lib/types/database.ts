@@ -213,6 +213,7 @@ export type Database = {
           city: string | null
           created_at: string
           driving_license: string | null
+          email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           first_name: string
@@ -232,6 +233,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           driving_license?: string | null
+          email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           first_name: string
@@ -251,6 +253,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           driving_license?: string | null
+          email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           first_name?: string
