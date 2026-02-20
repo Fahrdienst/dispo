@@ -22,6 +22,7 @@ const navItems: NavItem[] = [
   { href: "/destinations", label: "Ziele", roles: ["admin", "operator"] },
   { href: "/patients", label: "Patienten", roles: ["admin", "operator"] },
   { href: "/users", label: "Benutzer", roles: ["admin"] },
+  { href: "/settings/zones", label: "Einstellungen", roles: ["admin"] },
   { href: "/my/rides", label: "Meine Fahrten", roles: ["driver"] },
   { href: "/my/availability", label: "Meine Verfuegbarkeit", roles: ["driver"] },
 ]

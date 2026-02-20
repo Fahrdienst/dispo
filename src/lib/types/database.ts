@@ -521,6 +521,144 @@ export type Database = {
           },
         ]
       }
+      zones: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      zone_postal_codes: {
+        Row: {
+          id: string
+          zone_id: string
+          postal_code: string
+        }
+        Insert: {
+          id?: string
+          zone_id: string
+          postal_code: string
+        }
+        Update: {
+          id?: string
+          zone_id?: string
+          postal_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zone_postal_codes_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fare_versions: {
+        Row: {
+          id: string
+          name: string
+          valid_from: string
+          valid_to: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          valid_from: string
+          valid_to?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          valid_from?: string
+          valid_to?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fare_rules: {
+        Row: {
+          id: string
+          fare_version_id: string
+          from_zone_id: string
+          to_zone_id: string
+          base_price: number
+          price_per_km: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          fare_version_id: string
+          from_zone_id: string
+          to_zone_id: string
+          base_price: number
+          price_per_km?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          fare_version_id?: string
+          from_zone_id?: string
+          to_zone_id?: string
+          base_price?: number
+          price_per_km?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fare_rules_fare_version_id_fkey"
+            columns: ["fare_version_id"]
+            isOneToOne: false
+            referencedRelation: "fare_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fare_rules_from_zone_id_fkey"
+            columns: ["from_zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fare_rules_to_zone_id_fkey"
+            columns: ["to_zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rides: {
         Row: {
           appointment_time: string | null
