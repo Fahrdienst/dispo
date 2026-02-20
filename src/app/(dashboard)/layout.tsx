@@ -18,12 +18,17 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="h-14 border-b bg-white">
+      <header className="h-14 border-b border-gray-800 bg-gray-900">
         <div className="mx-auto flex h-full max-w-7xl items-center gap-8 px-4 sm:px-6 lg:px-8">
-          <h1 className="text-lg font-semibold">Fahrdienst</h1>
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white">
+              <span className="text-xs font-bold text-gray-900">FD</span>
+            </div>
+            <span className="text-sm font-semibold tracking-tight text-white">Fahrdienst</span>
+          </div>
           <DashboardNav role={auth.role} />
           <form action={logout} className="ml-auto">
-            <Button type="submit" variant="ghost" size="sm">
+            <Button type="submit" variant="ghost" size="sm" className="text-gray-300 hover:text-white hover:bg-gray-800">
               <LogOut className="mr-2 h-4 w-4" />
               Abmelden
             </Button>

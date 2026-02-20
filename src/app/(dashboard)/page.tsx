@@ -1,10 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import {
+  CalendarDays,
+  AlertCircle,
+  Car,
+  CheckCircle2,
+  BarChart3,
+  Users,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { RideStatusBadge } from "@/components/shared/ride-status-badge";
+import { cn } from "@/lib/utils";
 import type { Enums } from "@/lib/types/database";
 
 export const metadata: Metadata = {
@@ -222,34 +231,46 @@ export default async function DashboardPage() {
       {/* Daily Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Heute gesamt
             </CardTitle>
+            <div className="rounded-md bg-blue-100 p-2">
+              <CalendarDays className="h-4 w-4 text-blue-600" />
+            </div>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">{totalCount}</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
+        <Card className={cn(unplannedCount > 0 && "border-red-200 bg-red-50/40")}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Ungeplant
             </CardTitle>
+            <div className={cn("rounded-md p-2", unplannedCount > 0 ? "bg-red-100" : "bg-gray-100")}>
+              <AlertCircle className={cn("h-4 w-4", unplannedCount > 0 ? "text-red-600" : "text-gray-500")} />
+            </div>
           </CardHeader>
           <CardContent>
-            <p className={`text-3xl font-bold ${unplannedCount > 0 ? "text-red-600" : ""}`}>
+            <p className={cn("text-3xl font-bold", unplannedCount > 0 && "text-red-600")}>
               {unplannedCount}
             </p>
+            {unplannedCount > 0 && (
+              <p className="mt-1 text-xs font-medium text-red-600">Sofort handeln</p>
+            )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Aktive Fahrten
             </CardTitle>
+            <div className="rounded-md bg-emerald-100 p-2">
+              <Car className="h-4 w-4 text-emerald-600" />
+            </div>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">{activeCount}</p>
@@ -257,10 +278,13 @@ export default async function DashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Abgeschlossen
             </CardTitle>
+            <div className="rounded-md bg-green-100 p-2">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            </div>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">{completedCount}</p>
@@ -272,10 +296,13 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* Week Statistics */}
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Diese Woche
             </CardTitle>
+            <div className="rounded-md bg-violet-100 p-2">
+              <BarChart3 className="h-4 w-4 text-violet-600" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -303,10 +330,13 @@ export default async function DashboardPage() {
 
         {/* Driver Overview */}
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Fahrer heute
             </CardTitle>
+            <div className="rounded-md bg-amber-100 p-2">
+              <Users className="h-4 w-4 text-amber-600" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">

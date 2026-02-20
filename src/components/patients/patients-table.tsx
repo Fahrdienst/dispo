@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
+import { MoreHorizontal } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -87,7 +88,7 @@ export function PatientsTable({ patients }: PatientsTableProps) {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState message="Keine Patienten gefunden." />
+        <EmptyState message="Keine Patienten gefunden." createHref="/patients/new" createLabel="Patient erfassen" />
       ) : (
         <div className="rounded-md border">
           <Table>
@@ -131,8 +132,9 @@ export function PatientsTable({ patients }: PatientsTableProps) {
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" disabled={isPending}>
-                          ...
+                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isPending}>
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Aktionen</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
+import { MoreHorizontal } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -61,7 +62,7 @@ export function ZonesTable({ zones }: ZonesTableProps) {
       />
 
       {filtered.length === 0 ? (
-        <EmptyState message="Keine Zonen gefunden." />
+        <EmptyState message="Keine Zonen gefunden." createHref="/settings/zones/new" createLabel="Zone erfassen" />
       ) : (
         <div className="rounded-md border">
           <Table>
@@ -104,8 +105,9 @@ export function ZonesTable({ zones }: ZonesTableProps) {
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" disabled={isPending}>
-                          ...
+                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isPending}>
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Aktionen</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">

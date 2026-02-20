@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
+import { MoreHorizontal } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import {
   Table,
@@ -66,7 +67,7 @@ export function FareVersionsTable({ fareVersions }: FareVersionsTableProps) {
       />
 
       {filtered.length === 0 ? (
-        <EmptyState message="Keine Tarifversionen gefunden." />
+        <EmptyState message="Keine Tarifversionen gefunden." createHref="/settings/fares/new" createLabel="Tarifversion erfassen" />
       ) : (
         <div className="rounded-md border">
           <Table>
@@ -102,10 +103,12 @@ export function FareVersionsTable({ fareVersions }: FareVersionsTableProps) {
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="icon"
+                            className="h-8 w-8"
                             disabled={isPending}
                           >
-                            ...
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Aktionen</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">

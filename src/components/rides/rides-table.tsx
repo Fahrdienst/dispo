@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import Link from "next/link"
+import { MoreHorizontal } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -123,7 +124,7 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState message="Keine Fahrten gefunden." />
+        <EmptyState message="Keine Fahrten gefunden." createHref="/rides/new" createLabel="Fahrt erfassen" />
       ) : (
         <div className="rounded-md border">
           <Table>
@@ -178,10 +179,12 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="icon"
+                            className="h-8 w-8"
                             disabled={isPending}
                           >
-                            ...
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Aktionen</span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
