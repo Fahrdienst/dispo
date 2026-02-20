@@ -170,6 +170,11 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/rides/${ride.id}`}>
+                              Details
+                            </Link>
+                          </DropdownMenuItem>
                           {isStaff && (
                             <DropdownMenuItem asChild>
                               <Link href={`/rides/${ride.id}/edit`}>

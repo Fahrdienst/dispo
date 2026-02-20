@@ -1,6 +1,7 @@
 "use client"
 
 import { useTransition } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -92,6 +93,14 @@ export function MyRidesList({ rides }: MyRidesListProps) {
                       {ride.notes}
                     </p>
                   )}
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    asChild
+                  >
+                    <Link href={`/rides/${ride.id}`}>Details anzeigen</Link>
+                  </Button>
                 </div>
 
                 {/* Right: action buttons */}
