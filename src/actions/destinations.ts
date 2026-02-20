@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { destinationSchema } from "@/lib/validations/destinations"
+import { geocodeAndUpdateRecord } from "@/lib/maps/geocode"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
 
@@ -28,7 +29,7 @@ export async function createDestination(
     }
   }
 
-  const { error } = await supabase
+  const { data: destination, error } = await supabase
     .from("destinations")
     .insert(result.data)
     .select()
@@ -36,6 +37,16 @@ export async function createDestination(
 
   if (error) {
     return { success: false, error: error.message }
+  }
+
+  // Fire-and-forget geocoding (don't block the response)
+  if (result.data.street && result.data.house_number && result.data.postal_code && result.data.city) {
+    geocodeAndUpdateRecord("destinations", destination.id, {
+      street: result.data.street,
+      house_number: result.data.house_number,
+      postal_code: result.data.postal_code,
+      city: result.data.city,
+    }).catch((err: unknown) => console.error("Geocoding failed for new destination:", err))
   }
 
   revalidatePath("/destinations")
@@ -73,6 +84,16 @@ export async function updateDestination(
 
   if (error) {
     return { success: false, error: error.message }
+  }
+
+  // Fire-and-forget geocoding (don't block the response)
+  if (result.data.street && result.data.house_number && result.data.postal_code && result.data.city) {
+    geocodeAndUpdateRecord("destinations", id, {
+      street: result.data.street,
+      house_number: result.data.house_number,
+      postal_code: result.data.postal_code,
+      city: result.data.city,
+    }).catch((err: unknown) => console.error("Geocoding failed for updated destination:", err))
   }
 
   revalidatePath("/destinations")

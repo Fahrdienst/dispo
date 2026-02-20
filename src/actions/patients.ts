@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { patientSchema } from "@/lib/validations/patients"
+import { geocodeAndUpdateRecord } from "@/lib/maps/geocode"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
 
@@ -54,6 +55,16 @@ export async function createPatient(
     if (impError) {
       return { success: false, error: impError.message }
     }
+  }
+
+  // Fire-and-forget geocoding (don't block the response)
+  if (patientData.street && patientData.house_number && patientData.postal_code && patientData.city) {
+    geocodeAndUpdateRecord("patients", patient.id, {
+      street: patientData.street,
+      house_number: patientData.house_number,
+      postal_code: patientData.postal_code,
+      city: patientData.city,
+    }).catch((err: unknown) => console.error("Geocoding failed for new patient:", err))
   }
 
   revalidatePath("/patients")
@@ -119,6 +130,16 @@ export async function updatePatient(
     if (impError) {
       return { success: false, error: impError.message }
     }
+  }
+
+  // Fire-and-forget geocoding (don't block the response)
+  if (patientData.street && patientData.house_number && patientData.postal_code && patientData.city) {
+    geocodeAndUpdateRecord("patients", id, {
+      street: patientData.street,
+      house_number: patientData.house_number,
+      postal_code: patientData.postal_code,
+      city: patientData.city,
+    }).catch((err: unknown) => console.error("Geocoding failed for updated patient:", err))
   }
 
   revalidatePath("/patients")

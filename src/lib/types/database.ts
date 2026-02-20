@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      assignment_tokens: {
+        Row: {
+          id: string
+          ride_id: string
+          driver_id: string
+          token: string
+          expires_at: string
+          used_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          ride_id: string
+          driver_id: string
+          token: string
+          expires_at: string
+          used_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          ride_id?: string
+          driver_id?: string
+          token?: string
+          expires_at?: string
+          used_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_tokens_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_tokens_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communication_log: {
         Row: {
           author_id: string
@@ -64,9 +109,15 @@ export type Database = {
           department: string | null
           display_name: string
           facility_type: Database["public"]["Enums"]["facility_type"]
+          formatted_address: string | null
+          geocode_status: string
+          geocode_updated_at: string | null
           house_number: string | null
           id: string
           is_active: boolean
+          lat: number | null
+          lng: number | null
+          place_id: string | null
           postal_code: string | null
           street: string | null
           updated_at: string
@@ -81,9 +132,15 @@ export type Database = {
           department?: string | null
           display_name: string
           facility_type?: Database["public"]["Enums"]["facility_type"]
+          formatted_address?: string | null
+          geocode_status?: string
+          geocode_updated_at?: string | null
           house_number?: string | null
           id?: string
           is_active?: boolean
+          lat?: number | null
+          lng?: number | null
+          place_id?: string | null
           postal_code?: string | null
           street?: string | null
           updated_at?: string
@@ -98,9 +155,15 @@ export type Database = {
           department?: string | null
           display_name?: string
           facility_type?: Database["public"]["Enums"]["facility_type"]
+          formatted_address?: string | null
+          geocode_status?: string
+          geocode_updated_at?: string | null
           house_number?: string | null
           id?: string
           is_active?: boolean
+          lat?: number | null
+          lng?: number | null
+          place_id?: string | null
           postal_code?: string | null
           street?: string | null
           updated_at?: string
@@ -205,6 +268,54 @@ export type Database = {
         }
         Relationships: []
       }
+      mail_log: {
+        Row: {
+          id: string
+          ride_id: string | null
+          driver_id: string | null
+          template: string
+          recipient: string
+          status: string
+          error: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          ride_id?: string | null
+          driver_id?: string | null
+          template: string
+          recipient: string
+          status?: string
+          error?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          ride_id?: string | null
+          driver_id?: string | null
+          template?: string
+          recipient?: string
+          status?: string
+          error?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mail_log_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mail_log_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_impairments: {
         Row: {
           id: string
@@ -242,12 +353,18 @@ export type Database = {
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           first_name: string
+          formatted_address: string | null
+          geocode_status: string
+          geocode_updated_at: string | null
           house_number: string | null
           id: string
           is_active: boolean
           last_name: string
+          lat: number | null
+          lng: number | null
           notes: string | null
           phone: string | null
+          place_id: string | null
           postal_code: string | null
           street: string | null
           updated_at: string
@@ -259,12 +376,18 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           first_name: string
+          formatted_address?: string | null
+          geocode_status?: string
+          geocode_updated_at?: string | null
           house_number?: string | null
           id?: string
           is_active?: boolean
           last_name: string
+          lat?: number | null
+          lng?: number | null
           notes?: string | null
           phone?: string | null
+          place_id?: string | null
           postal_code?: string | null
           street?: string | null
           updated_at?: string
@@ -276,12 +399,18 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           first_name?: string
+          formatted_address?: string | null
+          geocode_status?: string
+          geocode_updated_at?: string | null
           house_number?: string | null
           id?: string
           is_active?: boolean
           last_name?: string
+          lat?: number | null
+          lng?: number | null
           notes?: string | null
           phone?: string | null
+          place_id?: string | null
           postal_code?: string | null
           street?: string | null
           updated_at?: string
