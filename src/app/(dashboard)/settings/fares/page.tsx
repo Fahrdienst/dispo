@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/dashboard/page-header"
+import { SettingsNav } from "@/components/settings/settings-nav"
 import { FareVersionsTable } from "@/components/fares/fare-versions-table"
 
 export const metadata: Metadata = {
@@ -21,9 +22,8 @@ export default async function FaresPage() {
         description="Verwalten Sie versionierte Tarife fuer die Fahrtenabrechnung."
         createHref="/settings/fares/new"
         createLabel="Neue Tarifversion"
-        backHref="/settings/zones"
-        backLabel="Zonen"
       />
+      <SettingsNav />
       <FareVersionsTable fareVersions={fareVersions ?? []} />
     </div>
   )

@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/dashboard/page-header"
+import { SettingsNav } from "@/components/settings/settings-nav"
 import { ZonesTable } from "@/components/zones/zones-table"
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default async function ZonesPage() {
         createHref="/settings/zones/new"
         createLabel="Neue Zone"
       />
+      <SettingsNav />
       <ZonesTable zones={zones ?? []} />
     </div>
   )
