@@ -156,6 +156,66 @@ export async function updateRideStatus(
   return { success: true, data: undefined }
 }
 
+export async function assignDriver(
+  rideId: string,
+  driverId: string | null
+): Promise<ActionResult> {
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
+  }
+
+  const supabase = await createClient()
+
+  // Fetch current ride to check for auto-transition
+  const { data: currentRide } = await supabase
+    .from("rides")
+    .select("status, driver_id")
+    .eq("id", rideId)
+    .single()
+
+  if (!currentRide) {
+    return { success: false, error: "Fahrt nicht gefunden" }
+  }
+
+  // Build update payload
+  const updateData: { driver_id: string | null; status?: Enums<"ride_status"> } = {
+    driver_id: driverId,
+  }
+
+  // Auto-transition: unplanned → planned when driver is newly assigned
+  if (
+    currentRide.status === "unplanned" &&
+    !currentRide.driver_id &&
+    driverId
+  ) {
+    updateData.status = "planned"
+  }
+
+  // Auto-transition: planned → unplanned when driver is removed
+  if (
+    currentRide.status === "planned" &&
+    currentRide.driver_id &&
+    !driverId
+  ) {
+    updateData.status = "unplanned"
+  }
+
+  const { error } = await supabase
+    .from("rides")
+    .update(updateData)
+    .eq("id", rideId)
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  revalidatePath("/dispatch")
+  revalidatePath("/rides")
+  revalidatePath("/my/rides")
+  return { success: true, data: undefined }
+}
+
 export async function toggleRideActive(
   id: string,
   isActive: boolean

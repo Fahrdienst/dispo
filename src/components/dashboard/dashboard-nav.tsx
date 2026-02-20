@@ -16,6 +16,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", roles: ["admin", "operator"] },
   { href: "/rides", label: "Fahrten", roles: ["admin", "operator"] },
+  { href: "/dispatch", label: "Disposition", roles: ["admin", "operator"] },
   { href: "/ride-series", label: "Fahrtserien", roles: ["admin", "operator"] },
   { href: "/drivers", label: "Fahrer", roles: ["admin", "operator"] },
   { href: "/destinations", label: "Ziele", roles: ["admin", "operator"] },
