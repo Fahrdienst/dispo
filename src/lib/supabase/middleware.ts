@@ -39,8 +39,9 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Allow auth callback route without authentication check.
-  if (request.nextUrl.pathname.startsWith("/auth/callback")) {
+  // Allow public paths without authentication check.
+  const PUBLIC_PATHS = ["/auth/callback", "/api/rides/respond", "/rides/respond"];
+  if (PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p))) {
     return supabaseResponse;
   }
 
