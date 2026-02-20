@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useRef } from "react"
 import { useFormState } from "react-dom"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
@@ -16,11 +17,54 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { SubmitButton } from "@/components/shared/submit-button"
 import { AddressFields } from "@/components/shared/address-fields"
+import {
+  PlacesAutocomplete,
+  type PlaceSelectResult,
+} from "@/components/shared/places-autocomplete"
 import { createDestination, updateDestination } from "@/actions/destinations"
 import type { Tables } from "@/lib/types/database"
 
 interface DestinationFormProps {
   destination?: Tables<"destinations">
+}
+
+/**
+ * Parse a Swiss formatted address from Google Places into address components.
+ * Expected format: "Strasse Nr, PLZ Ort, Land" or "Strasse Nr, Ort, Land"
+ */
+function parseSwissAddress(formattedAddress: string): {
+  street: string
+  house_number: string
+  postal_code: string
+  city: string
+} {
+  const result = { street: "", house_number: "", postal_code: "", city: "" }
+
+  // Split by comma and trim
+  const parts = formattedAddress.split(",").map((p) => p.trim())
+  if (parts.length === 0) return result
+
+  // First part: "Strasse Nr" or "Strasse"
+  const streetPart = parts[0] ?? ""
+  const streetMatch = streetPart.match(/^(.+?)\s+(\d+\w*)$/)
+  if (streetMatch) {
+    result.street = streetMatch[1] ?? ""
+    result.house_number = streetMatch[2] ?? ""
+  } else {
+    result.street = streetPart
+  }
+
+  // Second part: "PLZ Ort" or just "Ort"
+  const cityPart = parts[1] ?? ""
+  const plzCityMatch = cityPart.match(/^(\d{4})\s+(.+)$/)
+  if (plzCityMatch) {
+    result.postal_code = plzCityMatch[1] ?? ""
+    result.city = plzCityMatch[2] ?? ""
+  } else {
+    result.city = cityPart
+  }
+
+  return result
 }
 
 export function DestinationForm({ destination }: DestinationFormProps) {
@@ -32,8 +76,88 @@ export function DestinationForm({ destination }: DestinationFormProps) {
 
   const fieldErrors = state && !state.success ? state.fieldErrors : undefined
 
+  // Refs for hidden geo fields
+  const placeIdRef = useRef<HTMLInputElement>(null)
+  const latRef = useRef<HTMLInputElement>(null)
+  const lngRef = useRef<HTMLInputElement>(null)
+  const formattedAddressRef = useRef<HTMLInputElement>(null)
+
+  // State for address fields that can be overridden by Places selection
+  const [addressOverrides, setAddressOverrides] = useState<{
+    display_name?: string
+    street?: string
+    house_number?: string
+    postal_code?: string
+    city?: string
+    contact_phone?: string
+  }>({})
+
+  const [placeSelected, setPlaceSelected] = useState(false)
+
+  function handlePlaceSelect(place: PlaceSelectResult): void {
+    // Parse address components from formatted_address
+    const parsed = parseSwissAddress(place.formatted_address)
+
+    // Set hidden geo fields
+    if (placeIdRef.current) placeIdRef.current.value = place.place_id
+    if (latRef.current) latRef.current.value = String(place.lat)
+    if (lngRef.current) lngRef.current.value = String(place.lng)
+    if (formattedAddressRef.current)
+      formattedAddressRef.current.value = place.formatted_address
+
+    // Pre-fill visible fields
+    setAddressOverrides({
+      display_name: place.name,
+      street: parsed.street,
+      house_number: parsed.house_number,
+      postal_code: parsed.postal_code,
+      city: parsed.city,
+      contact_phone: place.phone,
+    })
+
+    setPlaceSelected(true)
+  }
+
+  // Use overrides or existing destination data
+  const displayName =
+    addressOverrides.display_name ?? destination?.display_name ?? ""
+  const street = addressOverrides.street ?? destination?.street ?? ""
+  const houseNumber =
+    addressOverrides.house_number ?? destination?.house_number ?? ""
+  const postalCode =
+    addressOverrides.postal_code ?? destination?.postal_code ?? ""
+  const city = addressOverrides.city ?? destination?.city ?? ""
+  const contactPhone =
+    addressOverrides.contact_phone ?? destination?.contact_phone ?? ""
+
   return (
     <form action={formAction}>
+      {/* Hidden geo fields */}
+      <input
+        type="hidden"
+        name="place_id"
+        ref={placeIdRef}
+        defaultValue={destination?.place_id ?? ""}
+      />
+      <input
+        type="hidden"
+        name="lat"
+        ref={latRef}
+        defaultValue={destination?.lat != null ? String(destination.lat) : ""}
+      />
+      <input
+        type="hidden"
+        name="lng"
+        ref={lngRef}
+        defaultValue={destination?.lng != null ? String(destination.lng) : ""}
+      />
+      <input
+        type="hidden"
+        name="formatted_address"
+        ref={formattedAddressRef}
+        defaultValue={destination?.formatted_address ?? ""}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>
@@ -45,6 +169,27 @@ export function DestinationForm({ destination }: DestinationFormProps) {
             <p className="text-sm text-destructive">{state.error}</p>
           )}
 
+          {/* Places Autocomplete search */}
+          <div className="space-y-2">
+            <Label>Suche (Google Places)</Label>
+            <PlacesAutocomplete
+              onPlaceSelect={handlePlaceSelect}
+              defaultValue=""
+              placeholder="Spital, Praxis oder Adresse suchen..."
+            />
+            <p className="text-xs text-muted-foreground">
+              Waehlen Sie einen Vorschlag, um die Felder automatisch
+              auszufuellen. Alle Felder koennen danach manuell angepasst werden.
+            </p>
+          </div>
+
+          {placeSelected && (
+            <div className="rounded-md border border-green-300 bg-green-50 px-4 py-2 text-sm text-green-800">
+              Adressdaten aus Google Places uebernommen. Bitte pruefen und
+              gegebenenfalls anpassen.
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="display_name">
@@ -54,7 +199,8 @@ export function DestinationForm({ destination }: DestinationFormProps) {
                 id="display_name"
                 name="display_name"
                 required
-                defaultValue={destination?.display_name ?? ""}
+                key={`display_name-${displayName}`}
+                defaultValue={displayName}
               />
               {fieldErrors?.display_name && (
                 <p className="text-sm text-destructive">
@@ -103,11 +249,82 @@ export function DestinationForm({ destination }: DestinationFormProps) {
             )}
           </div>
 
-          <AddressFields
-            defaultValues={destination}
-            errors={fieldErrors}
-            required
-          />
+          {/* Address fields with Places-overridden values */}
+          <fieldset className="space-y-4">
+            <legend className="text-sm font-medium">Adresse</legend>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+              <div className="sm:col-span-3 space-y-2">
+                <Label htmlFor="street">
+                  Strasse <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="street"
+                  name="street"
+                  required
+                  key={`street-${street}`}
+                  defaultValue={street}
+                />
+                {fieldErrors?.street && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.street[0]}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="house_number">
+                  Hausnr. <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="house_number"
+                  name="house_number"
+                  required
+                  key={`house_number-${houseNumber}`}
+                  defaultValue={houseNumber}
+                />
+                {fieldErrors?.house_number && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.house_number[0]}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="postal_code">
+                  PLZ <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="postal_code"
+                  name="postal_code"
+                  required
+                  key={`postal_code-${postalCode}`}
+                  defaultValue={postalCode}
+                />
+                {fieldErrors?.postal_code && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.postal_code[0]}
+                  </p>
+                )}
+              </div>
+              <div className="sm:col-span-2 space-y-2">
+                <Label htmlFor="city">
+                  Ort <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="city"
+                  name="city"
+                  required
+                  key={`city-${city}`}
+                  defaultValue={city}
+                />
+                {fieldErrors?.city && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.city[0]}
+                  </p>
+                )}
+              </div>
+            </div>
+          </fieldset>
 
           <fieldset className="space-y-4">
             <legend className="text-sm font-medium">Kontaktperson</legend>
@@ -154,7 +371,8 @@ export function DestinationForm({ destination }: DestinationFormProps) {
                 name="contact_phone"
                 type="tel"
                 required
-                defaultValue={destination?.contact_phone ?? ""}
+                key={`contact_phone-${contactPhone}`}
+                defaultValue={contactPhone}
               />
               {fieldErrors?.contact_phone && (
                 <p className="text-sm text-destructive">

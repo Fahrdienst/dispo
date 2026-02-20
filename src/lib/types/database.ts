@@ -663,17 +663,23 @@ export type Database = {
         Row: {
           appointment_time: string | null
           appointment_end_time: string | null
+          calculated_price: number | null
           created_at: string
           date: string
           destination_id: string
           direction: Database["public"]["Enums"]["ride_direction"]
+          distance_meters: number | null
           driver_id: string | null
+          duration_seconds: number | null
+          fare_rule_id: string | null
           id: string
           is_active: boolean
           notes: string | null
           parent_ride_id: string | null
           patient_id: string
           pickup_time: string
+          price_override: number | null
+          price_override_reason: string | null
           return_pickup_time: string | null
           ride_series_id: string | null
           status: Database["public"]["Enums"]["ride_status"]
@@ -682,17 +688,23 @@ export type Database = {
         Insert: {
           appointment_time?: string | null
           appointment_end_time?: string | null
+          calculated_price?: number | null
           created_at?: string
           date: string
           destination_id: string
           direction?: Database["public"]["Enums"]["ride_direction"]
+          distance_meters?: number | null
           driver_id?: string | null
+          duration_seconds?: number | null
+          fare_rule_id?: string | null
           id?: string
           is_active?: boolean
           notes?: string | null
           parent_ride_id?: string | null
           patient_id: string
           pickup_time: string
+          price_override?: number | null
+          price_override_reason?: string | null
           return_pickup_time?: string | null
           ride_series_id?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
@@ -701,17 +713,23 @@ export type Database = {
         Update: {
           appointment_time?: string | null
           appointment_end_time?: string | null
+          calculated_price?: number | null
           created_at?: string
           date?: string
           destination_id?: string
           direction?: Database["public"]["Enums"]["ride_direction"]
+          distance_meters?: number | null
           driver_id?: string | null
+          duration_seconds?: number | null
+          fare_rule_id?: string | null
           id?: string
           is_active?: boolean
           notes?: string | null
           parent_ride_id?: string | null
           patient_id?: string
           pickup_time?: string
+          price_override?: number | null
+          price_override_reason?: string | null
           return_pickup_time?: string | null
           ride_series_id?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
@@ -751,6 +769,13 @@ export type Database = {
             columns: ["ride_series_id"]
             isOneToOne: false
             referencedRelation: "ride_series"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rides_fare_rule_id_fkey"
+            columns: ["fare_rule_id"]
+            isOneToOne: false
+            referencedRelation: "fare_rules"
             referencedColumns: ["id"]
           },
         ]

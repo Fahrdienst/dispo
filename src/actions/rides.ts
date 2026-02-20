@@ -35,17 +35,90 @@ export async function createRide(
     }
   }
 
-  const { create_return_ride, ...rideData } = result.data
+  const {
+    create_return_ride,
+    price_override,
+    price_override_reason,
+    ...rideData
+  } = result.data
   const status: Enums<"ride_status"> = rideData.driver_id
     ? "planned"
     : "unplanned"
 
   const supabase = await createClient()
 
+  // Calculate price before insert (inline, not fire-and-forget)
+  let priceFields: {
+    distance_meters?: number
+    duration_seconds?: number
+    calculated_price?: number
+    fare_rule_id?: string
+    price_override?: number | null
+    price_override_reason?: string | null
+  } = {}
+
+  // Include manual override if provided
+  if (price_override != null) {
+    priceFields.price_override = price_override
+    priceFields.price_override_reason = price_override_reason ?? null
+  }
+
+  // Attempt automatic price calculation
+  try {
+    const [patientRes, destRes] = await Promise.all([
+      supabase
+        .from("patients")
+        .select("postal_code, lat, lng, geocode_status")
+        .eq("id", rideData.patient_id)
+        .single(),
+      supabase
+        .from("destinations")
+        .select("postal_code, lat, lng, geocode_status")
+        .eq("id", rideData.destination_id)
+        .single(),
+    ])
+
+    const patient = patientRes.data
+    const dest = destRes.data
+
+    if (
+      patient?.postal_code &&
+      dest?.postal_code &&
+      patient.lat != null &&
+      patient.lng != null &&
+      dest.lat != null &&
+      dest.lng != null
+    ) {
+      const { calculateRidePrice } = await import(
+        "@/lib/billing/calculate-price"
+      )
+      const priceResult = await calculateRidePrice(
+        patient.postal_code,
+        dest.postal_code,
+        { lat: patient.lat, lng: patient.lng },
+        { lat: dest.lat, lng: dest.lng },
+        rideData.date
+      )
+
+      if (priceResult) {
+        priceFields = {
+          ...priceFields,
+          distance_meters: priceResult.distance_meters,
+          duration_seconds: priceResult.duration_seconds,
+          calculated_price: priceResult.calculated_price,
+          fare_rule_id: priceResult.fare_rule_id,
+        }
+      }
+    }
+  } catch (err: unknown) {
+    // Price calculation is best-effort; don't block ride creation
+    console.error("Price calculation failed during createRide:", err)
+  }
+
   // 1. Create the outbound ride
   const { data: outboundRide, error } = await supabase
     .from("rides")
-    .insert({ ...rideData, status })
+    .insert({ ...rideData, ...priceFields, status })
     .select()
     .single()
 
@@ -111,8 +184,13 @@ export async function updateRide(
     }
   }
 
-  // Strip transient field before DB update
-  const { create_return_ride: _, ...rideData } = result.data
+  // Strip transient fields before DB update
+  const {
+    create_return_ride: _,
+    price_override,
+    price_override_reason,
+    ...rideData
+  } = result.data
 
   const supabase = await createClient()
 
@@ -127,8 +205,77 @@ export async function updateRide(
     return { success: false, error: "Fahrt nicht gefunden" }
   }
 
+  // Calculate price fields for update
+  let priceFields: {
+    distance_meters?: number | null
+    duration_seconds?: number | null
+    calculated_price?: number | null
+    fare_rule_id?: string | null
+    price_override?: number | null
+    price_override_reason?: string | null
+  } = {}
+
+  // Include manual override (or clear it if not provided)
+  priceFields.price_override = price_override ?? null
+  priceFields.price_override_reason = price_override_reason ?? null
+
+  // Attempt automatic price recalculation
+  try {
+    const [patientRes, destRes] = await Promise.all([
+      supabase
+        .from("patients")
+        .select("postal_code, lat, lng, geocode_status")
+        .eq("id", rideData.patient_id)
+        .single(),
+      supabase
+        .from("destinations")
+        .select("postal_code, lat, lng, geocode_status")
+        .eq("id", rideData.destination_id)
+        .single(),
+    ])
+
+    const patient = patientRes.data
+    const dest = destRes.data
+
+    if (
+      patient?.postal_code &&
+      dest?.postal_code &&
+      patient.lat != null &&
+      patient.lng != null &&
+      dest.lat != null &&
+      dest.lng != null
+    ) {
+      const { calculateRidePrice } = await import(
+        "@/lib/billing/calculate-price"
+      )
+      const priceResult = await calculateRidePrice(
+        patient.postal_code,
+        dest.postal_code,
+        { lat: patient.lat, lng: patient.lng },
+        { lat: dest.lat, lng: dest.lng },
+        rideData.date
+      )
+
+      if (priceResult) {
+        priceFields = {
+          ...priceFields,
+          distance_meters: priceResult.distance_meters,
+          duration_seconds: priceResult.duration_seconds,
+          calculated_price: priceResult.calculated_price,
+          fare_rule_id: priceResult.fare_rule_id,
+        }
+      }
+    }
+  } catch (err: unknown) {
+    // Price calculation is best-effort; don't block ride update
+    console.error("Price calculation failed during updateRide:", err)
+  }
+
   // Auto-transition: unplanned -> planned when driver is newly assigned
-  const updateData: Record<string, unknown> = { ...rideData }
+  const updateData: Record<string, unknown> = {
+    ...rideData,
+    ...priceFields,
+  }
   if (
     currentRide.status === "unplanned" &&
     !currentRide.driver_id &&
@@ -259,6 +406,82 @@ export async function assignDriver(
   revalidatePath("/rides")
   revalidatePath("/my/rides")
   return { success: true, data: undefined }
+}
+
+/**
+ * Calculate route distance and duration between a patient and a destination.
+ * Used by the ride form to display route info before submission.
+ */
+export async function calculateRouteForRide(
+  patientId: string,
+  destinationId: string
+): Promise<
+  ActionResult<{ distance_meters: number; duration_seconds: number }>
+> {
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
+  }
+
+  const supabase = await createClient()
+
+  // Load patient and destination coordinates
+  const [patientRes, destRes] = await Promise.all([
+    supabase
+      .from("patients")
+      .select("lat, lng, geocode_status")
+      .eq("id", patientId)
+      .single(),
+    supabase
+      .from("destinations")
+      .select("lat, lng, geocode_status")
+      .eq("id", destinationId)
+      .single(),
+  ])
+
+  if (!patientRes.data) {
+    return { success: false, error: "Patient nicht gefunden" }
+  }
+  if (!destRes.data) {
+    return { success: false, error: "Ziel nicht gefunden" }
+  }
+
+  const patient = patientRes.data
+  const dest = destRes.data
+
+  if (patient.lat == null || patient.lng == null) {
+    return {
+      success: false,
+      error: "Patientenadresse hat keine Koordinaten. Geocoding-Status: " +
+        patient.geocode_status,
+    }
+  }
+  if (dest.lat == null || dest.lng == null) {
+    return {
+      success: false,
+      error: "Zieladresse hat keine Koordinaten. Geocoding-Status: " +
+        dest.geocode_status,
+    }
+  }
+
+  try {
+    const { getRoute } = await import("@/lib/maps/directions")
+    const route = await getRoute(
+      { lat: patient.lat, lng: patient.lng },
+      { lat: dest.lat, lng: dest.lng }
+    )
+
+    return {
+      success: true,
+      data: {
+        distance_meters: route.distance_meters,
+        duration_seconds: route.duration_seconds,
+      },
+    }
+  } catch (err: unknown) {
+    console.error("Route calculation failed:", err)
+    return { success: false, error: "Routenberechnung fehlgeschlagen" }
+  }
 }
 
 export async function toggleRideActive(

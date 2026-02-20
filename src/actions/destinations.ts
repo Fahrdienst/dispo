@@ -14,7 +14,9 @@ export async function createDestination(
 ): Promise<ActionResult<Tables<"destinations">>> {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) {
     return { success: false, error: "Nicht authentifiziert" }
   }
@@ -25,13 +27,34 @@ export async function createDestination(
   if (!result.success) {
     return {
       success: false,
-      fieldErrors: result.error.flatten().fieldErrors as Record<string, string[]>,
+      fieldErrors: result.error.flatten().fieldErrors as Record<
+        string,
+        string[]
+      >,
     }
   }
 
+  // Separate geo fields from the main form data
+  const { place_id, lat, lng, formatted_address, ...destinationData } =
+    result.data
+
+  // If we have geo data from Places, include it directly in the insert
+  const hasGeoData = lat != null && lng != null && place_id
+  const insertData = hasGeoData
+    ? {
+        ...destinationData,
+        place_id,
+        lat,
+        lng,
+        formatted_address,
+        geocode_status: "success" as const,
+        geocode_updated_at: new Date().toISOString(),
+      }
+    : destinationData
+
   const { data: destination, error } = await supabase
     .from("destinations")
-    .insert(result.data)
+    .insert(insertData)
     .select()
     .single()
 
@@ -39,14 +62,22 @@ export async function createDestination(
     return { success: false, error: error.message }
   }
 
-  // Fire-and-forget geocoding (don't block the response)
-  if (result.data.street && result.data.house_number && result.data.postal_code && result.data.city) {
+  // Fire-and-forget geocoding only when no coordinates came from Places
+  if (
+    !hasGeoData &&
+    destinationData.street &&
+    destinationData.house_number &&
+    destinationData.postal_code &&
+    destinationData.city
+  ) {
     geocodeAndUpdateRecord("destinations", destination.id, {
-      street: result.data.street,
-      house_number: result.data.house_number,
-      postal_code: result.data.postal_code,
-      city: result.data.city,
-    }).catch((err: unknown) => console.error("Geocoding failed for new destination:", err))
+      street: destinationData.street,
+      house_number: destinationData.house_number,
+      postal_code: destinationData.postal_code,
+      city: destinationData.city,
+    }).catch((err: unknown) =>
+      console.error("Geocoding failed for new destination:", err)
+    )
   }
 
   revalidatePath("/destinations")
@@ -60,7 +91,9 @@ export async function updateDestination(
 ): Promise<ActionResult<Tables<"destinations">>> {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) {
     return { success: false, error: "Nicht authentifiziert" }
   }
@@ -71,13 +104,34 @@ export async function updateDestination(
   if (!result.success) {
     return {
       success: false,
-      fieldErrors: result.error.flatten().fieldErrors as Record<string, string[]>,
+      fieldErrors: result.error.flatten().fieldErrors as Record<
+        string,
+        string[]
+      >,
     }
   }
 
+  // Separate geo fields from the main form data
+  const { place_id, lat, lng, formatted_address, ...destinationData } =
+    result.data
+
+  // If we have geo data from Places, include it directly in the update
+  const hasGeoData = lat != null && lng != null && place_id
+  const updateData = hasGeoData
+    ? {
+        ...destinationData,
+        place_id,
+        lat,
+        lng,
+        formatted_address,
+        geocode_status: "success" as const,
+        geocode_updated_at: new Date().toISOString(),
+      }
+    : destinationData
+
   const { error } = await supabase
     .from("destinations")
-    .update(result.data)
+    .update(updateData)
     .eq("id", id)
     .select()
     .single()
@@ -86,14 +140,22 @@ export async function updateDestination(
     return { success: false, error: error.message }
   }
 
-  // Fire-and-forget geocoding (don't block the response)
-  if (result.data.street && result.data.house_number && result.data.postal_code && result.data.city) {
+  // Fire-and-forget geocoding only when no coordinates came from Places
+  if (
+    !hasGeoData &&
+    destinationData.street &&
+    destinationData.house_number &&
+    destinationData.postal_code &&
+    destinationData.city
+  ) {
     geocodeAndUpdateRecord("destinations", id, {
-      street: result.data.street,
-      house_number: result.data.house_number,
-      postal_code: result.data.postal_code,
-      city: result.data.city,
-    }).catch((err: unknown) => console.error("Geocoding failed for updated destination:", err))
+      street: destinationData.street,
+      house_number: destinationData.house_number,
+      postal_code: destinationData.postal_code,
+      city: destinationData.city,
+    }).catch((err: unknown) =>
+      console.error("Geocoding failed for updated destination:", err)
+    )
   }
 
   revalidatePath("/destinations")
@@ -106,7 +168,9 @@ export async function toggleDestinationActive(
 ): Promise<ActionResult> {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) {
     return { success: false, error: "Nicht authentifiziert" }
   }

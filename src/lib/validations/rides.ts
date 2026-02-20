@@ -64,8 +64,30 @@ export const rideSchema = z
       .transform(emptyToNull)
       .nullable()
       .optional(),
+    // --- Price override fields (ADR-010, Issue #60) ---
+    price_override: z
+      .string()
+      .transform(emptyToNull)
+      .nullable()
+      .optional()
+      .transform((v) => (v ? parseFloat(v) : null)),
+    price_override_reason: z
+      .string()
+      .max(500)
+      .transform(emptyToNull)
+      .nullable()
+      .optional(),
   })
   .superRefine((data, ctx) => {
+    // Price override requires a reason
+    if (data.price_override != null && !data.price_override_reason) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["price_override_reason"],
+        message:
+          "Begruendung ist erforderlich, wenn der Preis manuell ueberschrieben wird",
+      })
+    }
     // Time order validation (only when fields are set)
     if (data.appointment_time && data.pickup_time) {
       if (data.pickup_time >= data.appointment_time) {

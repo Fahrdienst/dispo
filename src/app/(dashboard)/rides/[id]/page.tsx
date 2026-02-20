@@ -29,6 +29,16 @@ function formatTime(time: string | null): string | null {
   return time.slice(0, 5) + " Uhr"
 }
 
+function formatDurationDE(seconds: number): string {
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `~${minutes} Min.`
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  return remainingMinutes > 0
+    ? `~${hours} Std. ${remainingMinutes} Min.`
+    : `~${hours} Std.`
+}
+
 interface RideDetailPageProps {
   params: Promise<{ id: string }>
 }
@@ -191,6 +201,62 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
           </dl>
         </CardContent>
       </Card>
+
+      {/* Route & Price info (ADR-010) */}
+      {(ride.distance_meters != null ||
+        ride.calculated_price != null ||
+        ride.price_override != null) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Route und Preis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {ride.distance_meters != null && (
+                <DetailItem
+                  label="Distanz"
+                  value={`${(ride.distance_meters / 1000).toFixed(1)} km`}
+                />
+              )}
+              {ride.duration_seconds != null && (
+                <DetailItem
+                  label="Geschaetzte Fahrzeit"
+                  value={formatDurationDE(ride.duration_seconds)}
+                />
+              )}
+              {ride.calculated_price != null && (
+                <DetailItem
+                  label="Berechneter Preis"
+                  value={`CHF ${Number(ride.calculated_price).toFixed(2)}`}
+                />
+              )}
+              {ride.price_override != null && (
+                <>
+                  <DetailItem
+                    label="Manueller Preis"
+                    value={`CHF ${Number(ride.price_override).toFixed(2)}`}
+                  />
+                  {ride.price_override_reason && (
+                    <DetailItem
+                      label="Begruendung"
+                      value={ride.price_override_reason}
+                    />
+                  )}
+                </>
+              )}
+              {(ride.calculated_price != null ||
+                ride.price_override != null) && (
+                <DetailItem
+                  label="Effektiver Preis"
+                  value={`CHF ${Number(
+                    ride.price_override ?? ride.calculated_price ?? 0
+                  ).toFixed(2)}`}
+                />
+              )}
+            </dl>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Linked rides */}
       {(parentRide || (childRides && childRides.length > 0)) && (

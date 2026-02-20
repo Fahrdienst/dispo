@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition, useEffect, useCallback } from "react"
 import { useFormState } from "react-dom"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
@@ -17,7 +17,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { SubmitButton } from "@/components/shared/submit-button"
-import { createRide, updateRide } from "@/actions/rides"
+import {
+  createRide,
+  updateRide,
+  calculateRouteForRide,
+} from "@/actions/rides"
 import { RIDE_DIRECTION_LABELS } from "@/lib/rides/constants"
 import {
   addMinutesToTime,
@@ -35,6 +39,25 @@ interface RideFormProps {
   linkedRideCount?: number
   /** Whether this ride has a parent (is itself a return ride) */
   hasParentRide?: boolean
+}
+
+interface RouteInfo {
+  distance_meters: number
+  duration_seconds: number
+}
+
+function formatDistance(meters: number): string {
+  return (meters / 1000).toFixed(1) + " km"
+}
+
+function formatDuration(seconds: number): string {
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes} Min.`
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  return remainingMinutes > 0
+    ? `${hours} Std. ${remainingMinutes} Min.`
+    : `${hours} Std.`
 }
 
 export function RideForm({
@@ -61,10 +84,58 @@ export function RideForm({
     ride?.return_pickup_time?.slice(0, 5) ?? ""
   )
 
+  // --- Route calculation state ---
+  const [selectedPatientId, setSelectedPatientId] = useState<string>(
+    ride?.patient_id ?? ""
+  )
+  const [selectedDestinationId, setSelectedDestinationId] = useState<string>(
+    ride?.destination_id ?? ""
+  )
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(
+    ride?.distance_meters != null && ride?.duration_seconds != null
+      ? {
+          distance_meters: ride.distance_meters,
+          duration_seconds: ride.duration_seconds,
+        }
+      : null
+  )
+  const [routeError, setRouteError] = useState<string | null>(null)
+  const [isCalculatingRoute, startRouteTransition] = useTransition()
+
+  // --- Price override state ---
+  const [showPriceOverride, setShowPriceOverride] = useState(
+    ride?.price_override != null
+  )
+
   const isOutbound = direction === "outbound"
   const showReturnPickupTime = isOutbound && appointmentEndTime !== ""
   const showAutoReturnCheckbox =
     !isEdit && isOutbound && appointmentEndTime !== ""
+
+  const calculateRoute = useCallback(
+    (patientId: string, destinationId: string) => {
+      if (!patientId || !destinationId) return
+
+      startRouteTransition(async () => {
+        setRouteError(null)
+        const result = await calculateRouteForRide(patientId, destinationId)
+        if (result.success) {
+          setRouteInfo(result.data)
+        } else {
+          setRouteError(result.error ?? "Routenberechnung fehlgeschlagen")
+          setRouteInfo(null)
+        }
+      })
+    },
+    []
+  )
+
+  // Auto-calculate route when patient or destination changes
+  useEffect(() => {
+    if (selectedPatientId && selectedDestinationId) {
+      calculateRoute(selectedPatientId, selectedDestinationId)
+    }
+  }, [selectedPatientId, selectedDestinationId, calculateRoute])
 
   function handleAppointmentEndTimeChange(value: string): void {
     setAppointmentEndTime(value)
@@ -118,6 +189,7 @@ export function RideForm({
               <Select
                 name="patient_id"
                 defaultValue={ride?.patient_id ?? ""}
+                onValueChange={setSelectedPatientId}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Patient waehlen..." />
@@ -141,6 +213,7 @@ export function RideForm({
               <Select
                 name="destination_id"
                 defaultValue={ride?.destination_id ?? ""}
+                onValueChange={setSelectedDestinationId}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Ziel waehlen..." />
@@ -160,6 +233,31 @@ export function RideForm({
               )}
             </div>
           </div>
+
+          {/* --- Route info display (Issue #58) --- */}
+          {(isCalculatingRoute || routeInfo || routeError) && (
+            <div className="rounded-md border px-4 py-3">
+              {isCalculatingRoute && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+                  Route wird berechnet...
+                </div>
+              )}
+              {!isCalculatingRoute && routeInfo && (
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="font-medium">Route:</span>
+                  <span>~{formatDistance(routeInfo.distance_meters)}</span>
+                  <span className="text-muted-foreground">|</span>
+                  <span>~{formatDuration(routeInfo.duration_seconds)} Fahrzeit</span>
+                </div>
+              )}
+              {!isCalculatingRoute && routeError && (
+                <p className="text-sm text-amber-700">
+                  Routenberechnung nicht moeglich: {routeError}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* --- Date, Pickup Time, Direction --- */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -339,6 +437,85 @@ export function RideForm({
               </p>
             )}
           </div>
+
+          {/* --- Price Override (ADR-010, Issue #60) --- */}
+          <fieldset className="space-y-4 rounded-md border px-4 pb-4 pt-2">
+            <legend className="px-1 text-sm font-medium text-muted-foreground">
+              Preis
+            </legend>
+
+            {/* Show calculated price if available (edit mode) */}
+            {isEdit && ride?.calculated_price != null && (
+              <div className="text-sm">
+                <span className="text-muted-foreground">
+                  Berechneter Preis:{" "}
+                </span>
+                <span className="font-medium">
+                  CHF {Number(ride.calculated_price).toFixed(2)}
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="toggle_price_override"
+                checked={showPriceOverride}
+                onCheckedChange={(checked) =>
+                  setShowPriceOverride(checked === true)
+                }
+              />
+              <Label
+                htmlFor="toggle_price_override"
+                className="text-sm font-normal"
+              >
+                Preis manuell ueberschreiben
+              </Label>
+            </div>
+
+            {showPriceOverride && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="price_override">
+                    Preis (CHF) <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="price_override"
+                    name="price_override"
+                    type="number"
+                    step="0.05"
+                    min="0"
+                    defaultValue={
+                      ride?.price_override != null
+                        ? String(ride.price_override)
+                        : ""
+                    }
+                  />
+                  {fieldErrors?.price_override && (
+                    <p className="text-sm text-destructive">
+                      {fieldErrors.price_override[0]}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price_override_reason">
+                    Begruendung <span className="text-destructive">*</span>
+                  </Label>
+                  <Textarea
+                    id="price_override_reason"
+                    name="price_override_reason"
+                    rows={2}
+                    defaultValue={ride?.price_override_reason ?? ""}
+                    placeholder="Warum wird der berechnete Preis ueberschrieben?"
+                  />
+                  {fieldErrors?.price_override_reason && (
+                    <p className="text-sm text-destructive">
+                      {fieldErrors.price_override_reason[0]}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </fieldset>
 
           <div className="flex gap-3 pt-4">
             <SubmitButton>Speichern</SubmitButton>

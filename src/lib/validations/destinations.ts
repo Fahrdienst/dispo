@@ -38,6 +38,29 @@ export const destinationSchema = z.object({
     .transform(emptyToNull)
     .nullable()
     .optional(),
+  // --- Geodata fields (from Places Autocomplete or manual) ---
+  place_id: z
+    .string()
+    .transform(emptyToNull)
+    .nullable()
+    .optional(),
+  lat: z
+    .string()
+    .transform(emptyToNull)
+    .nullable()
+    .optional()
+    .transform((v) => (v ? parseFloat(v) : null)),
+  lng: z
+    .string()
+    .transform(emptyToNull)
+    .nullable()
+    .optional()
+    .transform((v) => (v ? parseFloat(v) : null)),
+  formatted_address: z
+    .string()
+    .transform(emptyToNull)
+    .nullable()
+    .optional(),
 })
 
 export type DestinationFormValues = z.infer<typeof destinationSchema>
