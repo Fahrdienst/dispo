@@ -114,10 +114,8 @@ export type Database = {
           driver_id: string
           end_time: string
           id: string
-          is_active: boolean
           specific_date: string | null
           start_time: string
-          updated_at: string
         }
         Insert: {
           created_at?: string
@@ -125,10 +123,8 @@ export type Database = {
           driver_id: string
           end_time: string
           id?: string
-          is_active?: boolean
           specific_date?: string | null
           start_time: string
-          updated_at?: string
         }
         Update: {
           created_at?: string
@@ -136,10 +132,8 @@ export type Database = {
           driver_id?: string
           end_time?: string
           id?: string
-          is_active?: boolean
           specific_date?: string | null
           start_time?: string
-          updated_at?: string
         }
         Relationships: [
           {
@@ -153,36 +147,60 @@ export type Database = {
       }
       drivers: {
         Row: {
+          city: string | null
           created_at: string
+          driving_license: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           first_name: string
+          house_number: string | null
           id: string
           is_active: boolean
           last_name: string
           notes: string | null
           phone: string | null
+          postal_code: string | null
+          street: string | null
           updated_at: string
+          vehicle: string | null
           vehicle_type: Database["public"]["Enums"]["vehicle_type"]
         }
         Insert: {
+          city?: string | null
           created_at?: string
+          driving_license?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           first_name: string
+          house_number?: string | null
           id?: string
           is_active?: boolean
           last_name: string
           notes?: string | null
           phone?: string | null
+          postal_code?: string | null
+          street?: string | null
           updated_at?: string
+          vehicle?: string | null
           vehicle_type?: Database["public"]["Enums"]["vehicle_type"]
         }
         Update: {
+          city?: string | null
           created_at?: string
+          driving_license?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           first_name?: string
+          house_number?: string | null
           id?: string
           is_active?: boolean
           last_name?: string
           notes?: string | null
           phone?: string | null
+          postal_code?: string | null
+          street?: string | null
           updated_at?: string
+          vehicle?: string | null
           vehicle_type?: Database["public"]["Enums"]["vehicle_type"]
         }
         Relationships: []

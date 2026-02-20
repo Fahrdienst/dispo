@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { requireAuth } from "@/lib/auth/require-auth"
 import { driverSchema } from "@/lib/validations/drivers"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
@@ -11,11 +12,9 @@ export async function createDriver(
   _prevState: ActionResult<Tables<"drivers">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"drivers">>> {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: "Nicht authentifiziert" }
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
   }
 
   const raw = Object.fromEntries(formData)
@@ -28,6 +27,7 @@ export async function createDriver(
     }
   }
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from("drivers")
     .insert(result.data)
@@ -47,11 +47,9 @@ export async function updateDriver(
   _prevState: ActionResult<Tables<"drivers">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"drivers">>> {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: "Nicht authentifiziert" }
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
   }
 
   const raw = Object.fromEntries(formData)
@@ -64,6 +62,7 @@ export async function updateDriver(
     }
   }
 
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from("drivers")
     .update(result.data)
@@ -83,13 +82,12 @@ export async function toggleDriverActive(
   id: string,
   isActive: boolean
 ): Promise<ActionResult> {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: "Nicht authentifiziert" }
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
   }
 
+  const supabase = await createClient()
   const { error } = await supabase
     .from("drivers")
     .update({ is_active: isActive })

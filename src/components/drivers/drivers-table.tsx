@@ -47,7 +47,9 @@ export function DriversTable({ drivers }: DriversTableProps) {
     return (
       d.first_name.toLowerCase().includes(term) ||
       d.last_name.toLowerCase().includes(term) ||
-      (d.phone ?? "").toLowerCase().includes(term)
+      (d.phone ?? "").toLowerCase().includes(term) ||
+      (d.city ?? "").toLowerCase().includes(term) ||
+      (d.vehicle ?? "").toLowerCase().includes(term)
     )
   })
 
@@ -87,7 +89,9 @@ export function DriversTable({ drivers }: DriversTableProps) {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Telefon</TableHead>
+                <TableHead>Ort</TableHead>
                 <TableHead>Fahrzeugtyp</TableHead>
+                <TableHead>Fahrzeug</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[80px]" />
               </TableRow>
@@ -101,10 +105,12 @@ export function DriversTable({ drivers }: DriversTableProps) {
                   <TableCell className="font-medium">
                     {driver.last_name}, {driver.first_name}
                   </TableCell>
-                  <TableCell>{driver.phone ?? "–"}</TableCell>
+                  <TableCell>{driver.phone ?? "\u2013"}</TableCell>
+                  <TableCell>{driver.city ?? "\u2013"}</TableCell>
                   <TableCell>
                     {vehicleTypeLabels[driver.vehicle_type] ?? driver.vehicle_type}
                   </TableCell>
+                  <TableCell>{driver.vehicle ?? "\u2013"}</TableCell>
                   <TableCell>
                     <ActiveBadge isActive={driver.is_active} />
                   </TableCell>
@@ -119,6 +125,11 @@ export function DriversTable({ drivers }: DriversTableProps) {
                         <DropdownMenuItem asChild>
                           <Link href={`/drivers/${driver.id}/edit`}>
                             Bearbeiten
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/drivers/${driver.id}/availability`}>
+                            Verfuegbarkeit
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
