@@ -152,6 +152,7 @@ export async function updateRideStatus(
   }
 
   revalidatePath("/rides")
+  revalidatePath("/my/rides")
   return { success: true, data: undefined }
 }
 

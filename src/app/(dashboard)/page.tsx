@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/auth/require-auth";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { RideStatusBadge } from "@/components/shared/ride-status-badge";
 import type { Enums } from "@/lib/types/database";
@@ -10,6 +12,14 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
+  const auth = await requireAuth();
+  if (!auth.authorized) {
+    redirect("/login");
+  }
+  if (auth.role === "driver") {
+    redirect("/my/rides");
+  }
+
   const supabase = await createClient();
 
   const today = new Date().toISOString().split("T")[0]!;

@@ -78,5 +78,6 @@ export async function saveWeeklyAvailability(
 
   revalidatePath(`/drivers/${driver_id}/availability`)
   revalidatePath(`/drivers/${driver_id}`)
+  revalidatePath("/my/availability")
   return { success: true, data: undefined }
 }

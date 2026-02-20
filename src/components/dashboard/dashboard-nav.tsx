@@ -3,22 +3,41 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import type { Enums } from "@/lib/types/database"
 
-const navItems = [
-  { href: "/", label: "Dashboard" },
-  { href: "/rides", label: "Fahrten" },
-  { href: "/drivers", label: "Fahrer" },
-  { href: "/destinations", label: "Ziele" },
-  { href: "/patients", label: "Patienten" },
-  { href: "/users", label: "Benutzer" },
+type UserRole = Enums<"user_role">
+
+interface NavItem {
+  href: string
+  label: string
+  roles?: UserRole[]
+}
+
+const navItems: NavItem[] = [
+  { href: "/", label: "Dashboard", roles: ["admin", "operator"] },
+  { href: "/rides", label: "Fahrten", roles: ["admin", "operator"] },
+  { href: "/drivers", label: "Fahrer", roles: ["admin", "operator"] },
+  { href: "/destinations", label: "Ziele", roles: ["admin", "operator"] },
+  { href: "/patients", label: "Patienten", roles: ["admin", "operator"] },
+  { href: "/users", label: "Benutzer", roles: ["admin"] },
+  { href: "/my/rides", label: "Meine Fahrten", roles: ["driver"] },
+  { href: "/my/availability", label: "Meine Verfuegbarkeit", roles: ["driver"] },
 ]
 
-export function DashboardNav() {
+interface DashboardNavProps {
+  role: UserRole
+}
+
+export function DashboardNav({ role }: DashboardNavProps) {
   const pathname = usePathname()
+
+  const visibleItems = navItems.filter(
+    (item) => !item.roles || item.roles.includes(role)
+  )
 
   return (
     <nav className="flex items-center gap-6">
-      {navItems.map((item) => {
+      {visibleItems.map((item) => {
         const isActive =
           item.href === "/"
             ? pathname === "/"
