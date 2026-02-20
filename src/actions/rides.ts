@@ -10,6 +10,8 @@ import {
   DEFAULT_RETURN_BUFFER_MINUTES,
 } from "@/lib/validations/rides"
 import { assertTransitionForRole } from "@/lib/rides/status-machine"
+import { invalidateTokensForRide } from "@/lib/mail/tokens"
+import { sendDriverNotification } from "@/lib/mail/send-driver-notification"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables, Enums } from "@/lib/types/database"
 
@@ -400,6 +402,13 @@ export async function assignDriver(
 
   if (error) {
     return { success: false, error: error.message }
+  }
+
+  // Fire-and-forget: send driver notification email when driver is assigned
+  if (driverId && updateData.status === "planned") {
+    invalidateTokensForRide(rideId)
+      .then(() => sendDriverNotification(rideId, driverId))
+      .catch(console.error)
   }
 
   revalidatePath("/dispatch")
