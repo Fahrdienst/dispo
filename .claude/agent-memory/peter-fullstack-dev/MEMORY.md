@@ -56,6 +56,18 @@
 - Shared AddressFields component at `src/components/shared/address-fields.tsx`
 - PageHeader supports `backHref`/`backLabel` props (renders as link-style back navigation)
 
+## Settings Pages
+- Settings navigation: `src/components/settings/settings-nav.tsx` (client, tab-style nav)
+- Settings sub-pages: zones, fares, geocoding (all under `/settings/`)
+- Each settings page includes `<SettingsNav />` between PageHeader and content
+- Nav entry "Einstellungen" points to `/settings/zones` (dashboard-nav.tsx)
+- Geocoding retry: `src/actions/geocoding.ts` + `src/components/settings/retry-geocoding-card.tsx`
+
+## Maps / Geocoding
+- `src/lib/maps/geocode.ts` - `geocodeAddress()` (pure) + `geocodeAndUpdateRecord()` (fire-and-forget)
+- `geocodeAndUpdateRecord` creates its own Supabase client internally
+- For batch operations, use `geocodeAddress` directly + manual DB update with shared client
+
 ## Important Lessons
 - Dashboard page (`src/app/(dashboard)/page.tsx`) also queries destinations -- remember to update when renaming columns
 - `src/lib/rides/constants.ts` contains label maps for enums -- must be updated when enum types change

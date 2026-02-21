@@ -48,3 +48,24 @@ export const patientSchema = z.object({
 })
 
 export type PatientFormValues = z.infer<typeof patientSchema>
+
+/** Minimal schema for inline patient creation (no impairments, no emergency contact) */
+export const patientInlineSchema = z.object({
+  first_name: z.string().min(1, "Vorname ist erforderlich").max(100),
+  last_name: z.string().min(1, "Nachname ist erforderlich").max(100),
+  phone: z
+    .string()
+    .max(50)
+    .transform(emptyToNull)
+    .nullable()
+    .optional(),
+  street: z.string().min(1, "Strasse ist erforderlich").max(200),
+  house_number: z.string().min(1, "Hausnummer ist erforderlich").max(20),
+  postal_code: z
+    .string()
+    .min(1, "PLZ ist erforderlich")
+    .regex(/^\d{4}$/, "PLZ muss 4-stellig sein (CH)"),
+  city: z.string().min(1, "Ort ist erforderlich").max(100),
+})
+
+export type PatientInlineFormValues = z.infer<typeof patientInlineSchema>

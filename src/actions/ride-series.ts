@@ -56,6 +56,9 @@ export async function createRideSeries(
       start_date: result.data.start_date,
       end_date: result.data.end_date ?? null,
       notes: result.data.notes ?? null,
+      appointment_time: result.data.appointment_time ?? null,
+      appointment_end_time: result.data.appointment_end_time ?? null,
+      return_pickup_time: result.data.return_pickup_time ?? null,
     })
     .select()
     .single()
@@ -110,6 +113,9 @@ export async function updateRideSeries(
       start_date: result.data.start_date,
       end_date: result.data.end_date ?? null,
       notes: result.data.notes ?? null,
+      appointment_time: result.data.appointment_time ?? null,
+      appointment_end_time: result.data.appointment_end_time ?? null,
+      return_pickup_time: result.data.return_pickup_time ?? null,
     })
     .eq("id", id)
     .select()
@@ -204,26 +210,73 @@ export async function generateRidesFromSeries(
     }
   }
 
-  // Expand directions
-  const directions = expandDirections(series.direction)
-
   // Build ride objects and insert individually to skip duplicates
   let insertedCount = 0
+  const directions = expandDirections(series.direction)
+
   for (const date of dates) {
-    for (const direction of directions) {
-      const { error: insertError } = await supabase.from("rides").insert({
-        patient_id: series.patient_id,
-        destination_id: series.destination_id,
-        ride_series_id: series.id,
-        date,
-        pickup_time: series.pickup_time,
-        direction,
-        status: "unplanned",
-      })
-      if (!insertError) {
+    if (series.direction === "both") {
+      // Insert outbound first, then return with parent_ride_id
+      const { data: outbound, error: outError } = await supabase
+        .from("rides")
+        .insert({
+          patient_id: series.patient_id,
+          destination_id: series.destination_id,
+          ride_series_id: series.id,
+          date,
+          pickup_time: series.pickup_time,
+          direction: "outbound",
+          status: "unplanned",
+          appointment_time: series.appointment_time ?? null,
+          appointment_end_time: series.appointment_end_time ?? null,
+        })
+        .select("id")
+        .single()
+
+      if (!outError && outbound) {
         insertedCount++
+        // Insert return ride with parent_ride_id
+        const returnPickup = series.return_pickup_time ?? series.pickup_time
+        const { error: retError } = await supabase.from("rides").insert({
+          patient_id: series.patient_id,
+          destination_id: series.destination_id,
+          ride_series_id: series.id,
+          date,
+          pickup_time: returnPickup,
+          direction: "return",
+          status: "unplanned",
+          parent_ride_id: outbound.id,
+          return_pickup_time: series.return_pickup_time ?? null,
+        })
+        if (!retError) insertedCount++
       }
       // Unique constraint violation → skip silently (duplicate)
+    } else {
+      // Single direction
+      for (const direction of directions) {
+        const { error: insertError } = await supabase.from("rides").insert({
+          patient_id: series.patient_id,
+          destination_id: series.destination_id,
+          ride_series_id: series.id,
+          date,
+          pickup_time:
+            direction === "return" && series.return_pickup_time
+              ? series.return_pickup_time
+              : series.pickup_time,
+          direction,
+          status: "unplanned",
+          appointment_time:
+            direction === "outbound"
+              ? (series.appointment_time ?? null)
+              : null,
+          appointment_end_time:
+            direction === "outbound"
+              ? (series.appointment_end_time ?? null)
+              : null,
+        })
+        if (!insertError) insertedCount++
+        // Unique constraint violation → skip silently (duplicate)
+      }
     }
   }
 

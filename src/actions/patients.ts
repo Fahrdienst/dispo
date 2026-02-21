@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { patientSchema } from "@/lib/validations/patients"
+import { patientSchema, patientInlineSchema } from "@/lib/validations/patients"
+import { requireAuth } from "@/lib/auth/require-auth"
 import { geocodeAndUpdateRecord } from "@/lib/maps/geocode"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
@@ -144,6 +145,51 @@ export async function updatePatient(
 
   revalidatePath("/patients")
   redirect("/patients")
+}
+
+export async function createPatientInline(
+  _prevState: ActionResult<Tables<"patients">> | null,
+  formData: FormData
+): Promise<ActionResult<Tables<"patients">>> {
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
+  }
+
+  const raw = Object.fromEntries(formData)
+  const result = patientInlineSchema.safeParse(raw)
+
+  if (!result.success) {
+    return {
+      success: false,
+      fieldErrors: result.error.flatten().fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  const supabase = await createClient()
+  const { data: patient, error } = await supabase
+    .from("patients")
+    .insert(result.data)
+    .select()
+    .single()
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  // Fire-and-forget geocoding
+  if (result.data.street && result.data.house_number && result.data.postal_code && result.data.city) {
+    geocodeAndUpdateRecord("patients", patient.id, {
+      street: result.data.street,
+      house_number: result.data.house_number,
+      postal_code: result.data.postal_code,
+      city: result.data.city,
+    }).catch((err: unknown) => console.error("Geocoding failed for inline patient:", err))
+  }
+
+  revalidatePath("/patients")
+  revalidatePath("/rides")
+  return { success: true, data: patient }
 }
 
 export async function togglePatientActive(

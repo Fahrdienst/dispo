@@ -32,6 +32,21 @@ export const rideSeriesSchema = z
       .transform((v) => (v === "" ? null : v))
       .nullable()
       .optional(),
+    appointment_time: z
+      .string()
+      .transform((v) => (v === "" ? null : v))
+      .nullable()
+      .optional(),
+    appointment_end_time: z
+      .string()
+      .transform((v) => (v === "" ? null : v))
+      .nullable()
+      .optional(),
+    return_pickup_time: z
+      .string()
+      .transform((v) => (v === "" ? null : v))
+      .nullable()
+      .optional(),
   })
   .refine(
     (data) => {

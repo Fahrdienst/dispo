@@ -2,125 +2,88 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================================================
-   FAHRDIENST APP — Design System Tokens
-   Designer: Kim | Version: 1.0
-   See .claude/agent-memory/ux-designer-kim/design-system.md for full spec.
-   ============================================================================ */
-
 @layer base {
   :root {
-    /* ---------------------------------------------------------------------- */
-    /* BASE NEUTRAL TOKENS (shadcn/ui neutral — do not rename)                */
-    /* ---------------------------------------------------------------------- */
-
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --background: 213 45% 98%;
+    --foreground: 220 45% 14%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 220 45% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
+    --popover-foreground: 220 45% 14%;
 
-    --primary: 222 84% 20%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 211 96% 42%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
+    --secondary: 210 30% 94%;
+    --secondary-foreground: 222 47% 16%;
 
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted: 214 32% 95%;
+    --muted-foreground: 218 19% 44%;
 
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --accent: 189 56% 92%;
+    --accent-foreground: 195 74% 22%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 56%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 222 84% 20%;
+    --border: 214 28% 88%;
+    --input: 214 29% 86%;
+    --ring: 211 96% 42%;
 
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --chart-1: 207 90% 54%;
+    --chart-2: 164 70% 40%;
+    --chart-3: 24 86% 58%;
+    --chart-4: 264 70% 58%;
+    --chart-5: 340 80% 58%;
 
-    --radius: 0.5rem;
+    --radius: 0.9rem;
 
-    /* ---------------------------------------------------------------------- */
-    /* STATUS COLOR TOKENS — Ride Status                                       */
-    /* Functional tokens only. Never use for decoration.                      */
-    /* Each value is HSL (matches shadcn/ui convention for hsl() usage).      */
-    /*                                                                        */
-    /* DB enum value   Token name              Hex       Tailwind equivalent  */
-    /* unplanned    →  --status-unplanned      #6B7280   gray-500             */
-    /* planned      →  --status-planned        #3B82F6   blue-500             */
-    /* confirmed    →  --status-confirmed      #6366F1   indigo-500           */
-    /* in_progress  →  --status-in-progress    #F59E0B   amber-500            */
-    /* picked_up    →  --status-picked-up      #F97316   orange-500           */
-    /* arrived      →  --status-arrived        #14B8A6   teal-500             */
-    /* completed    →  --status-completed      #16A34A   green-600            */
-    /* cancelled    →  --status-cancelled      #94A3B8   slate-400            */
-    /* rejected     →  --status-rejected       #EF4444   red-500              */
-    /* no_show      →  --status-no-show        #E11D48   rose-600             */
-    /* ---------------------------------------------------------------------- */
-
-    --status-unplanned:   210 9% 43%;
-    --status-planned:     217 91% 60%;
-    --status-confirmed:   239 84% 67%;
+    --status-unplanned: 210 9% 43%;
+    --status-planned: 217 91% 60%;
+    --status-confirmed: 239 84% 67%;
     --status-in-progress: 38 92% 50%;
-    --status-picked-up:   21 90% 58%;
-    --status-arrived:     173 80% 40%;
-    --status-completed:   142 76% 36%;
-    --status-cancelled:   215 16% 57%;
-    --status-rejected:    0 84% 60%;
-    --status-no-show:     347 77% 50%;
+    --status-picked-up: 21 90% 58%;
+    --status-arrived: 173 80% 40%;
+    --status-completed: 142 76% 36%;
+    --status-cancelled: 215 16% 57%;
+    --status-rejected: 0 84% 60%;
+    --status-no-show: 347 77% 50%;
+    --status-urgent: 0 72% 51%;
 
-    /* System-level alert — NOT a ride status, reserved for operator warnings */
-    --status-urgent:      0 72% 51%;
-
-    /* ---------------------------------------------------------------------- */
-    /* LAYOUT DIMENSION TOKENS                                                */
-    /* ---------------------------------------------------------------------- */
-
-    --panel-ride-list: 380px;   /* Operator left panel width at 1920px        */
-    --header-height:   56px;    /* Top navigation bar                         */
+    --panel-ride-list: 380px;
+    --header-height: 62px;
   }
 
-  /* ------------------------------------------------------------------------ */
-  /* DARK MODE (Phase 2 — variables defined now to prevent future refactoring) */
-  /* ------------------------------------------------------------------------ */
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
+    --background: 224 45% 8%;
+    --foreground: 210 40% 96%;
 
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
+    --card: 223 36% 12%;
+    --card-foreground: 210 40% 96%;
 
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 223 36% 12%;
+    --popover-foreground: 210 40% 96%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
+    --primary: 207 92% 60%;
+    --primary-foreground: 220 48% 10%;
 
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 223 20% 20%;
+    --secondary-foreground: 210 40% 96%;
 
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
+    --muted: 223 22% 18%;
+    --muted-foreground: 215 18% 70%;
 
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 196 48% 20%;
+    --accent-foreground: 190 80% 84%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 75% 56%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --border: 222 20% 25%;
+    --input: 222 20% 28%;
+    --ring: 207 92% 60%;
 
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -128,57 +91,90 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
-    /* Status tokens retain full saturation in dark mode (slightly lighter) */
-    --status-unplanned:   210 9% 55%;
-    --status-planned:     217 91% 65%;
-    --status-confirmed:   239 84% 72%;
+    --status-unplanned: 210 9% 55%;
+    --status-planned: 217 91% 65%;
+    --status-confirmed: 239 84% 72%;
     --status-in-progress: 38 92% 55%;
-    --status-picked-up:   21 90% 63%;
-    --status-arrived:     173 80% 45%;
-    --status-completed:   142 76% 42%;
-    --status-cancelled:   215 16% 50%;
-    --status-rejected:    0 84% 65%;
-    --status-no-show:     347 77% 55%;
-    --status-urgent:      0 72% 56%;
+    --status-picked-up: 21 90% 63%;
+    --status-arrived: 173 80% 45%;
+    --status-completed: 142 76% 42%;
+    --status-cancelled: 215 16% 50%;
+    --status-rejected: 0 84% 65%;
+    --status-no-show: 347 77% 55%;
+    --status-urgent: 0 72% 56%;
   }
-
-  /* ------------------------------------------------------------------------ */
-  /* GLOBAL BASE STYLES                                                        */
-  /* ------------------------------------------------------------------------ */
 
   * {
     @apply border-border;
     box-sizing: border-box;
   }
 
+  html,
+  body {
+    min-height: 100%;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
-    /* Tabular numbers: prevents column width jitter in time/ETA displays */
+    background-image:
+      radial-gradient(circle at 0% 0%, hsl(197 95% 78% / 0.22), transparent 35%),
+      radial-gradient(circle at 100% 0%, hsl(212 100% 72% / 0.17), transparent 38%),
+      linear-gradient(to bottom, hsl(var(--background)), hsl(210 42% 97%));
     font-feature-settings: "tnum";
     font-variant-numeric: tabular-nums;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.2);
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply border border-white/70 bg-white/80 shadow-xl shadow-slate-900/5 backdrop-blur;
   }
 }
 
 @layer utilities {
-  /* --------------------------------------------------------------------------
-     RIDE LIST ROW — LEFT BORDER UTILITIES
-     Applied to ride list items to communicate status at a glance,
-     before the badge text is read. One utility per status.
-
-     Usage: <div class="ride-row-border-in-progress">
-     Note: unplanned without a driver uses ride-row-border-urgent (red-600).
-     -------------------------------------------------------------------------- */
-
-  .ride-row-border-unplanned   { @apply border-l-4 border-l-gray-400; }
-  .ride-row-border-planned     { @apply border-l-4 border-l-blue-400; }
-  .ride-row-border-confirmed   { @apply border-l-4 border-l-indigo-400; }
-  .ride-row-border-in-progress { @apply border-l-4 border-l-amber-400; }
-  .ride-row-border-picked-up   { @apply border-l-4 border-l-orange-400; }
-  .ride-row-border-arrived     { @apply border-l-4 border-l-teal-400; }
-  .ride-row-border-completed   { @apply border-l-4 border-l-green-500; }
-  .ride-row-border-cancelled   { @apply border-l-4 border-l-slate-300; }
-  .ride-row-border-rejected    { @apply border-l-4 border-l-red-500; }
-  .ride-row-border-no-show     { @apply border-l-4 border-l-rose-500; }
-  /* Unplanned with no driver assigned — escalated urgency */
-  .ride-row-border-urgent      { @apply border-l-4 border-l-red-600; }
+  .ride-row-border-unplanned {
+    @apply border-l-4 border-l-gray-400;
+  }
+  .ride-row-border-planned {
+    @apply border-l-4 border-l-blue-400;
+  }
+  .ride-row-border-confirmed {
+    @apply border-l-4 border-l-indigo-400;
+  }
+  .ride-row-border-in-progress {
+    @apply border-l-4 border-l-amber-400;
+  }
+  .ride-row-border-picked-up {
+    @apply border-l-4 border-l-orange-400;
+  }
+  .ride-row-border-arrived {
+    @apply border-l-4 border-l-teal-400;
+  }
+  .ride-row-border-completed {
+    @apply border-l-4 border-l-green-500;
+  }
+  .ride-row-border-cancelled {
+    @apply border-l-4 border-l-slate-300;
+  }
+  .ride-row-border-rejected {
+    @apply border-l-4 border-l-red-500;
+  }
+  .ride-row-border-no-show {
+    @apply border-l-4 border-l-rose-500;
+  }
+  .ride-row-border-urgent {
+    @apply border-l-4 border-l-red-600;
+  }
 }

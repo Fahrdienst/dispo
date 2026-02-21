@@ -19,15 +19,20 @@ export function PageHeader({
   backLabel,
 }: PageHeaderProps) {
   return (
-    <div className="space-y-2">
+    <div className="glass-panel space-y-3 rounded-2xl p-5 sm:p-6">
       {backHref && backLabel && (
-        <Button variant="link" className="h-auto p-0 text-muted-foreground" asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-auto w-fit px-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
+          asChild
+        >
           <Link href={backHref}>&larr; {backLabel}</Link>
         </Button>
       )}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h2>
           {description && (
             <p className="text-muted-foreground">{description}</p>
           )}

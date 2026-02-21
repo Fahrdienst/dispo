@@ -10,19 +10,23 @@ interface AddressFieldsProps {
   }
   errors?: Record<string, string[] | undefined>
   required?: boolean
+  /** Optional prefix for HTML id attributes to avoid collisions in dialogs */
+  idPrefix?: string
 }
 
-export function AddressFields({ defaultValues, errors, required }: AddressFieldsProps) {
+export function AddressFields({ defaultValues, errors, required, idPrefix }: AddressFieldsProps) {
+  const prefix = idPrefix ? `${idPrefix}_` : ""
+
   return (
     <fieldset className="space-y-4">
       <legend className="text-sm font-medium">Adresse</legend>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <div className="sm:col-span-3 space-y-2">
-          <Label htmlFor="street">
+          <Label htmlFor={`${prefix}street`}>
             Strasse{required && <span className="text-destructive"> *</span>}
           </Label>
           <Input
-            id="street"
+            id={`${prefix}street`}
             name="street"
             required={required}
             defaultValue={defaultValues?.street ?? ""}
@@ -32,11 +36,11 @@ export function AddressFields({ defaultValues, errors, required }: AddressFields
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="house_number">
+          <Label htmlFor={`${prefix}house_number`}>
             Hausnr.{required && <span className="text-destructive"> *</span>}
           </Label>
           <Input
-            id="house_number"
+            id={`${prefix}house_number`}
             name="house_number"
             required={required}
             defaultValue={defaultValues?.house_number ?? ""}
@@ -50,11 +54,11 @@ export function AddressFields({ defaultValues, errors, required }: AddressFields
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="space-y-2">
-          <Label htmlFor="postal_code">
+          <Label htmlFor={`${prefix}postal_code`}>
             PLZ{required && <span className="text-destructive"> *</span>}
           </Label>
           <Input
-            id="postal_code"
+            id={`${prefix}postal_code`}
             name="postal_code"
             required={required}
             defaultValue={defaultValues?.postal_code ?? ""}
@@ -64,11 +68,11 @@ export function AddressFields({ defaultValues, errors, required }: AddressFields
           )}
         </div>
         <div className="sm:col-span-2 space-y-2">
-          <Label htmlFor="city">
+          <Label htmlFor={`${prefix}city`}>
             Ort{required && <span className="text-destructive"> *</span>}
           </Label>
           <Input
-            id="city"
+            id={`${prefix}city`}
             name="city"
             required={required}
             defaultValue={defaultValues?.city ?? ""}

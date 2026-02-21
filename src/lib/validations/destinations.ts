@@ -64,3 +64,25 @@ export const destinationSchema = z.object({
 })
 
 export type DestinationFormValues = z.infer<typeof destinationSchema>
+
+/**
+ * Minimal schema for inline destination creation (e.g. from ride form dialog).
+ * Only requires name, facility type, and address. Contact details can be added later.
+ */
+export const destinationInlineSchema = z.object({
+  display_name: z.string().min(1, "Name ist erforderlich").max(200),
+  facility_type: z
+    .enum(["practice", "hospital", "therapy_center", "day_care", "other"])
+    .default("other"),
+  street: z.string().min(1, "Strasse ist erforderlich").max(200),
+  house_number: z.string().min(1, "Hausnummer ist erforderlich").max(20),
+  postal_code: z
+    .string()
+    .min(1, "PLZ ist erforderlich")
+    .regex(/^\d{4}$/, "PLZ muss 4-stellig sein (CH)"),
+  city: z.string().min(1, "Ort ist erforderlich").max(100),
+})
+
+export type DestinationInlineFormValues = z.infer<
+  typeof destinationInlineSchema
+>

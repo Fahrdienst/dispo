@@ -228,6 +228,63 @@ export function RideSeriesForm({
             </fieldset>
           )}
 
+          {/* --- Appointment Times --- */}
+          <fieldset className="space-y-4 rounded-lg border bg-muted/30 p-4">
+            <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Termin (optional)
+            </legend>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="appointment_time">Terminbeginn</Label>
+                <Input
+                  id="appointment_time"
+                  name="appointment_time"
+                  type="time"
+                  defaultValue={series?.appointment_time?.slice(0, 5) ?? ""}
+                />
+                {fieldErrors?.appointment_time && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.appointment_time[0]}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="appointment_end_time">Terminende</Label>
+                <Input
+                  id="appointment_end_time"
+                  name="appointment_end_time"
+                  type="time"
+                  defaultValue={
+                    series?.appointment_end_time?.slice(0, 5) ?? ""
+                  }
+                />
+                {fieldErrors?.appointment_end_time && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.appointment_end_time[0]}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="return_pickup_time">
+                  Rueckfahrt-Abholzeit
+                </Label>
+                <Input
+                  id="return_pickup_time"
+                  name="return_pickup_time"
+                  type="time"
+                  defaultValue={
+                    series?.return_pickup_time?.slice(0, 5) ?? ""
+                  }
+                />
+                {fieldErrors?.return_pickup_time && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.return_pickup_time[0]}
+                  </p>
+                )}
+              </div>
+            </div>
+          </fieldset>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="start_date">Startdatum</Label>

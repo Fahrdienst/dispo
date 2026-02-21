@@ -463,6 +463,8 @@ export type Database = {
       }
       ride_series: {
         Row: {
+          appointment_end_time: string | null
+          appointment_time: string | null
           created_at: string
           days_of_week: Database["public"]["Enums"]["day_of_week"][] | null
           destination_id: string
@@ -474,10 +476,13 @@ export type Database = {
           patient_id: string
           pickup_time: string
           recurrence_type: Database["public"]["Enums"]["recurrence_type"]
+          return_pickup_time: string | null
           start_date: string
           updated_at: string
         }
         Insert: {
+          appointment_end_time?: string | null
+          appointment_time?: string | null
           created_at?: string
           days_of_week?: Database["public"]["Enums"]["day_of_week"][] | null
           destination_id: string
@@ -489,10 +494,13 @@ export type Database = {
           patient_id: string
           pickup_time: string
           recurrence_type: Database["public"]["Enums"]["recurrence_type"]
+          return_pickup_time?: string | null
           start_date: string
           updated_at?: string
         }
         Update: {
+          appointment_end_time?: string | null
+          appointment_time?: string | null
           created_at?: string
           days_of_week?: Database["public"]["Enums"]["day_of_week"][] | null
           destination_id?: string
@@ -504,6 +512,7 @@ export type Database = {
           patient_id?: string
           pickup_time?: string
           recurrence_type?: Database["public"]["Enums"]["recurrence_type"]
+          return_pickup_time?: string | null
           start_date?: string
           updated_at?: string
         }

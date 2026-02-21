@@ -420,6 +420,10 @@ export function RideForm({
                 {fieldErrors.driver_id[0]}
               </p>
             )}
+            <p className="text-xs text-muted-foreground">
+              Optional — Fahrer kann spaeter im Disposition-Board zugewiesen
+              werden.
+            </p>
           </div>
 
           {/* --- Notes --- */}

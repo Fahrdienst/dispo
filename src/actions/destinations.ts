@@ -3,8 +3,12 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { destinationSchema } from "@/lib/validations/destinations"
+import {
+  destinationSchema,
+  destinationInlineSchema,
+} from "@/lib/validations/destinations"
 import { geocodeAndUpdateRecord } from "@/lib/maps/geocode"
+import { requireAuth } from "@/lib/auth/require-auth"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
 
@@ -186,4 +190,64 @@ export async function toggleDestinationActive(
 
   revalidatePath("/destinations")
   return { success: true, data: undefined }
+}
+
+/**
+ * Inline destination creation for use in dialogs (e.g. ride form).
+ * Minimal fields only — contact details can be added later via the full form.
+ * Does NOT redirect; returns the created destination record.
+ */
+export async function createDestinationInline(
+  _prevState: ActionResult<Tables<"destinations">> | null,
+  formData: FormData
+): Promise<ActionResult<Tables<"destinations">>> {
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
+  }
+
+  const raw = Object.fromEntries(formData)
+  const result = destinationInlineSchema.safeParse(raw)
+
+  if (!result.success) {
+    return {
+      success: false,
+      fieldErrors: result.error.flatten().fieldErrors as Record<
+        string,
+        string[]
+      >,
+    }
+  }
+
+  const supabase = await createClient()
+  const { data: destination, error } = await supabase
+    .from("destinations")
+    .insert(result.data)
+    .select()
+    .single()
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  // Fire-and-forget geocoding
+  if (
+    result.data.street &&
+    result.data.house_number &&
+    result.data.postal_code &&
+    result.data.city
+  ) {
+    geocodeAndUpdateRecord("destinations", destination.id, {
+      street: result.data.street,
+      house_number: result.data.house_number,
+      postal_code: result.data.postal_code,
+      city: result.data.city,
+    }).catch((err: unknown) =>
+      console.error("Geocoding failed for inline destination:", err)
+    )
+  }
+
+  revalidatePath("/destinations")
+  revalidatePath("/rides")
+  return { success: true, data: destination }
 }

@@ -9,6 +9,12 @@ const emptyToNull = (v: string) => (v === "" || v === "__none__" ? null : v)
 export const DEFAULT_RETURN_BUFFER_MINUTES = 15
 
 /**
+ * Default buffer (minutes) subtracted before the drive duration
+ * to give the driver time to reach the patient before pickup.
+ */
+export const DEFAULT_PICKUP_BUFFER_MINUTES = 5
+
+/**
  * Adds minutes to a time string (HH:MM format).
  * Returns null if the result exceeds 23:59.
  */
@@ -20,6 +26,23 @@ export function addMinutesToTime(
   if (h === undefined || m === undefined) return null
   const totalMinutes = h * 60 + m + minutes
   if (totalMinutes >= 24 * 60) return null
+  const newH = Math.floor(totalMinutes / 60)
+  const newM = totalMinutes % 60
+  return `${String(newH).padStart(2, "0")}:${String(newM).padStart(2, "0")}`
+}
+
+/**
+ * Subtracts minutes from a time string (HH:MM format).
+ * Returns null if the result goes below 00:00.
+ */
+export function subtractMinutesFromTime(
+  time: string,
+  minutes: number
+): string | null {
+  const [h, m] = time.split(":").map(Number)
+  if (h === undefined || m === undefined) return null
+  const totalMinutes = h * 60 + m - minutes
+  if (totalMinutes < 0) return null
   const newH = Math.floor(totalMinutes / 60)
   const newM = totalMinutes % 60
   return `${String(newH).padStart(2, "0")}:${String(newM).padStart(2, "0")}`
