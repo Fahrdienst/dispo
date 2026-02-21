@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { SubmitButton } from "@/components/shared/submit-button"
 import { AddressFields } from "@/components/shared/address-fields"
+import { LocationMap } from "@/components/shared/location-map"
 import {
   PlacesAutocomplete,
   type PlaceSelectResult,
@@ -325,6 +326,15 @@ export function DestinationForm({ destination }: DestinationFormProps) {
               </div>
             </div>
           </fieldset>
+
+          {destination && (
+            <LocationMap
+              lat={destination.lat}
+              lng={destination.lng}
+              label={destination.display_name}
+              geocodeStatus={destination.geocode_status}
+            />
+          )}
 
           <fieldset className="space-y-4">
             <legend className="text-sm font-medium">Kontaktperson</legend>

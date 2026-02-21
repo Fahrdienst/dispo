@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import {
   rideSchema,
   addMinutesToTime,
+  subtractMinutesFromTime,
   DEFAULT_RETURN_BUFFER_MINUTES,
 } from "../rides"
 
@@ -346,6 +347,46 @@ describe("rideSchema", () => {
     })
     expect(result.success).toBe(true)
   })
+
+  // --- Notes boundary ---
+
+  it("accepts notes exactly 1000 chars", () => {
+    const result = rideSchema.safeParse({
+      ...validRide,
+      notes: "A".repeat(1000),
+    })
+    expect(result.success).toBe(true)
+  })
+
+  // --- Price override validation ---
+
+  it("rejects price_override without reason", () => {
+    const result = rideSchema.safeParse({
+      ...validRide,
+      price_override: "25.50",
+      price_override_reason: "",
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      const issues = result.error.issues
+      expect(issues.some((i) => i.path.includes("price_override_reason"))).toBe(
+        true
+      )
+    }
+  })
+
+  it("accepts price_override with reason", () => {
+    const result = rideSchema.safeParse({
+      ...validRide,
+      price_override: "25.50",
+      price_override_reason: "Sondertarif vereinbart",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.price_override).toBe(25.5)
+      expect(result.data.price_override_reason).toBe("Sondertarif vereinbart")
+    }
+  })
 })
 
 // --- addMinutesToTime helper ---
@@ -390,5 +431,29 @@ describe("addMinutesToTime", () => {
 describe("DEFAULT_RETURN_BUFFER_MINUTES", () => {
   it("is 15", () => {
     expect(DEFAULT_RETURN_BUFFER_MINUTES).toBe(15)
+  })
+})
+
+// --- subtractMinutesFromTime helper ---
+
+describe("subtractMinutesFromTime", () => {
+  it("subtracts minutes correctly", () => {
+    expect(subtractMinutesFromTime("09:15", 15)).toBe("09:00")
+  })
+
+  it("handles hour rollback", () => {
+    expect(subtractMinutesFromTime("10:05", 15)).toBe("09:50")
+  })
+
+  it("returns null when result goes below 00:00", () => {
+    expect(subtractMinutesFromTime("00:10", 15)).toBeNull()
+  })
+
+  it("handles zero minutes", () => {
+    expect(subtractMinutesFromTime("14:30", 0)).toBe("14:30")
+  })
+
+  it("returns null for midnight boundary", () => {
+    expect(subtractMinutesFromTime("00:00", 1)).toBeNull()
   })
 })

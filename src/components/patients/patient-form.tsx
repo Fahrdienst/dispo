@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { SubmitButton } from "@/components/shared/submit-button"
 import { AddressFields } from "@/components/shared/address-fields"
+import { LocationMap } from "@/components/shared/location-map"
 import { createPatient, updatePatient } from "@/actions/patients"
 import type { Tables } from "@/lib/types/database"
 
@@ -112,6 +113,15 @@ export function PatientForm({ patient }: PatientFormProps) {
             errors={fieldErrors}
             required
           />
+
+          {patient && (
+            <LocationMap
+              lat={patient.lat}
+              lng={patient.lng}
+              label={`${patient.first_name} ${patient.last_name}`}
+              geocodeStatus={patient.geocode_status}
+            />
+          )}
 
           <div className="rounded-lg border bg-muted/30 p-4">
             <fieldset className="space-y-4">

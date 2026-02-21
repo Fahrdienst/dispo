@@ -33,7 +33,7 @@ export default async function NewRidePage({ searchParams }: NewRidePageProps) {
   ])
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-5xl">
       <RideForm
         defaultDate={date}
         patients={patientsRes.data ?? []}

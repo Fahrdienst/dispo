@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/require-auth"
 import {
@@ -12,8 +13,32 @@ import {
 import { assertTransitionForRole } from "@/lib/rides/status-machine"
 import { invalidateTokensForRide } from "@/lib/mail/tokens"
 import { sendDriverNotification } from "@/lib/mail/send-driver-notification"
+import {
+  generateDatesForSeries,
+  expandDirections,
+} from "@/lib/ride-series/generate"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables, Enums } from "@/lib/types/database"
+
+/** Inline Zod schema for series fields extracted from the ride form. */
+const seriesFieldsSchema = z.object({
+  recurrence_type: z.enum(["daily", "weekly", "biweekly", "monthly"]),
+  days_of_week: z.array(
+    z.enum([
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday",
+    ])
+  ),
+  end_date: z
+    .string()
+    .transform((v) => (v === "" ? null : v))
+    .nullable(),
+})
 
 export async function createRide(
   _prevState: ActionResult<Tables<"rides">> | null,
@@ -22,6 +47,11 @@ export async function createRide(
   const auth = await requireAuth(["admin", "operator"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }
+  }
+
+  // Delegate to series creation if the series toggle is enabled
+  if (formData.get("enable_series") === "true") {
+    return createRideWithSeries(formData)
   }
 
   const raw = Object.fromEntries(formData)
@@ -159,6 +189,294 @@ export async function createRide(
   }
 
   revalidatePath("/rides")
+  revalidatePath("/dispatch")
+  redirect(`/rides?date=${rideData.date}`)
+}
+
+/**
+ * Internal helper called from createRide when the series toggle is enabled.
+ * Creates a ride_series record, the initial ride, and generates additional rides.
+ */
+async function createRideWithSeries(
+  formData: FormData
+): Promise<ActionResult<Tables<"rides">>> {
+  // 1. Validate ride data
+  const raw = Object.fromEntries(formData)
+  const rideResult = rideSchema.safeParse(raw)
+
+  if (!rideResult.success) {
+    return {
+      success: false,
+      fieldErrors: rideResult.error.flatten().fieldErrors as Record<
+        string,
+        string[]
+      >,
+    }
+  }
+
+  // 2. Validate series-specific fields
+  const seriesRaw = {
+    recurrence_type: formData.get("recurrence_type") as string,
+    days_of_week: formData.getAll("days_of_week") as string[],
+    end_date: (formData.get("series_end_date") as string) || null,
+  }
+  const seriesResult = seriesFieldsSchema.safeParse(seriesRaw)
+
+  if (!seriesResult.success) {
+    return {
+      success: false,
+      error: "Ungueltige Serienfelder: " +
+        seriesResult.error.issues.map((i) => i.message).join(", "),
+    }
+  }
+
+  const {
+    create_return_ride,
+    price_override,
+    price_override_reason,
+    ...rideData
+  } = rideResult.data
+  const seriesData = seriesResult.data
+  const status: Enums<"ride_status"> = rideData.driver_id
+    ? "planned"
+    : "unplanned"
+
+  const supabase = await createClient()
+
+  // 3. Create the ride_series record
+  const { data: series, error: seriesError } = await supabase
+    .from("ride_series")
+    .insert({
+      patient_id: rideData.patient_id,
+      destination_id: rideData.destination_id,
+      recurrence_type: seriesData.recurrence_type,
+      days_of_week:
+        seriesData.days_of_week.length > 0
+          ? seriesData.days_of_week
+          : null,
+      pickup_time: rideData.pickup_time,
+      direction: rideData.direction,
+      start_date: rideData.date,
+      end_date: seriesData.end_date,
+      notes: rideData.notes ?? null,
+      appointment_time: rideData.appointment_time ?? null,
+      appointment_end_time: rideData.appointment_end_time ?? null,
+      return_pickup_time: rideData.return_pickup_time ?? null,
+    })
+    .select()
+    .single()
+
+  if (seriesError || !series) {
+    return {
+      success: false,
+      error: seriesError?.message ?? "Fahrtserie konnte nicht erstellt werden",
+    }
+  }
+
+  // 4. Calculate price fields for the initial ride (best-effort)
+  let priceFields: {
+    distance_meters?: number
+    duration_seconds?: number
+    calculated_price?: number
+    fare_rule_id?: string
+    price_override?: number | null
+    price_override_reason?: string | null
+  } = {}
+
+  if (price_override != null) {
+    priceFields.price_override = price_override
+    priceFields.price_override_reason = price_override_reason ?? null
+  }
+
+  try {
+    const [patientRes, destRes] = await Promise.all([
+      supabase
+        .from("patients")
+        .select("postal_code, lat, lng, geocode_status")
+        .eq("id", rideData.patient_id)
+        .single(),
+      supabase
+        .from("destinations")
+        .select("postal_code, lat, lng, geocode_status")
+        .eq("id", rideData.destination_id)
+        .single(),
+    ])
+
+    const patient = patientRes.data
+    const dest = destRes.data
+
+    if (
+      patient?.postal_code &&
+      dest?.postal_code &&
+      patient.lat != null &&
+      patient.lng != null &&
+      dest.lat != null &&
+      dest.lng != null
+    ) {
+      const { calculateRidePrice } = await import(
+        "@/lib/billing/calculate-price"
+      )
+      const priceResult = await calculateRidePrice(
+        patient.postal_code,
+        dest.postal_code,
+        { lat: patient.lat, lng: patient.lng },
+        { lat: dest.lat, lng: dest.lng },
+        rideData.date
+      )
+
+      if (priceResult) {
+        priceFields = {
+          ...priceFields,
+          distance_meters: priceResult.distance_meters,
+          duration_seconds: priceResult.duration_seconds,
+          calculated_price: priceResult.calculated_price,
+          fare_rule_id: priceResult.fare_rule_id,
+        }
+      }
+    }
+  } catch (err: unknown) {
+    console.error(
+      "Price calculation failed during createRideWithSeries:",
+      err
+    )
+  }
+
+  // 5. Create the initial ride
+  const { data: initialRide, error: rideError } = await supabase
+    .from("rides")
+    .insert({
+      ...rideData,
+      ...priceFields,
+      status,
+      ride_series_id: series.id,
+    })
+    .select()
+    .single()
+
+  if (rideError) {
+    return { success: false, error: rideError.message }
+  }
+
+  // 6. Optionally create return ride for the initial date
+  if (create_return_ride && rideData.direction === "outbound") {
+    const returnPickupTime =
+      rideData.return_pickup_time ??
+      (rideData.appointment_end_time
+        ? addMinutesToTime(
+            rideData.appointment_end_time,
+            DEFAULT_RETURN_BUFFER_MINUTES
+          )
+        : null)
+
+    if (returnPickupTime) {
+      const { error: returnError } = await supabase.from("rides").insert({
+        patient_id: rideData.patient_id,
+        destination_id: rideData.destination_id,
+        date: rideData.date,
+        pickup_time: returnPickupTime,
+        direction: "return" as const,
+        status: "unplanned" as const,
+        parent_ride_id: initialRide.id,
+        ride_series_id: series.id,
+      })
+
+      if (returnError) {
+        console.error(
+          "Failed to create return ride for initial date:",
+          returnError.message
+        )
+      }
+    }
+  }
+
+  // 7. Generate additional rides for the series
+  const defaultEndDate =
+    seriesData.end_date ??
+    new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0]!
+
+  const allDates = generateDatesForSeries(
+    {
+      recurrence_type: seriesData.recurrence_type,
+      days_of_week:
+        seriesData.days_of_week.length > 0
+          ? seriesData.days_of_week
+          : null,
+      start_date: rideData.date,
+      end_date: seriesData.end_date,
+    },
+    rideData.date,
+    defaultEndDate
+  )
+
+  // Skip the initial ride's date (already created above)
+  const additionalDates = allDates.filter((d) => d !== rideData.date)
+
+  for (const date of additionalDates) {
+    if (rideData.direction === "both") {
+      // Insert outbound first, then return with parent_ride_id
+      const { data: outbound, error: outError } = await supabase
+        .from("rides")
+        .insert({
+          patient_id: rideData.patient_id,
+          destination_id: rideData.destination_id,
+          ride_series_id: series.id,
+          date,
+          pickup_time: rideData.pickup_time,
+          direction: "outbound",
+          status: "unplanned",
+          appointment_time: rideData.appointment_time ?? null,
+          appointment_end_time: rideData.appointment_end_time ?? null,
+        })
+        .select("id")
+        .single()
+
+      if (!outError && outbound) {
+        const returnPickup =
+          rideData.return_pickup_time ?? rideData.pickup_time
+        await supabase.from("rides").insert({
+          patient_id: rideData.patient_id,
+          destination_id: rideData.destination_id,
+          ride_series_id: series.id,
+          date,
+          pickup_time: returnPickup,
+          direction: "return",
+          status: "unplanned",
+          parent_ride_id: outbound.id,
+          return_pickup_time: rideData.return_pickup_time ?? null,
+        })
+      }
+    } else {
+      // Single direction (outbound or return)
+      const directions = expandDirections(rideData.direction)
+      for (const dir of directions) {
+        await supabase.from("rides").insert({
+          patient_id: rideData.patient_id,
+          destination_id: rideData.destination_id,
+          ride_series_id: series.id,
+          date,
+          pickup_time:
+            dir === "return" && rideData.return_pickup_time
+              ? rideData.return_pickup_time
+              : rideData.pickup_time,
+          direction: dir,
+          status: "unplanned",
+          appointment_time:
+            dir === "outbound"
+              ? (rideData.appointment_time ?? null)
+              : null,
+          appointment_end_time:
+            dir === "outbound"
+              ? (rideData.appointment_end_time ?? null)
+              : null,
+        })
+      }
+    }
+  }
+
+  revalidatePath("/rides")
+  revalidatePath("/ride-series")
   revalidatePath("/dispatch")
   redirect(`/rides?date=${rideData.date}`)
 }

@@ -55,7 +55,7 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
     // (a) All active rides for the day
     supabase
       .from("rides")
-      .select("id, pickup_time, date, status, direction, notes, driver_id, patients(first_name, last_name), destinations(display_name)")
+      .select("id, pickup_time, date, status, direction, notes, driver_id, appointment_time, parent_ride_id, patients(first_name, last_name), destinations(display_name)")
       .eq("date", selectedDate)
       .eq("is_active", true)
       .order("pickup_time"),
@@ -95,6 +95,8 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
       direction: ride.direction,
       notes: ride.notes,
       driver_id: ride.driver_id,
+      appointment_time: ride.appointment_time,
+      parent_ride_id: ride.parent_ride_id,
       patient_first_name: patient?.first_name ?? "\u2013",
       patient_last_name: patient?.last_name ?? "\u2013",
       destination_name: destination?.display_name ?? "\u2013",

@@ -68,6 +68,14 @@
 - `geocodeAndUpdateRecord` creates its own Supabase client internally
 - For batch operations, use `geocodeAddress` directly + manual DB update with shared client
 
+## Ride Series Integration (Phase 5)
+- Series toggle in ride form uses hidden field `enable_series` to delegate from `createRide` to internal `createRideWithSeries`
+- `createRideWithSeries` is NOT exported (internal helper) -- avoids useFormState action-switching issues in React 18
+- Series generation uses `generateDatesForSeries` + `expandDirections` from `@/lib/ride-series/generate`
+- Default generation window: 90 days if no end_date specified
+- Price calculation only for initial ride (series rides are unplanned, no driver)
+- Pattern for conditional form behavior in React 18: hidden input + delegation in server action (NOT dynamic useFormState)
+
 ## Important Lessons
 - Dashboard page (`src/app/(dashboard)/page.tsx`) also queries destinations -- remember to update when renaming columns
 - `src/lib/rides/constants.ts` contains label maps for enums -- must be updated when enum types change

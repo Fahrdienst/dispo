@@ -45,7 +45,7 @@ export default async function EditRidePage({ params }: EditRidePageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-5xl">
       <RideForm
         ride={rideRes.data}
         patients={patientsRes.data ?? []}

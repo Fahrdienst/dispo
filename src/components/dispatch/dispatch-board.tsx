@@ -39,6 +39,8 @@ export interface DispatchRide {
   direction: Enums<"ride_direction">
   notes: string | null
   driver_id: string | null
+  appointment_time: string | null
+  parent_ride_id: string | null
   patient_first_name: string
   patient_last_name: string
   destination_name: string
@@ -467,12 +469,22 @@ export function DispatchBoard({
                           {" \u2013 "}
                           {RIDE_DIRECTION_LABELS[ride.direction]}
                         </span>
+                        {ride.appointment_time && (
+                          <span className="text-xs text-muted-foreground">
+                            Termin: {formatTime(ride.appointment_time)}
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    {/* Middle: Status Badge + Conflict Warning */}
+                    {/* Middle: Status Badge + Conflict Warning + Return Badge */}
                     <div className="flex items-center gap-2">
                       <RideStatusBadge status={ride.status} />
+                      {ride.parent_ride_id && (
+                        <Badge variant="outline" className="text-xs">
+                          Rueckfahrt
+                        </Badge>
+                      )}
                       {hasOwnConflict && (
                         <Badge
                           variant="outline"
