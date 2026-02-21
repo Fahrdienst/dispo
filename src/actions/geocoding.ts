@@ -6,11 +6,18 @@ import { geocodeAddress } from "@/lib/maps/geocode"
 import type { AddressInput } from "@/lib/maps/types"
 import type { ActionResult } from "@/actions/shared"
 
+interface RetryError {
+  id: string
+  address: string
+  error: string
+}
+
 interface RetryResult {
   patients_processed: number
   patients_success: number
   destinations_processed: number
   destinations_success: number
+  errors: RetryError[]
 }
 
 /**
@@ -33,6 +40,7 @@ export async function retryFailedGeocoding(): Promise<
   let patientsSuccess = 0
   let destinationsProcessed = 0
   let destinationsSuccess = 0
+  const errors: RetryError[] = []
 
   // Fetch patients with failed/pending/null geocode_status and complete addresses
   const { data: patients, error: patientsError } = await supabase
@@ -57,6 +65,7 @@ export async function retryFailedGeocoding(): Promise<
       postal_code: patient.postal_code!,
       city: patient.city!,
     }
+    const addressStr = `${address.street} ${address.house_number}, ${address.postal_code} ${address.city}`
     const now = new Date().toISOString()
 
     try {
@@ -76,7 +85,7 @@ export async function retryFailedGeocoding(): Promise<
           .eq("id", patient.id)
 
         if (error) {
-          console.error(`Failed to update patient ${patient.id} with geocode result:`, error.message)
+          errors.push({ id: patient.id, address: addressStr, error: `DB-Update: ${error.message}` })
         } else {
           patientsSuccess++
         }
@@ -86,16 +95,18 @@ export async function retryFailedGeocoding(): Promise<
           .from("patients")
           .update({ geocode_status: "failed", geocode_updated_at: now })
           .eq("id", patient.id)
+        errors.push({ id: patient.id, address: addressStr, error: "Adresse nicht gefunden (ZERO_RESULTS)" })
       }
     } catch (err) {
-      console.error(`Re-geocode failed for patient ${patient.id}:`, err)
+      const errMsg = err instanceof Error ? err.message : String(err)
+      errors.push({ id: patient.id, address: addressStr, error: errMsg })
       try {
         await supabase
           .from("patients")
           .update({ geocode_status: "failed", geocode_updated_at: now })
           .eq("id", patient.id)
-      } catch (updateErr) {
-        console.error(`Failed to mark patient ${patient.id} as geocode failed:`, updateErr)
+      } catch {
+        // ignore
       }
     }
   }
@@ -123,6 +134,7 @@ export async function retryFailedGeocoding(): Promise<
       postal_code: destination.postal_code!,
       city: destination.city!,
     }
+    const addressStr = `${address.street} ${address.house_number}, ${address.postal_code} ${address.city}`
     const now = new Date().toISOString()
 
     try {
@@ -142,7 +154,7 @@ export async function retryFailedGeocoding(): Promise<
           .eq("id", destination.id)
 
         if (error) {
-          console.error(`Failed to update destination ${destination.id} with geocode result:`, error.message)
+          errors.push({ id: destination.id, address: addressStr, error: `DB-Update: ${error.message}` })
         } else {
           destinationsSuccess++
         }
@@ -152,16 +164,18 @@ export async function retryFailedGeocoding(): Promise<
           .from("destinations")
           .update({ geocode_status: "failed", geocode_updated_at: now })
           .eq("id", destination.id)
+        errors.push({ id: destination.id, address: addressStr, error: "Adresse nicht gefunden (ZERO_RESULTS)" })
       }
     } catch (err) {
-      console.error(`Re-geocode failed for destination ${destination.id}:`, err)
+      const errMsg = err instanceof Error ? err.message : String(err)
+      errors.push({ id: destination.id, address: addressStr, error: errMsg })
       try {
         await supabase
           .from("destinations")
           .update({ geocode_status: "failed", geocode_updated_at: now })
           .eq("id", destination.id)
-      } catch (updateErr) {
-        console.error(`Failed to mark destination ${destination.id} as geocode failed:`, updateErr)
+      } catch {
+        // ignore
       }
     }
   }
@@ -173,6 +187,7 @@ export async function retryFailedGeocoding(): Promise<
       patients_success: patientsSuccess,
       destinations_processed: destinationsProcessed,
       destinations_success: destinationsSuccess,
+      errors,
     },
   }
 }

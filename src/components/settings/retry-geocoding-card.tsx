@@ -11,11 +11,18 @@ import {
 } from "@/components/ui/card"
 import { retryFailedGeocoding } from "@/actions/geocoding"
 
+interface RetryError {
+  id: string
+  address: string
+  error: string
+}
+
 interface RetryResult {
   patients_processed: number
   patients_success: number
   destinations_processed: number
   destinations_success: number
+  errors: RetryError[]
 }
 
 type ResultState =
@@ -70,6 +77,18 @@ export function RetryGeocodingCard() {
               Ziele: {result.data.destinations_success}/
               {result.data.destinations_processed} erfolgreich
             </p>
+            {result.data.errors.length > 0 && (
+              <div className="mt-3 space-y-1 border-t border-green-200 pt-3 dark:border-green-800">
+                <p className="font-medium text-amber-800 dark:text-amber-200">
+                  Fehler ({result.data.errors.length}):
+                </p>
+                {result.data.errors.map((err, i) => (
+                  <p key={i} className="text-xs text-amber-700 dark:text-amber-300">
+                    {err.address} — {err.error}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
