@@ -46,6 +46,22 @@
 - RLS pattern: All policies use get_user_role()/get_user_driver_id() helper functions
 - Positive: RLS on all 8 tables, no DELETE policies, append-only comm_log, partial indexes
 
+### Driver-Acceptance-Flow Security Review (M9) -- 2026-02-21
+- Full review delivered in conversation (pending write to docs/security/)
+- 3 CRITICAL, 5 HIGH, 4 MEDIUM, 3 LOW findings
+- CRITICAL: Plaintext token storage (SEC-M9-001) -- must hash with SHA-256
+- CRITICAL: GET for state-changing operation (SEC-M9-002) -- must convert to POST
+- CRITICAL: Token not invalidated on authenticated UI action (SEC-M9-006)
+- HIGH: Idempotency must be action-specific (SEC-M9-003)
+- HIGH: Reminder engine needs atomic counter for exactly-once (SEC-M9-004)
+- HIGH: Audit trail incomplete for token lifecycle (SEC-M9-009)
+- HIGH: Token invalidation failure in assignDriver() is fire-and-forget (SEC-M9-013)
+- Existing M7 positives: Good RLS on token/mail tables, atomic consumeToken, CSPRNG tokens
+- Token hashing: SHA-256 sufficient (high-entropy input), NOT bcrypt/HMAC
+- Rejection reasons: MUST be structured enum, NOT free text (DSGVO Art. 5(1)(c))
+- Feature flags: Server-side only, never NEXT_PUBLIC_ prefix
+- Email templates: Current data minimization is good, must be maintained for reminders
+
 ### Open Risks
 - No pre-commit hook for secret scanning yet (gitleaks/git-secrets recommended)
 - CSP requires unsafe-inline/unsafe-eval for Next.js -- monitor for nonce support

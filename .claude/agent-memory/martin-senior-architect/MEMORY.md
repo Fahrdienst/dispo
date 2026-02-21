@@ -48,6 +48,19 @@
 - UI: /drivers/[id]/availability route with 5x5 grid
 - Plan file: docs/adrs/005-driver-profile-availability.md
 
+### ADR-012: Driver Acceptance Flow (Issues #40-#49)
+- Separate `acceptance_tracking` table (not new ride_status values) -- orthogonal lifecycle
+- 3 new enums: acceptance_stage, rejection_reason, resolution_method
+- Token hashing: SHA-256, column renamed token -> token_hash
+- Vercel Cron (1x/min) for reminder engine, supplemented by dispatch page-load check
+- SLA windows: T+10m reminder1, T+25m reminder2, T+40m timeout (shortened for <60m rides)
+- Driver UI: `/my/rides` enhanced with "Neue Zuweisungen" section
+- Dispo Queue: New section on `/dispatch` page (not separate route)
+- Feature flag: `ACCEPTANCE_FLOW_ENABLED` env var
+- Rejection reasons: Enum + optional free text on acceptance_tracking
+- Partial unique index ensures max 1 active tracking per ride
+- Plan file: docs/adrs/012-driver-acceptance-flow.md
+
 ### Open Decisions
 - shadcn/ui: deferred until first real UI component needed
 - Multi-tenancy pattern: not yet designed

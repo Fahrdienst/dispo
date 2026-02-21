@@ -14,32 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
+      acceptance_tracking: {
+        Row: {
+          id: string
+          ride_id: string
+          driver_id: string
+          stage: Database["public"]["Enums"]["acceptance_stage"]
+          is_short_notice: boolean
+          notified_at: string
+          reminder_1_at: string | null
+          reminder_2_at: string | null
+          resolved_at: string | null
+          resolved_by: Database["public"]["Enums"]["resolution_method"] | null
+          rejection_reason_code: Database["public"]["Enums"]["rejection_reason"] | null
+          rejection_reason_text: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          ride_id: string
+          driver_id: string
+          stage?: Database["public"]["Enums"]["acceptance_stage"]
+          is_short_notice?: boolean
+          notified_at?: string
+          reminder_1_at?: string | null
+          reminder_2_at?: string | null
+          resolved_at?: string | null
+          resolved_by?: Database["public"]["Enums"]["resolution_method"] | null
+          rejection_reason_code?: Database["public"]["Enums"]["rejection_reason"] | null
+          rejection_reason_text?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          ride_id?: string
+          driver_id?: string
+          stage?: Database["public"]["Enums"]["acceptance_stage"]
+          is_short_notice?: boolean
+          notified_at?: string
+          reminder_1_at?: string | null
+          reminder_2_at?: string | null
+          resolved_at?: string | null
+          resolved_by?: Database["public"]["Enums"]["resolution_method"] | null
+          rejection_reason_code?: Database["public"]["Enums"]["rejection_reason"] | null
+          rejection_reason_text?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acceptance_tracking_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "acceptance_tracking_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignment_tokens: {
         Row: {
           id: string
           ride_id: string
           driver_id: string
-          token: string
+          token_hash: string
           expires_at: string
           used_at: string | null
+          action: string | null
+          reminders_sent: number
           created_at: string
         }
         Insert: {
           id?: string
           ride_id: string
           driver_id: string
-          token: string
+          token_hash: string
           expires_at: string
           used_at?: string | null
+          action?: string | null
+          reminders_sent?: number
           created_at?: string
         }
         Update: {
           id?: string
           ride_id?: string
           driver_id?: string
-          token?: string
+          token_hash?: string
           expires_at?: string
           used_at?: string | null
+          action?: string | null
+          reminders_sent?: number
           created_at?: string
         }
         Relationships: [
@@ -804,6 +876,14 @@ export type Database = {
       }
     }
     Enums: {
+      acceptance_stage:
+        | "notified"
+        | "reminder_1"
+        | "reminder_2"
+        | "timed_out"
+        | "confirmed"
+        | "rejected"
+        | "cancelled"
       day_of_week:
         | "monday"
         | "tuesday"
@@ -814,6 +894,8 @@ export type Database = {
         | "sunday"
       facility_type: "practice" | "hospital" | "therapy_center" | "day_care" | "other"
       impairment_type: "rollator" | "wheelchair" | "stretcher" | "companion"
+      rejection_reason: "schedule_conflict" | "too_far" | "vehicle_issue" | "personal" | "other"
+      resolution_method: "driver_email" | "driver_app" | "dispatcher_override" | "timeout"
       recurrence_type: "daily" | "weekly" | "biweekly" | "monthly"
       ride_direction: "outbound" | "return" | "both"
       ride_status:
@@ -956,6 +1038,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      acceptance_stage: [
+        "notified",
+        "reminder_1",
+        "reminder_2",
+        "timed_out",
+        "confirmed",
+        "rejected",
+        "cancelled",
+      ],
       day_of_week: [
         "monday",
         "tuesday",
@@ -968,6 +1059,8 @@ export const Constants = {
       facility_type: ["practice", "hospital", "therapy_center", "day_care", "other"],
       impairment_type: ["rollator", "wheelchair", "stretcher", "companion"],
       recurrence_type: ["daily", "weekly", "biweekly", "monthly"],
+      rejection_reason: ["schedule_conflict", "too_far", "vehicle_issue", "personal", "other"],
+      resolution_method: ["driver_email", "driver_app", "dispatcher_override", "timeout"],
       ride_direction: ["outbound", "return", "both"],
       ride_status: [
         "unplanned",

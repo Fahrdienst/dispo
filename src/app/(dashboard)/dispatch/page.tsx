@@ -9,6 +9,16 @@ import {
   type DispatchDriver,
   type DriverAvailabilityMap,
 } from "@/components/dispatch/dispatch-board"
+import {
+  AcceptanceQueue,
+  type QueueEntry,
+} from "@/components/acceptance/acceptance-queue"
+import {
+  isAcceptanceFlowEnabled,
+  ACTIVE_STAGES,
+} from "@/lib/acceptance/constants"
+import { checkPendingAcceptances } from "@/lib/acceptance/engine"
+import type { AcceptanceStage } from "@/lib/acceptance/types"
 import type { Enums } from "@/lib/types/database"
 
 export const metadata: Metadata = {
@@ -49,9 +59,10 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
   const dayOfWeek = JS_DAY_TO_ENUM[selectedDateObj.getDay()]
 
   const supabase = await createClient()
+  const acceptanceEnabled = isAcceptanceFlowEnabled()
 
   // Parallel fetches
-  const [ridesResult, driversResult, weeklyAvailResult, dateAvailResult] = await Promise.all([
+  const [ridesResult, driversResult, weeklyAvailResult, dateAvailResult, trackingResult] = await Promise.all([
     // (a) All active rides for the day
     supabase
       .from("rides")
@@ -81,7 +92,24 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
       .from("driver_availability")
       .select("driver_id, start_time")
       .eq("specific_date", selectedDate),
+
+    // (d) Acceptance tracking (active + recently resolved)
+    acceptanceEnabled
+      ? supabase
+          .from("acceptance_tracking")
+          .select(`
+            id, ride_id, driver_id, stage, notified_at, rejection_reason_code, rejection_reason_text,
+            drivers!inner(first_name, last_name),
+            rides!inner(id, pickup_time, date, direction, patients!inner(first_name, last_name), destinations!inner(display_name))
+          `)
+          .in("stage", [...ACTIVE_STAGES, "timed_out", "rejected"])
+      : Promise.resolve({ data: null }),
   ])
+
+  // Supplementary page-load check: escalate any overdue trackings (fire-and-forget)
+  if (acceptanceEnabled) {
+    checkPendingAcceptances().catch(console.error)
+  }
 
   // Map rides to display format
   const rides: DispatchRide[] = (ridesResult.data ?? []).map((ride) => {
@@ -112,7 +140,6 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
   }))
 
   // Build driver availability map: driverId -> array of slot start times
-  // Merge weekly + date-specific (date-specific takes priority but we union for simplicity)
   const availabilityMap: DriverAvailabilityMap = {}
   const allAvailSlots = [
     ...(weeklyAvailResult.data ?? []),
@@ -133,12 +160,56 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
     availabilityMap[driverId]!.sort()
   }
 
+  // Build acceptance queue entries
+  const queueEntries: QueueEntry[] = []
+  if (trackingResult.data) {
+    for (const tracking of trackingResult.data) {
+      const driver = tracking.drivers as unknown as {
+        first_name: string
+        last_name: string
+      }
+      const ride = tracking.rides as unknown as {
+        id: string
+        pickup_time: string
+        date: string
+        direction: Enums<"ride_direction">
+        patients: { first_name: string; last_name: string }
+        destinations: { display_name: string }
+      }
+      if (!driver || !ride) continue
+
+      queueEntries.push({
+        tracking_id: tracking.id,
+        ride_id: ride.id,
+        driver_name: `${driver.first_name} ${driver.last_name}`,
+        patient_name: `${ride.patients.first_name} ${ride.patients.last_name}`,
+        destination_name: ride.destinations.display_name,
+        pickup_time: ride.pickup_time,
+        date: ride.date,
+        direction: ride.direction,
+        stage: tracking.stage as AcceptanceStage,
+        notified_at: tracking.notified_at,
+        rejection_reason_code: tracking.rejection_reason_code,
+        rejection_reason_text: tracking.rejection_reason_text,
+      })
+    }
+  }
+
+  // Sort queue by pickup_time
+  queueEntries.sort((a, b) => a.pickup_time.localeCompare(b.pickup_time))
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Disposition"
         description={`Tagesuebersicht und Fahrerzuweisung`}
       />
+
+      {/* Acceptance queue above dispatch board */}
+      {queueEntries.length > 0 && (
+        <AcceptanceQueue entries={queueEntries} />
+      )}
+
       <DispatchBoard
         rides={rides}
         drivers={drivers}

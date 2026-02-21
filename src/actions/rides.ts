@@ -13,6 +13,11 @@ import {
 import { assertTransitionForRole } from "@/lib/rides/status-machine"
 import { invalidateTokensForRide } from "@/lib/mail/tokens"
 import { sendDriverNotification } from "@/lib/mail/send-driver-notification"
+import { isAcceptanceFlowEnabled } from "@/lib/acceptance/constants"
+import {
+  createAcceptanceTracking,
+  cancelAcceptanceTracking,
+} from "@/lib/acceptance/engine"
 import {
   generateDatesForSeries,
   expandDirections,
@@ -722,11 +727,39 @@ export async function assignDriver(
     return { success: false, error: error.message }
   }
 
-  // Fire-and-forget: send driver notification email when driver is assigned
+  // SEC-M9-013: Await token invalidation (not fire-and-forget)
   if (driverId && updateData.status === "planned") {
-    invalidateTokensForRide(rideId)
-      .then(() => sendDriverNotification(rideId, driverId))
-      .catch(console.error)
+    await invalidateTokensForRide(rideId)
+
+    // Fire-and-forget: send driver notification email
+    sendDriverNotification(rideId, driverId).catch(console.error)
+
+    // Create acceptance tracking if feature is enabled
+    if (isAcceptanceFlowEnabled()) {
+      // Fetch ride date and pickup_time for short-notice detection
+      const { data: rideForTracking } = await supabase
+        .from("rides")
+        .select("date, pickup_time")
+        .eq("id", rideId)
+        .single()
+
+      if (rideForTracking) {
+        await createAcceptanceTracking(
+          rideId,
+          driverId,
+          rideForTracking.date,
+          rideForTracking.pickup_time
+        )
+      }
+    }
+  }
+
+  // Cancel acceptance tracking when driver is removed
+  if (!driverId && currentRide.driver_id) {
+    await invalidateTokensForRide(rideId)
+    if (isAcceptanceFlowEnabled()) {
+      await cancelAcceptanceTracking(rideId)
+    }
   }
 
   revalidatePath("/dispatch")
