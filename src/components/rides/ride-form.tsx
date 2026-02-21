@@ -35,6 +35,7 @@ import { generateDatesForSeries } from "@/lib/ride-series/generate"
 import { PatientInlineDialog } from "@/components/patients/patient-inline-dialog"
 import { DestinationInlineDialog } from "@/components/destinations/destination-inline-dialog"
 import { RideTimeline } from "./ride-timeline"
+import { RouteMap } from "@/components/shared/route-map"
 import type { Tables } from "@/lib/types/database"
 
 interface RideFormProps {
@@ -52,6 +53,10 @@ interface RideFormProps {
 interface RouteInfo {
   distance_meters: number
   duration_seconds: number
+  origin_lat: number
+  origin_lng: number
+  dest_lat: number
+  dest_lng: number
 }
 
 function formatDistance(meters: number): string {
@@ -116,14 +121,7 @@ export function RideForm({
   const [selectedDestinationId, setSelectedDestinationId] = useState<string>(
     ride?.destination_id ?? ""
   )
-  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(
-    ride?.distance_meters != null && ride?.duration_seconds != null
-      ? {
-          distance_meters: ride.distance_meters,
-          duration_seconds: ride.duration_seconds,
-        }
-      : null
-  )
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null)
   const [routeError, setRouteError] = useState<string | null>(null)
   const [isCalculatingRoute, startRouteTransition] = useTransition()
 
@@ -910,7 +908,7 @@ export function RideForm({
         </form>
 
         {/* Timeline sidebar (Phase 3.3) */}
-        <div className="sticky top-6">
+        <div className="sticky top-6 space-y-4">
           <Card>
             <CardContent className="pt-6">
               <RideTimeline
@@ -919,6 +917,12 @@ export function RideForm({
               />
             </CardContent>
           </Card>
+          <RouteMap
+            originLat={routeInfo?.origin_lat ?? null}
+            originLng={routeInfo?.origin_lng ?? null}
+            destLat={routeInfo?.dest_lat ?? null}
+            destLng={routeInfo?.dest_lng ?? null}
+          />
         </div>
       </div>
 

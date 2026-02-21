@@ -743,7 +743,14 @@ export async function calculateRouteForRide(
   patientId: string,
   destinationId: string
 ): Promise<
-  ActionResult<{ distance_meters: number; duration_seconds: number }>
+  ActionResult<{
+    distance_meters: number
+    duration_seconds: number
+    origin_lat: number
+    origin_lng: number
+    dest_lat: number
+    dest_lng: number
+  }>
 > {
   const auth = await requireAuth(["admin", "operator"])
   if (!auth.authorized) {
@@ -803,6 +810,10 @@ export async function calculateRouteForRide(
       data: {
         distance_meters: route.distance_meters,
         duration_seconds: route.duration_seconds,
+        origin_lat: patient.lat,
+        origin_lng: patient.lng,
+        dest_lat: dest.lat,
+        dest_lng: dest.lng,
       },
     }
   } catch (err: unknown) {
