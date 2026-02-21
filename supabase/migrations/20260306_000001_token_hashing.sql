@@ -17,6 +17,6 @@ ALTER TABLE assignment_tokens ADD COLUMN action text;
 -- 4. Add reminders_sent counter (SEC-M9-004)
 ALTER TABLE assignment_tokens ADD COLUMN reminders_sent integer NOT NULL DEFAULT 0;
 
--- 5. Create unique index on token_hash (replaces any existing index on token)
-DROP INDEX IF EXISTS assignment_tokens_token_key;
+-- 5. Drop the old unique constraint on token (now token_hash), then create new index
+ALTER TABLE assignment_tokens DROP CONSTRAINT IF EXISTS assignment_tokens_token_key;
 CREATE UNIQUE INDEX idx_assignment_tokens_hash ON assignment_tokens (token_hash);
