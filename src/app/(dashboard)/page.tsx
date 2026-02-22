@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -26,6 +27,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { RideStatusBadge } from "@/components/shared/ride-status-badge";
+import { DashboardMap } from "@/components/dashboard/dashboard-map";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { Enums } from "@/lib/types/database";
 
@@ -46,36 +49,18 @@ const JS_DAY_TO_ENUM: Record<number, Enums<"day_of_week">> = {
   6: "saturday",
 };
 
-/** Calculate Monday (start) and Sunday (end) of the current week as ISO date strings. */
+import { getMondayOf, getSundayOf, addDays as addDaysUtil } from "@/lib/utils/dates";
+
 function getCurrentWeekRange(today: string): { weekStart: string; weekEnd: string } {
-  const d = new Date(today + "T00:00:00");
-  const jsDay = d.getDay(); // 0=Sun
-  const diffToMonday = jsDay === 0 ? -6 : 1 - jsDay;
-  const monday = new Date(d);
-  monday.setDate(d.getDate() + diffToMonday);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return {
-    weekStart: monday.toISOString().split("T")[0]!,
-    weekEnd: sunday.toISOString().split("T")[0]!,
-  };
+  const weekStart = getMondayOf(today);
+  return { weekStart, weekEnd: getSundayOf(today) };
 }
 
-/** Calculate Monday (start) and Sunday (end) of next week as ISO date strings. */
 function getNextWeekRange(today: string): { nextWeekStart: string; nextWeekEnd: string } {
-  const d = new Date(today + "T00:00:00");
-  const jsDay = d.getDay();
-  const diffToMonday = jsDay === 0 ? -6 : 1 - jsDay;
-  const thisMonday = new Date(d);
-  thisMonday.setDate(d.getDate() + diffToMonday);
-  const nextMonday = new Date(thisMonday);
-  nextMonday.setDate(thisMonday.getDate() + 7);
-  const nextSunday = new Date(nextMonday);
-  nextSunday.setDate(nextMonday.getDate() + 6);
-  return {
-    nextWeekStart: nextMonday.toISOString().split("T")[0]!,
-    nextWeekEnd: nextSunday.toISOString().split("T")[0]!,
-  };
+  const thisMonday = getMondayOf(today);
+  const nextWeekStart = addDaysUtil(thisMonday, 7);
+  const nextWeekEnd = addDaysUtil(nextWeekStart, 6);
+  return { nextWeekStart, nextWeekEnd };
 }
 
 /** Calculate first and last day of the previous month as ISO date strings. */
@@ -922,6 +907,15 @@ export default async function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ---- Row 6: Map ---- */}
+      <Suspense
+        fallback={
+          <Skeleton className="h-[280px] w-full rounded-lg sm:h-[400px]" />
+        }
+      >
+        <DashboardMap />
+      </Suspense>
     </div>
   );
 }

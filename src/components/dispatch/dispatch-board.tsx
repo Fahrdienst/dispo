@@ -134,21 +134,7 @@ const STATUS_CHIP_COLORS: Record<RideStatus, string> = {
 // Day Navigation Helpers
 // ---------------------------------------------------------------------------
 
-function addDays(dateStr: string, days: number): string {
-  const date = new Date(dateStr + "T00:00:00")
-  date.setDate(date.getDate() + days)
-  return date.toISOString().split("T")[0]!
-}
-
-function formatDateDE(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00")
-  return date.toLocaleDateString("de-DE", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
+import { addDays, formatDateDE, getMondayOf } from "@/lib/utils/dates"
 
 // ---------------------------------------------------------------------------
 // Sub-Components
@@ -370,6 +356,11 @@ export function DispatchBoard({
             <Link href="/dispatch">Heute</Link>
           </Button>
         )}
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={`/dispatch?week=${getMondayOf(selectedDate)}`}>
+            Wochenansicht
+          </Link>
+        </Button>
       </div>
 
       {/* Error Message */}

@@ -9,6 +9,8 @@ import {
   type DispatchDriver,
   type DriverAvailabilityMap,
 } from "@/components/dispatch/dispatch-board"
+import { DispatchWeekView } from "@/components/dispatch/dispatch-week-view"
+import { WeekNav } from "@/components/shared/week-nav"
 import {
   AcceptanceQueue,
   type QueueEntry,
@@ -18,6 +20,7 @@ import {
   ACTIVE_STAGES,
 } from "@/lib/acceptance/constants"
 import { checkPendingAcceptances } from "@/lib/acceptance/engine"
+import { getToday, getMondayOf, getSundayOf, getWeekDates } from "@/lib/utils/dates"
 import type { AcceptanceStage } from "@/lib/acceptance/types"
 import type { Enums } from "@/lib/types/database"
 
@@ -36,12 +39,8 @@ const JS_DAY_TO_ENUM: Record<number, Enums<"day_of_week">> = {
   6: "saturday",
 }
 
-function getToday(): string {
-  return new Date().toISOString().split("T")[0]!
-}
-
 interface DispatchPageProps {
-  searchParams: Promise<{ date?: string }>
+  searchParams: Promise<{ date?: string; week?: string }>
 }
 
 export default async function DispatchPage({ searchParams }: DispatchPageProps) {
@@ -50,20 +49,96 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
     redirect("/login")
   }
 
-  const { date } = await searchParams
+  const { date, week } = await searchParams
   const today = getToday()
-  const selectedDate = date ?? today
 
-  // Determine day_of_week for the selected date
+  // --- DAY VIEW (when ?date= param is present) ---
+  if (date) {
+    return renderDayView(date, today)
+  }
+
+  // --- WEEK VIEW (default) ---
+  const weekStart = week ? getMondayOf(week) : getMondayOf(today)
+  const weekEnd = getSundayOf(weekStart)
+  const todayWeekStart = getMondayOf(today)
+  const weekDates = getWeekDates(weekStart)
+
+  const supabase = await createClient()
+
+  const { data: weekRides } = await supabase
+    .from("rides")
+    .select(
+      "id, date, pickup_time, status, driver_id, patients(first_name, last_name), drivers(last_name)"
+    )
+    .gte("date", weekStart)
+    .lte("date", weekEnd)
+    .eq("is_active", true)
+    .order("date")
+    .order("pickup_time")
+
+  // Group rides by date
+  type DispatchWeekRide = {
+    id: string
+    date: string
+    pickup_time: string
+    status: Enums<"ride_status">
+    driver_id: string | null
+    driver_last_name: string | null
+    patient_last_name: string
+    patient_first_name: string
+  }
+
+  const ridesByDate = new Map<string, DispatchWeekRide[]>()
+  for (const ride of weekRides ?? []) {
+    const patient = ride.patients as { first_name: string; last_name: string } | null
+    const driver = ride.drivers as { last_name: string } | null
+    const mapped: DispatchWeekRide = {
+      id: ride.id,
+      date: ride.date,
+      pickup_time: ride.pickup_time,
+      status: ride.status,
+      driver_id: ride.driver_id,
+      driver_last_name: driver?.last_name ?? null,
+      patient_last_name: patient?.last_name ?? "\u2013",
+      patient_first_name: patient?.first_name ?? "\u2013",
+    }
+    const existing = ridesByDate.get(ride.date) ?? []
+    existing.push(mapped)
+    ridesByDate.set(ride.date, existing)
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Disposition"
+        description="Wochenuebersicht"
+      />
+
+      <WeekNav
+        weekStart={weekStart}
+        basePath="/dispatch"
+        todayWeekStart={todayWeekStart}
+      />
+
+      <DispatchWeekView
+        weekDates={weekDates}
+        ridesByDate={ridesByDate}
+        today={today}
+      />
+    </div>
+  )
+}
+
+// --- Day View (extracted for clarity) ---
+
+async function renderDayView(selectedDate: string, today: string) {
   const selectedDateObj = new Date(selectedDate + "T00:00:00")
   const dayOfWeek = JS_DAY_TO_ENUM[selectedDateObj.getDay()]
 
   const supabase = await createClient()
   const acceptanceEnabled = isAcceptanceFlowEnabled()
 
-  // Parallel fetches
   const [ridesResult, driversResult, weeklyAvailResult, dateAvailResult, trackingResult] = await Promise.all([
-    // (a) All active rides for the day
     supabase
       .from("rides")
       .select("id, pickup_time, date, status, direction, notes, driver_id, appointment_time, parent_ride_id, patients(first_name, last_name), destinations(display_name)")
@@ -71,14 +146,12 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
       .eq("is_active", true)
       .order("pickup_time"),
 
-    // (b) All active drivers
     supabase
       .from("drivers")
       .select("id, first_name, last_name, vehicle_type")
       .eq("is_active", true)
       .order("last_name"),
 
-    // (c1) Weekly availability for this day of week
     dayOfWeek
       ? supabase
           .from("driver_availability")
@@ -87,13 +160,11 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
           .is("specific_date", null)
       : Promise.resolve({ data: [] as { driver_id: string; start_time: string }[], error: null }),
 
-    // (c2) Date-specific availability
     supabase
       .from("driver_availability")
       .select("driver_id, start_time")
       .eq("specific_date", selectedDate),
 
-    // (d) Acceptance tracking (active + recently resolved)
     acceptanceEnabled
       ? supabase
           .from("acceptance_tracking")
@@ -106,12 +177,10 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
       : Promise.resolve({ data: null }),
   ])
 
-  // Supplementary page-load check: escalate any overdue trackings (fire-and-forget)
   if (acceptanceEnabled) {
     checkPendingAcceptances().catch(console.error)
   }
 
-  // Map rides to display format
   const rides: DispatchRide[] = (ridesResult.data ?? []).map((ride) => {
     const patient = ride.patients as { first_name: string; last_name: string } | null
     const destination = ride.destinations as { display_name: string } | null
@@ -131,7 +200,6 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
     }
   })
 
-  // Map drivers
   const drivers: DispatchDriver[] = (driversResult.data ?? []).map((d) => ({
     id: d.id,
     first_name: d.first_name,
@@ -139,7 +207,6 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
     vehicle_type: d.vehicle_type,
   }))
 
-  // Build driver availability map: driverId -> array of slot start times
   const availabilityMap: DriverAvailabilityMap = {}
   const allAvailSlots = [
     ...(weeklyAvailResult.data ?? []),
@@ -155,12 +222,10 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
     availabilityMap[slot.driver_id] = existing
   }
 
-  // Sort each driver's slots
   for (const driverId of Object.keys(availabilityMap)) {
     availabilityMap[driverId]!.sort()
   }
 
-  // Build acceptance queue entries
   const queueEntries: QueueEntry[] = []
   if (trackingResult.data) {
     for (const tracking of trackingResult.data) {
@@ -195,17 +260,15 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
     }
   }
 
-  // Sort queue by pickup_time
   queueEntries.sort((a, b) => a.pickup_time.localeCompare(b.pickup_time))
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Disposition"
-        description={`Tagesuebersicht und Fahrerzuweisung`}
+        description="Tagesuebersicht und Fahrerzuweisung"
       />
 
-      {/* Acceptance queue above dispatch board */}
       {queueEntries.length > 0 && (
         <AcceptanceQueue entries={queueEntries} />
       )}
