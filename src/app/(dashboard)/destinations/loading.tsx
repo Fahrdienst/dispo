@@ -9,9 +9,9 @@ export default function DestinationsLoading() {
         <div className="h-10 w-28 animate-pulse rounded bg-muted" />
       </div>
       <div className="h-10 w-full max-w-sm animate-pulse rounded bg-muted" />
-      <div className="space-y-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-12 w-full animate-pulse rounded bg-muted" />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-[160px] animate-pulse rounded-lg border bg-muted" />
         ))}
       </div>
     </div>
