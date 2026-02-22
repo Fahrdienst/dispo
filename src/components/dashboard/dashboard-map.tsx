@@ -1,6 +1,7 @@
 import { MapPin } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { retroStyleUrlParams } from "@/lib/maps/styles"
 
 export async function DashboardMap() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
@@ -83,16 +84,8 @@ export async function DashboardMap() {
     key: apiKey,
   })
 
-  // Suppress POI and transit clutter
-  const styles = [
-    "feature:poi|visibility:off",
-    "feature:transit|visibility:off",
-  ]
-
   let url = `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`
-  for (const s of styles) {
-    url += `&style=${encodeURIComponent(s)}`
-  }
+  url += retroStyleUrlParams()
 
   if (patientCoords.length > 0) {
     url += `&markers=${encodeURIComponent(`color:red|label:H|${patientCoords.join("|")}`)}`

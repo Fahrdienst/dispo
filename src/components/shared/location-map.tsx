@@ -1,6 +1,8 @@
 "use client"
 
+import { APIProvider, Map, AdvancedMarker } from "@vis.gl/react-google-maps"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { RETRO_MAP_STYLES } from "@/lib/maps/styles"
 
 interface LocationMapProps {
   lat: number | null
@@ -13,8 +15,7 @@ export function LocationMap({ lat, lng, label, geocodeStatus }: LocationMapProps
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
   if (lat != null && lng != null && apiKey) {
-    const q = label ? `${lat},${lng}` : `${lat},${lng}`
-    const src = `https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${q}&zoom=15`
+    const center = { lat, lng }
 
     return (
       <Card>
@@ -22,14 +23,19 @@ export function LocationMap({ lat, lng, label, geocodeStatus }: LocationMapProps
           <CardTitle className="text-base">Standort</CardTitle>
         </CardHeader>
         <CardContent>
-          <iframe
-            className="h-[300px] w-full rounded-md border-0"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            src={src}
-            title={label ?? "Kartenansicht"}
-            allowFullScreen
-          />
+          <APIProvider apiKey={apiKey}>
+            <Map
+              className="h-[300px] w-full rounded-md"
+              defaultCenter={center}
+              defaultZoom={15}
+              styles={RETRO_MAP_STYLES}
+              disableDefaultUI
+              zoomControl
+              aria-label={label ?? "Kartenansicht"}
+            >
+              <AdvancedMarker position={center} title={label} />
+            </Map>
+          </APIProvider>
         </CardContent>
       </Card>
     )
