@@ -143,7 +143,7 @@ def parse_excel_time(val) -> str | None:
     return None
 
 
-def map_status(val) -> str:
+def map_status(val, ride_date: str | None = None) -> str:
     """Map legacy numeric status to ride_status enum.
 
     Referenzdaten:
@@ -151,21 +151,30 @@ def map_status(val) -> str:
     2 = erfasst und ok -> unplanned
     3 = An Fahrer zugewiesen -> planned
     4 = An Fahrer versendet -> planned
-    5 = Fahrer hat bestätigt -> completed
+    5 = Fahrer hat bestätigt -> confirmed (future) / completed (past)
     6 = storniert -> cancelled
     """
+    try:
+        code = int(val)
+    except (ValueError, TypeError):
+        return "unplanned"
+
+    if code == 5:
+        # Status 5 = "Fahrer hat bestätigt": for past rides treat as completed,
+        # for today or future rides treat as confirmed (not yet done).
+        today = date.today().isoformat()
+        if ride_date and ride_date >= today:
+            return "confirmed"
+        return "completed"
+
     status_map = {
         1: "unplanned",
         2: "unplanned",
         3: "planned",
         4: "planned",
-        5: "completed",
         6: "cancelled",
     }
-    try:
-        return status_map.get(int(val), "unplanned")
-    except (ValueError, TypeError):
-        return "unplanned"
+    return status_map.get(code, "unplanned")
 
 
 def map_facility_type(art: str | None) -> str:
@@ -464,7 +473,7 @@ def main():
             "date": ride_date,
             "pickup_time": pickup_time,
             "appointment_time": appointment_time,
-            "status": map_status(row.get("Status")),
+            "status": map_status(row.get("Status"), ride_date),
             "direction": "outbound",
             "notes": safe_str(row.get("Spezielles")),
             "price_override": price_override,
