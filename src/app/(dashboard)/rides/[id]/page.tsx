@@ -8,7 +8,7 @@ import { RideStatusBadge } from "@/components/shared/ride-status-badge"
 import { CommunicationTimeline } from "@/components/rides/communication-timeline"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { RouteMap } from "@/components/shared/route-map"
+import { RideDetailMap } from "@/components/rides/ride-detail-map"
 import { RIDE_DIRECTION_LABELS } from "@/lib/rides/constants"
 
 export const metadata: Metadata = {
@@ -264,7 +264,7 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
       )}
 
       {/* Route Map */}
-      <RouteMap
+      <RideDetailMap
         originLat={patient?.lat ?? null}
         originLng={patient?.lng ?? null}
         destLat={destination?.lat ?? null}
