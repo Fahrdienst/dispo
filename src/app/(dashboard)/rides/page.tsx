@@ -1,9 +1,12 @@
+import { Suspense } from "react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { RidesTable } from "@/components/rides/rides-table"
+import { RidesDayMap } from "@/components/rides/rides-day-map"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { getToday, addDays, formatDateDE, getMondayOf, getSundayOf, getWeekDates } from "@/lib/utils/dates"
 import { WeekNav } from "@/components/shared/week-nav"
 import { RidesWeekView } from "@/components/rides/rides-week-view"
@@ -79,6 +82,10 @@ export default async function RidesPage({ searchParams }: RidesPageProps) {
             </Link>
           </Button>
         </div>
+
+        <Suspense fallback={<Skeleton className="h-[280px] w-full rounded-lg sm:h-[400px]" />}>
+          <RidesDayMap date={selectedDate} />
+        </Suspense>
 
         <RidesTable rides={rides ?? []} userRole={userRole} />
       </div>

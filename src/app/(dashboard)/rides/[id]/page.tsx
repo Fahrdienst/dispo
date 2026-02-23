@@ -8,6 +8,7 @@ import { RideStatusBadge } from "@/components/shared/ride-status-badge"
 import { CommunicationTimeline } from "@/components/rides/communication-timeline"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { RouteMap } from "@/components/shared/route-map"
 import { RIDE_DIRECTION_LABELS } from "@/lib/rides/constants"
 
 export const metadata: Metadata = {
@@ -59,7 +60,7 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
   const { data: ride } = await supabase
     .from("rides")
     .select(
-      "*, patients(id, first_name, last_name, phone), destinations(id, display_name, street, house_number, postal_code, city), drivers(id, first_name, last_name, phone)"
+      "*, patients(id, first_name, last_name, phone, lat, lng), destinations(id, display_name, street, house_number, postal_code, city, lat, lng), drivers(id, first_name, last_name, phone)"
     )
     .eq("id", id)
     .single()
@@ -122,6 +123,8 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
     first_name: string
     last_name: string
     phone: string | null
+    lat: number | null
+    lng: number | null
   } | null
 
   const destination = ride.destinations as {
@@ -131,6 +134,8 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
     house_number: string | null
     postal_code: string | null
     city: string | null
+    lat: number | null
+    lng: number | null
   } | null
 
   const driver = ride.drivers as {
@@ -257,6 +262,14 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Route Map */}
+      <RouteMap
+        originLat={patient?.lat ?? null}
+        originLng={patient?.lng ?? null}
+        destLat={destination?.lat ?? null}
+        destLng={destination?.lng ?? null}
+      />
 
       {/* Linked rides */}
       {(parentRide || (childRides && childRides.length > 0)) && (
