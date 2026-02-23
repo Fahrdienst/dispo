@@ -1,0 +1,75 @@
+import type { OrderSheetData } from "@/lib/mail/load-order-sheet-data"
+import { escapeHtml } from "@/lib/mail/utils"
+import { IMPAIRMENT_TYPE_LABELS } from "@/lib/rides/constants"
+
+/**
+ * Render a single label-value row for the patient block.
+ * Returns empty string if value is null/undefined/empty.
+ */
+function row(label: string, value: string | null | undefined): string {
+  if (!value) return ""
+  return `<tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">${label}</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">${escapeHtml(value)}</td>
+  </tr>`
+}
+
+/**
+ * Render the patient section of the order sheet email.
+ * Shows patient name, address, phone, impairments, comment, and emergency contact.
+ * Null fields are omitted entirely.
+ */
+export function renderPatientBlock(data: OrderSheetData): string {
+  const fullName = `${data.patientFirstName} ${data.patientLastName}`
+
+  // Build address line: street + house_number
+  const addressLine =
+    data.patientStreet && data.patientHouseNumber
+      ? `${data.patientStreet} ${data.patientHouseNumber}`
+      : data.patientStreet ?? data.patientHouseNumber ?? null
+
+  // Build PLZ/Ort line
+  const plzOrt =
+    data.patientPostalCode && data.patientCity
+      ? `${data.patientPostalCode} ${data.patientCity}`
+      : data.patientPostalCode ?? data.patientCity ?? null
+
+  // Impairments as comma-separated German labels
+  const impairmentLabels =
+    data.patientImpairments.length > 0
+      ? data.patientImpairments
+          .map(
+            (imp) =>
+              IMPAIRMENT_TYPE_LABELS[
+                imp as keyof typeof IMPAIRMENT_TYPE_LABELS
+              ] ?? imp
+          )
+          .join(", ")
+      : null
+
+  // Emergency contact: combine name and phone
+  const emergencyParts: string[] = []
+  if (data.patientEmergencyName) emergencyParts.push(data.patientEmergencyName)
+  if (data.patientEmergencyPhone) emergencyParts.push(data.patientEmergencyPhone)
+  const emergencyContact = emergencyParts.length > 0 ? emergencyParts.join(", ") : null
+
+  return `<!-- Patient Block -->
+<tr>
+  <td style="padding:0 32px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e5e7eb;">
+      <tr>
+        <td style="background-color:#f3f4f6;padding:8px 12px;font-size:14px;font-weight:600;color:#1a1a1a;">Fahrgast</td>
+      </tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:12px 0;">
+      ${row("Name", fullName)}
+      ${row("Adresse", addressLine)}
+      ${row("PLZ / Ort", plzOrt)}
+      ${row("Telefon / Mobile", data.patientPhone)}
+      ${row("Behinderungen", impairmentLabels)}
+      ${row("Bemerkungen", data.patientComment)}
+      ${row("Notfallkontakt", emergencyContact)}
+    </table>
+  </td>
+</tr>`
+}

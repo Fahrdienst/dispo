@@ -148,3 +148,11 @@ export const FACILITY_TYPE_LABELS: Record<Enums<"facility_type">, string> = {
   day_care:       "Tagesheim",
   other:          "Sonstiges",
 }
+
+/** Impairment type labels in German. */
+export const IMPAIRMENT_TYPE_LABELS: Record<Enums<"impairment_type">, string> = {
+  rollator:   "Rollator",
+  wheelchair: "Rollstuhl",
+  stretcher:  "Liegend",
+  companion:  "Begleitperson",
+}
