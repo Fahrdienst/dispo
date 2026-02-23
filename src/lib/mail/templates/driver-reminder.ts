@@ -1,32 +1,17 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { mailTransport } from "@/lib/mail/transport"
+import { escapeHtml, formatDate, formatTime } from "@/lib/mail/utils"
+import { RIDE_DIRECTION_LABELS } from "@/lib/rides/constants"
 import { getAppUrl } from "@/lib/acceptance/constants"
 import type { AcceptanceStage } from "@/lib/acceptance/types"
-
-const DIRECTION_LABELS: Record<string, string> = {
-  outbound: "Hinfahrt",
-  return: "Rueckfahrt",
-  both: "Hin- & Rueckfahrt",
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00")
-  const days = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"]
-  const months = [
-    "Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
-    "Jul", "Aug", "Sep", "Okt", "Nov", "Dez",
-  ]
-  const day = days[date.getDay()]
-  return `${day}, ${date.getDate()}. ${months[date.getMonth()]} ${date.getFullYear()}`
-}
 
 interface ReminderEmailData {
   driverName: string
   patientName: string
   destinationName: string
-  date: string
+  date: string // Already formatted
   pickupTime: string
-  direction: string
+  direction: string // Raw enum value
   appUrl: string
   stage: AcceptanceStage
 }
@@ -38,7 +23,17 @@ function driverReminderEmail(data: ReminderEmailData): {
   const isUrgent = data.stage === "reminder_2"
   const subjectPrefix = isUrgent ? "DRINGEND: " : "Erinnerung: "
   const subject = `${subjectPrefix}Fahrt am ${data.date} bestaetigen`
-  const directionLabel = DIRECTION_LABELS[data.direction] ?? data.direction
+
+  const directionLabel =
+    RIDE_DIRECTION_LABELS[data.direction as keyof typeof RIDE_DIRECTION_LABELS] ?? data.direction
+
+  // Escape all user-provided data for XSS protection
+  const driverName = escapeHtml(data.driverName)
+  const patientName = escapeHtml(data.patientName)
+  const destinationName = escapeHtml(data.destinationName)
+  const date = escapeHtml(data.date)
+  const pickupTime = escapeHtml(formatTime(data.pickupTime))
+  const direction = escapeHtml(directionLabel)
 
   const urgentBanner = isUrgent
     ? `<tr>
@@ -55,7 +50,7 @@ function driverReminderEmail(data: ReminderEmailData): {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${subject}</title>
+  <title>${escapeHtml(subject)}</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:32px 16px;">
@@ -75,7 +70,7 @@ function driverReminderEmail(data: ReminderEmailData): {
           <tr>
             <td style="padding:32px;">
               <p style="margin:0 0 16px;color:#18181b;font-size:16px;">
-                Hallo ${data.driverName},
+                Hallo ${driverName},
               </p>
               <p style="margin:0 0 24px;color:#3f3f46;font-size:14px;">
                 ${isUrgent
@@ -90,23 +85,23 @@ function driverReminderEmail(data: ReminderEmailData): {
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="color:#71717a;font-size:13px;padding:4px 0;width:100px;">Patient</td>
-                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${data.patientName}</td>
+                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${patientName}</td>
                       </tr>
                       <tr>
                         <td style="color:#71717a;font-size:13px;padding:4px 0;">Ziel</td>
-                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${data.destinationName}</td>
+                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${destinationName}</td>
                       </tr>
                       <tr>
                         <td style="color:#71717a;font-size:13px;padding:4px 0;">Datum</td>
-                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${data.date}</td>
+                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${date}</td>
                       </tr>
                       <tr>
                         <td style="color:#71717a;font-size:13px;padding:4px 0;">Abholzeit</td>
-                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${data.pickupTime}</td>
+                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${pickupTime}</td>
                       </tr>
                       <tr>
                         <td style="color:#71717a;font-size:13px;padding:4px 0;">Richtung</td>
-                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${directionLabel}</td>
+                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${direction}</td>
                       </tr>
                     </table>
                   </td>

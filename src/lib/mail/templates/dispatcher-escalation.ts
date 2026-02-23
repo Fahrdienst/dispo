@@ -1,25 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { mailTransport } from "@/lib/mail/transport"
+import { escapeHtml, formatDate, formatTime } from "@/lib/mail/utils"
 import { getAppUrl } from "@/lib/acceptance/constants"
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr + "T00:00:00")
-  const days = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"]
-  const months = [
-    "Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
-    "Jul", "Aug", "Sep", "Okt", "Nov", "Dez",
-  ]
-  const day = days[date.getDay()]
-  return `${day}, ${date.getDate()}. ${months[date.getMonth()]} ${date.getFullYear()}`
-}
 
 interface EscalationEmailData {
   driverName: string
   patientName: string
   destinationName: string
-  date: string
+  date: string // Already formatted
   pickupTime: string
-  direction: string
+  direction: string // Raw enum value (unused in escalation, kept for consistency)
   dispatchUrl: string
 }
 
@@ -29,12 +19,19 @@ function dispatcherEscalationEmail(data: EscalationEmailData): {
 } {
   const subject = `Zeitueberschreitung: Fahrt am ${data.date} – Fahrer hat nicht reagiert`
 
+  // Escape all user-provided data for XSS protection
+  const driverName = escapeHtml(data.driverName)
+  const patientName = escapeHtml(data.patientName)
+  const destinationName = escapeHtml(data.destinationName)
+  const date = escapeHtml(data.date)
+  const pickupTime = escapeHtml(formatTime(data.pickupTime))
+
   const html = `<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${subject}</title>
+  <title>${escapeHtml(subject)}</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:32px 16px;">
@@ -71,23 +68,23 @@ function dispatcherEscalationEmail(data: EscalationEmailData): {
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td style="color:#71717a;font-size:13px;padding:4px 0;width:100px;">Fahrer</td>
-                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${data.driverName}</td>
+                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${driverName}</td>
                       </tr>
                       <tr>
                         <td style="color:#71717a;font-size:13px;padding:4px 0;">Patient</td>
-                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${data.patientName}</td>
+                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${patientName}</td>
                       </tr>
                       <tr>
                         <td style="color:#71717a;font-size:13px;padding:4px 0;">Ziel</td>
-                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${data.destinationName}</td>
+                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${destinationName}</td>
                       </tr>
                       <tr>
                         <td style="color:#71717a;font-size:13px;padding:4px 0;">Datum</td>
-                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${data.date}</td>
+                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${date}</td>
                       </tr>
                       <tr>
                         <td style="color:#71717a;font-size:13px;padding:4px 0;">Abholzeit</td>
-                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${data.pickupTime}</td>
+                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${pickupTime}</td>
                       </tr>
                     </table>
                   </td>

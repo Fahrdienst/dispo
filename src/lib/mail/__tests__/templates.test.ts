@@ -71,11 +71,22 @@ describe("driverAssignmentEmail", () => {
 
   it("renders return direction correctly", () => {
     const result = driverAssignmentEmail({ ...testData, direction: "return" })
-    expect(result.html).toContain("Rueckfahrt")
+    // RIDE_DIRECTION_LABELS uses proper umlaut: "Rückfahrt"
+    expect(result.html).toContain("R\u00fcckfahrt")
   })
 
   it("renders both direction correctly", () => {
     const result = driverAssignmentEmail({ ...testData, direction: "both" })
-    expect(result.html).toContain("Hin- & Rueckfahrt")
+    // RIDE_DIRECTION_LABELS: "Hin & Rück" — ampersand is escaped in HTML
+    expect(result.html).toContain("Hin &amp; R\u00fcck")
+  })
+
+  it("escapes HTML special characters in user data", () => {
+    const result = driverAssignmentEmail({
+      ...testData,
+      patientName: '<script>alert("xss")</script>',
+    })
+    expect(result.html).not.toContain("<script>")
+    expect(result.html).toContain("&lt;script&gt;")
   })
 })
