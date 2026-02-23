@@ -9,7 +9,28 @@ interface RideDetailMapProps {
   destLng: number | null
 }
 
-export function RideDetailMap({
+async function fetchRoutePolyline(
+  originLat: number,
+  originLng: number,
+  destLat: number,
+  destLng: number,
+  apiKey: string
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&mode=driving&key=${apiKey}`,
+      { next: { revalidate: 86400 } }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const polyline = data.routes?.[0]?.overview_polyline?.points as string | undefined
+    return polyline ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function RideDetailMap({
   originLat,
   originLng,
   destLat,
@@ -27,6 +48,8 @@ export function RideDetailMap({
     return null
   }
 
+  const polyline = await fetchRoutePolyline(originLat, originLng, destLat, destLng, apiKey)
+
   const params = new URLSearchParams({
     size: "640x300",
     scale: "2",
@@ -36,6 +59,11 @@ export function RideDetailMap({
 
   let url = `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`
   url += retroStyleUrlParams()
+
+  if (polyline) {
+    url += `&path=${encodeURIComponent(`color:0x4285F4FF|weight:5|enc:${polyline}`)}`
+  }
+
   url += `&markers=${encodeURIComponent(`color:red|label:H|${originLat},${originLng}`)}`
   url += `&markers=${encodeURIComponent(`color:blue|label:Z|${destLat},${destLng}`)}`
 
