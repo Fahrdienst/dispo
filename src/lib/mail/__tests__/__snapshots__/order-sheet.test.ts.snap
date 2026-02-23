@@ -1,0 +1,268 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`snapshot > matches the expected structure for a fully populated order sheet 1`] = `
+"<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fahrauftrag - Patienten-Fahrdienst D&uuml;bendorf</title>
+  <style type="text/css">
+    @media print {
+      body { background-color: #ffffff !important; }
+      .email-wrapper { padding: 0 !important; }
+      .email-container { box-shadow: none !important; border-radius: 0 !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-wrapper" style="background-color:#f8f8f8;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-container" style="max-width:600px;background-color:#ffffff;border-radius:8px;overflow:hidden;">
+          <!-- Header & Order Overview -->
+<tr>
+  <td style="background-color:#18181b;padding:24px 32px;">
+    <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.01em;">Patienten-Fahrdienst D&uuml;bendorf</h1>
+  </td>
+</tr>
+<tr>
+  <td style="padding:24px 32px 16px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Auftrags-Nr.</td>
+        <td style="color:#1a1a1a;font-size:14px;font-weight:600;padding:4px 0;">F-260225-7890</td>
+      </tr>
+      <tr>
+        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Datum</td>
+        <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Mittwoch, 25. Februar 2026</td>
+      </tr>
+      <tr>
+        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Abhol-Zeit</td>
+        <td style="color:#dc2626;font-size:18px;font-weight:700;padding:4px 0;">14:30</td>
+      </tr>
+      <tr>
+        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Termin</td>
+        <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">15:00</td>
+      </tr>
+      <tr>
+        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Richtung</td>
+        <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Hinfahrt</td>
+      </tr>
+      <tr>
+        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">R&uuml;ckfahrt ca.</td>
+        <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">16:30</td>
+      </tr>
+      <tr>
+        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Status</td>
+        <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Geplant</td>
+      </tr>
+    </table>
+  </td>
+</tr>
+          <!-- Patient Block -->
+<tr>
+  <td style="padding:0 32px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e5e7eb;">
+      <tr>
+        <td style="background-color:#f3f4f6;padding:8px 12px;font-size:14px;font-weight:600;color:#1a1a1a;">Fahrgast</td>
+      </tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:12px 0;">
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Name</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Erika Musterfrau</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Adresse</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Bahnhofstrasse 42</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">PLZ / Ort</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">8600 Dübendorf</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Telefon / Mobile</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">+41 44 123 45 67</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Behinderungen</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Rollator, Begleitperson</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Bemerkungen</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Erdgeschoss, rechte Klingel</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Notfallkontakt</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Hans Musterfrau, +41 44 987 65 43</td>
+  </tr>
+    </table>
+  </td>
+</tr>
+          <!-- Destination Block -->
+<tr>
+  <td style="padding:0 32px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e5e7eb;">
+      <tr>
+        <td style="background-color:#f3f4f6;padding:8px 12px;font-size:14px;font-weight:600;color:#1a1a1a;">Ziel</td>
+      </tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:12px 0;">
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Name</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Universitätsspital Zürich</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Art</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Spital</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Adresse</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Rämistrasse 100</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">PLZ / Ort</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">8091 Zürich</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Telefon</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">+41 44 255 11 11</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Kontaktperson</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Dr. Anna Meier</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Abteilung</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Orthopädie</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Distanz</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">12.5 km</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Bemerkungen</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Eingang Nord, 3. Stock</td>
+  </tr>
+    </table>
+  </td>
+</tr>
+          <!-- Driver Block -->
+<tr>
+  <td style="padding:0 32px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e5e7eb;">
+      <tr>
+        <td style="background-color:#f3f4f6;padding:8px 12px;font-size:14px;font-weight:600;color:#1a1a1a;">Fahrer</td>
+      </tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:12px 0;">
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Name</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Max Mustermann</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Adresse</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Hauptstrasse 7</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">PLZ / Ort</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">8600 Dübendorf</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Telefon / Mobile</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">+41 79 123 45 67</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">E-Mail</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">max@example.com</td>
+  </tr>
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Fahrzeugtyp</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">PKW</td>
+  </tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e5e7eb;margin-top:8px;">
+      <tr>
+        <td style="background-color:#fef3c7;padding:8px 12px;font-size:13px;font-weight:600;color:#92400e;">Hinweise</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 12px;font-size:14px;color:#1a1a1a;">Patient braucht Hilfe beim Einsteigen</td>
+      </tr>
+    </table>
+  </td>
+</tr>
+          <!-- Cost Summary -->
+<tr>
+  <td style="padding:0 32px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e5e7eb;">
+      <tr>
+        <td style="background-color:#f3f4f6;padding:8px 12px;font-size:14px;font-weight:600;color:#1a1a1a;">Kosten</td>
+      </tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:12px 0;">
+      <tr>
+    <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Distanz</td>
+    <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">12.5 km</td>
+  </tr>
+      <tr>
+        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Fahrpreis</td>
+        <td style="color:#1a1a1a;font-size:16px;font-weight:600;padding:4px 0;">Fr. 65.00</td>
+      </tr>
+    </table>
+  </td>
+</tr>
+          <!-- Action Buttons -->
+<tr>
+  <td style="padding:24px 32px 8px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" width="50%" style="padding-right:8px;" valign="top">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center" style="background-color:#16a34a;border-radius:6px;">
+                <a href="https://fahrdienst.vercel.app/api/rides/respond?token=abc123&action=confirm" target="_blank" style="display:inline-block;min-width:160px;min-height:44px;line-height:44px;background-color:#16a34a;color:#ffffff;text-decoration:none;padding:0 24px;border-radius:6px;font-size:14px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;text-align:center;">
+                  Annehmen
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td align="center" width="50%" style="padding-left:8px;" valign="top">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td align="center" style="border:2px solid #ef4444;border-radius:6px;">
+                <a href="https://fahrdienst.vercel.app/api/rides/respond?token=abc123&action=reject" target="_blank" style="display:inline-block;min-width:160px;min-height:44px;line-height:40px;color:#b91c1c;text-decoration:none;padding:0 24px;border-radius:6px;font-size:14px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;text-align:center;">
+                  Ablehnen
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+  <td style="padding:12px 32px 8px;">
+    <p style="margin:0;color:#a1a1aa;font-size:12px;text-align:center;">
+      Dieser Link ist 48 Stunden g&uuml;ltig und kann nur einmal verwendet werden.
+    </p>
+  </td>
+</tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:16px 32px;border-top:1px solid #e5e7eb;background-color:#f8f8f8;">
+              <p style="margin:0;color:#a1a1aa;font-size:12px;text-align:center;">
+                Patienten-Fahrdienst D&uuml;bendorf &middot; Mittwoch, 25. Februar 2026
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"
+`;
