@@ -1,8 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createAssignmentToken } from "@/lib/mail/tokens"
-import { driverAssignmentEmail } from "@/lib/mail/templates/driver-assignment"
+import { assembleOrderSheet } from "@/lib/mail/templates/order-sheet"
 import { mailTransport } from "@/lib/mail/transport"
-import { formatDate } from "@/lib/mail/utils"
+import { formatDate, formatTime } from "@/lib/mail/utils"
 import { loadOrderSheetData } from "@/lib/mail/load-order-sheet-data"
 import type { OrderSheetData } from "@/lib/mail/load-order-sheet-data"
 
@@ -31,33 +31,6 @@ async function resolveDriverEmail(
   return profile?.email ?? null
 }
 
-/**
- * Build template input from OrderSheetData.
- * Currently uses the minimal fields for the assignment template.
- * Will be expanded in M11 Phase 2 for the full order sheet.
- */
-function buildAssignmentTemplateData(data: OrderSheetData): {
-  driverName: string
-  patientName: string
-  destinationName: string
-  date: string
-  pickupTime: string
-  direction: string
-  confirmUrl: string
-  rejectUrl: string
-} {
-  return {
-    driverName: `${data.driverFirstName} ${data.driverLastName}`,
-    patientName: `${data.patientFirstName} ${data.patientLastName}`,
-    destinationName: data.destinationName,
-    date: formatDate(data.date),
-    pickupTime: data.pickupTime,
-    direction: data.direction,
-    confirmUrl: data.confirmUrl,
-    rejectUrl: data.rejectUrl,
-  }
-}
-
 export async function sendDriverNotification(
   rideId: string,
   driverId: string
@@ -71,7 +44,7 @@ export async function sendDriverNotification(
     await supabase.from("mail_log").insert({
       ride_id: rideId,
       driver_id: driverId,
-      template: "driver-assignment",
+      template: "order-sheet",
       recipient: "unknown",
       status: "failed",
       error: "No email found for driver",
@@ -100,7 +73,7 @@ export async function sendDriverNotification(
     await supabase.from("mail_log").insert({
       ride_id: rideId,
       driver_id: driverId,
-      template: "driver-assignment",
+      template: "order-sheet",
       recipient: recipientEmail,
       status: "failed",
       error: errorMessage,
@@ -108,8 +81,9 @@ export async function sendDriverNotification(
     return
   }
 
-  // 4. Render template
-  const { subject, html } = driverAssignmentEmail(buildAssignmentTemplateData(orderData))
+  // 4. Render template using the full order sheet
+  const html = assembleOrderSheet(orderData)
+  const subject = `Neuer Auftrag \u2013 ${formatDate(orderData.date)}, ${formatTime(orderData.pickupTime)} Uhr`
 
   // 5. Send email
   try {
@@ -123,7 +97,7 @@ export async function sendDriverNotification(
     await supabase.from("mail_log").insert({
       ride_id: rideId,
       driver_id: driverId,
-      template: "driver-assignment",
+      template: "order-sheet",
       recipient: recipientEmail,
       status: "sent",
     })
@@ -134,7 +108,7 @@ export async function sendDriverNotification(
     await supabase.from("mail_log").insert({
       ride_id: rideId,
       driver_id: driverId,
-      template: "driver-assignment",
+      template: "order-sheet",
       recipient: recipientEmail,
       status: "failed",
       error: errorMessage,
