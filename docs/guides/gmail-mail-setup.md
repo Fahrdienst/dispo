@@ -44,6 +44,9 @@ App Passwords funktionieren nur mit aktivierter 2FA.
 
 > **Wichtig:** Dieses Passwort ist dein `GMAIL_APP_PASSWORD`. Bewahre es sicher auf.
 
+nosh lnxn eehf heuo
+
+
 ---
 
 ## 2. Vercel Environment Variables setzen
@@ -98,10 +101,7 @@ Damit die neuen Variables wirksam werden:
 Fuer lokale Entwicklung die gleichen Werte in `.env.local` eintragen:
 
 ```bash
-# Gmail SMTP for driver notifications
-GMAIL_USER=dispo-noreply@gmail.com
-GMAIL_APP_PASSWORD=abcdefghijklmnop
-MAIL_FROM="Dispo Krankentransport <dispo-noreply@gmail.com>"
+backup.fahrdienst.duebendorf@gmail.com
 ```
 
 > **Hinweis:** `.env.local` ist in `.gitignore` und wird nie committed.
