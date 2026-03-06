@@ -9,8 +9,10 @@
 - `src/lib/auth/require-auth.ts` - Auth guard (returns role, userId, driverId)
 - `src/lib/rides/status-machine.ts` - Ride status state machine (pure functions)
 - `src/lib/rides/constants.ts` - Status labels, colors, FACILITY_TYPE_LABELS
+- `src/lib/utils/dates.ts` - Shared date utilities (getToday, addDays, getMondayOf, getSundayOf, formatDateDE, formatDayLabel, formatWeekRange, getWeekDates)
+- `src/lib/maps/styles.ts` - Google Maps retro style URL params
 - `supabase/migrations/` - SQL migration files
-- `docs/adrs/` - Architecture Decision Records (001-005)
+- `docs/adrs/` - Architecture Decision Records (001-012)
 
 ## TypeScript Config
 - `strict: true`, `noUncheckedIndexedAccess: true`
@@ -76,8 +78,51 @@
 - Price calculation only for initial ride (series rides are unplanned, no driver)
 - Pattern for conditional form behavior in React 18: hidden input + delegation in server action (NOT dynamic useFormState)
 
+## UI Patterns (M10)
+
+### Card Grid + Detail Sheet Pattern
+- Destinations and Patients use responsive card grids instead of tables
+- Grid class: `grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3`
+- Card click opens Sheet (side="right", 480px) with full details
+- Sheet includes: all fields, Google Maps embed, "Bearbeiten" link, DeactivateDialog footer
+- Components: `{entity}-card.tsx` (card), `{entity}-detail-sheet.tsx` (sheet)
+- Filter/search logic stays in the parent table component (e.g. `destinations-table.tsx`)
+- shadcn components used: Sheet, AlertDialog, Separator, Card
+
+### Weekly Calendar Pattern
+- /rides and /dispatch default to week view (7-column Mon-Sun grid)
+- URL branching: `?date=` → day view, `?week=` → specific week, no param → current week
+- Shared `WeekNav` component at `src/components/shared/week-nav.tsx`
+- Shared date utilities at `src/lib/utils/dates.ts` (replaces duplicated addDays/formatDateDE)
+- Ride pills: status dot + time + patient name, max 8 per day with overflow
+- Dispatch pills add: driver assignment status, unassigned count badges
+
+### Dashboard Map
+- `src/components/dashboard/dashboard-map.tsx` - Async server component, uses Suspense
+- Google Maps Static API (<img> tag, not iframe), retro styling from `@/lib/maps/styles`
+- Red H markers = patients with rides today, Blue Z markers = destinations with rides today
+- Deduplicates coordinates, returns null if no API key, EmptyState if no geocoded locations
+
+## Mail System (M11)
+- `src/lib/mail/utils.ts` - Shared utilities: escapeHtml, formatDate (long German), formatCHF, formatTime
+- `src/lib/mail/load-order-sheet-data.ts` - OrderSheetData interface + loader (ride+patient+destination+driver+impairments)
+- `src/lib/mail/send-driver-notification.ts` - Uses loadOrderSheetData, resolveDriverEmail helper
+- Templates use `RIDE_DIRECTION_LABELS` from `@/lib/rides/constants` (not local copies)
+- All user data in templates must be escaped via `escapeHtml()` (XSS protection)
+- `formatDate()` in mail/utils.ts uses long format ("Mittwoch, 25. Februar 2026") vs short format in lib/utils/dates.ts
+- `loadOrderSheetData()` uses createAdminClient (service role, bypasses RLS)
+- Email resolution pattern: drivers.email preferred, fallback to profiles.email
+- Order sheet template: `src/lib/mail/templates/order-sheet.ts` - `assembleOrderSheet(data)` composes all sections
+- Section renderers in `src/lib/mail/templates/sections/`: header.ts, patient-block.ts, destination-block.ts, driver-block.ts
+- Section pattern: each exports a single render function, returns HTML table rows, uses `row()` helper for label-value pairs
+- Order ref format: `F-YYMMDD-last4` (e.g. F-260225-a3f1), generated from date + rideId
+- `IMPAIRMENT_TYPE_LABELS` added to constants.ts: rollator/wheelchair/stretcher/companion
+- Email design: 600px max, table-based layout, inline CSS, system font stack, print-friendly @media
+
 ## Important Lessons
 - Dashboard page (`src/app/(dashboard)/page.tsx`) also queries destinations -- remember to update when renaming columns
 - `src/lib/rides/constants.ts` contains label maps for enums -- must be updated when enum types change
 - When renaming DB columns, search entire `src/` for ALL references (queries, types, component props, search filters)
 - Linter auto-formats new files -- read-before-write may be needed after initial creation
+- When using Supabase `.select()` with joins, the result type may include `null` -- define explicit type aliases and cast when grouping into Maps
+- shadcn `add --overwrite` flag can revert custom component styles (e.g. button.tsx) -- always check git diff after install

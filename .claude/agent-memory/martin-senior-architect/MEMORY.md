@@ -61,8 +61,41 @@
 - Partial unique index ensures max 1 active tracking per ride
 - Plan file: docs/adrs/012-driver-acceptance-flow.md
 
+### UI Architecture Decisions (M10)
+- **Card Grid + Sheet** replaces Table for entity list views (destinations, patients)
+  - Responsive grid (1/2/3 cols), Sheet (480px right) for detail view
+  - Edit navigates to existing /[id]/edit route (not embedded in Sheet)
+  - DeactivateDialog: shared AlertDialog wrapper for toggle-active confirmations
+- **Weekly Calendar** as default view for /rides and /dispatch
+  - URL param branching: `?date=` → day, `?week=` → week, no param → current week (Monday start)
+  - Shared WeekNav component, shared date utilities in `src/lib/utils/dates.ts`
+  - No additional DB tables — fetches rides for date range and groups client-side
+- **Dashboard Map**: Google Maps Static API (<img>), async server component with Suspense
+  - No JS API needed — static markers suffice for overview (<50 points in Swiss canton)
+  - Retro map styling via `src/lib/maps/styles.ts`
+- **shadcn/ui**: Fully adopted — Sheet, AlertDialog, Separator, Card, Badge, etc.
+
+### ADR-013: Order Sheet Email (M11, Proposed)
+- Template: HTML-String with modular section functions (not React Email)
+- Data loading: dedicated `loadOrderSheetData()` function, reused by mail + preview
+- Preview: `GET /api/mail/preview?ride_id=<uuid>` (auth required, text/html response)
+- PDF: deferred to M12, HTML template print-optimized instead
+- Missing DB fields (vs Access template): salutation, phone_mobile, assigned_by, order_number, surcharge
+- Decision: pragmatic -- only show existing fields, no schema change for M11
+- Code duplication found: formatDate() 4x, DIRECTION_LABELS 3x (inconsistent with RIDE_DIRECTION_LABELS)
+- patients.comment = public (show to driver), patients.notes = internal (do not show)
+- Plan file: docs/adrs/013-order-sheet-email.md
+
+### Mail System Architecture
+- 3 templates: driver-assignment, driver-reminder, dispatcher-escalation
+- All use inline-CSS HTML strings (no React Email)
+- Nodemailer + Gmail SMTP (App Password)
+- Token: SHA-256, 48h expiry, single-use, action-idempotent
+- Admin client used for all mail operations (bypasses RLS)
+- Tables: assignment_tokens (token_hash), mail_log (audit), acceptance_tracking (SLA)
+- Respond flow: GET -> confirm page, POST -> consume token + mutate ride status
+
 ### Open Decisions
-- shadcn/ui: deferred until first real UI component needed
 - Multi-tenancy pattern: not yet designed
 - Security headers: Ioannis to define
 - Full audit log: deferred post-MVP
