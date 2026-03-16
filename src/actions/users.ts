@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { createUserSchema, updateUserSchema } from "@/lib/validations/users"
+import { logAudit } from "@/lib/audit/logger"
 import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
@@ -91,6 +92,16 @@ export async function createUser(
     await adminClient.auth.admin.deleteUser(authData.user.id)
     return { success: false, error: "Profil konnte nicht aktualisiert werden" }
   }
+
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: "admin",
+    action: "create",
+    entityType: "user",
+    entityId: authData.user.id,
+    metadata: { role, display_name },
+  }).catch(() => {})
 
   revalidatePath("/users")
   redirect("/users")
@@ -202,6 +213,16 @@ export async function updateUser(
     return { success: false, error: "Benutzer konnte nicht aktualisiert werden" }
   }
 
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: "admin",
+    action: "update",
+    entityType: "user",
+    entityId: id,
+    metadata: { fields: ["display_name", "role", "driver_id"] },
+  }).catch(() => {})
+
   revalidatePath("/users")
   redirect("/users")
 }
@@ -250,8 +271,8 @@ export async function toggleUserActive(
     }
   }
 
-  const supabase = await createClient()
-  const { error } = await supabase
+  const supabase2 = await createClient()
+  const { error } = await supabase2
     .from("profiles")
     .update({ is_active: isActive })
     .eq("id", id)
@@ -260,6 +281,16 @@ export async function toggleUserActive(
     console.error("Failed to toggle user active:", error)
     return { success: false, error: "Status konnte nicht geändert werden" }
   }
+
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: "admin",
+    action: isActive ? "activate" : "deactivate",
+    entityType: "user",
+    entityId: id,
+    changes: { is_active: { old: !isActive, new: isActive } },
+  }).catch(() => {})
 
   // Revoke sessions when deactivating
   if (!isActive) {

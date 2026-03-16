@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { PatientCard } from "@/components/patients/patient-card"
 import { PatientDetailSheet } from "@/components/patients/patient-detail-sheet"
 import { togglePatientActive } from "@/actions/patients"
-import type { Tables } from "@/lib/types/database"
+import type { Tables, Enums } from "@/lib/types/database"
 
 type PatientWithImpairments = Tables<"patients"> & {
   patient_impairments: Tables<"patient_impairments">[]
@@ -16,9 +16,10 @@ type PatientWithImpairments = Tables<"patients"> & {
 
 interface PatientsTableProps {
   patients: PatientWithImpairments[]
+  userRole?: Enums<"user_role">
 }
 
-export function PatientsTable({ patients }: PatientsTableProps) {
+export function PatientsTable({ patients, userRole }: PatientsTableProps) {
   const [search, setSearch] = useState("")
   const [showInactive, setShowInactive] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -86,6 +87,7 @@ export function PatientsTable({ patients }: PatientsTableProps) {
         }}
         onToggleActive={handleToggle}
         isPending={isPending}
+        userRole={userRole}
       />
     </div>
   )

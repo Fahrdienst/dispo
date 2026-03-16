@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { patientSchema, patientInlineSchema } from "@/lib/validations/patients"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { geocodeAndUpdateRecord } from "@/lib/maps/geocode"
+import { logAudit } from "@/lib/audit/logger"
 import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
@@ -57,6 +58,15 @@ export async function createPatient(
       return { success: false, error: impError.message }
     }
   }
+
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: auth.role,
+    action: "create",
+    entityType: "patient",
+    entityId: patient.id,
+  }).catch(() => {})
 
   // Fire-and-forget geocoding (don't block the response)
   if (patientData.street && patientData.house_number && patientData.postal_code && patientData.city) {
@@ -133,6 +143,16 @@ export async function updatePatient(
       return { success: false, error: impError.message }
     }
   }
+
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: auth.role,
+    action: "update",
+    entityType: "patient",
+    entityId: id,
+    metadata: { fields: Object.keys(patientData) },
+  }).catch(() => {})
 
   // Fire-and-forget geocoding (don't block the response)
   if (patientData.street && patientData.house_number && patientData.postal_code && patientData.city) {
@@ -213,6 +233,16 @@ export async function togglePatientActive(
   if (error) {
     return { success: false, error: error.message }
   }
+
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: auth.role,
+    action: isActive ? "activate" : "deactivate",
+    entityType: "patient",
+    entityId: id,
+    changes: { is_active: { old: !isActive, new: isActive } },
+  }).catch(() => {})
 
   revalidatePath("/patients")
   return { success: true, data: undefined }

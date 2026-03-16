@@ -4,6 +4,7 @@ import { consumeToken, invalidateTokensForRide } from "@/lib/mail/tokens"
 import { canTransition } from "@/lib/rides/status-machine"
 import { isAcceptanceFlowEnabled } from "@/lib/acceptance/constants"
 import { resolveAcceptance } from "@/lib/acceptance/engine"
+import { rateLimitRideRespond } from "@/lib/security/rate-limit"
 import type { Enums } from "@/lib/types/database"
 
 const VALID_ACTIONS = ["confirm", "reject"] as const
@@ -55,6 +56,18 @@ export async function GET(request: NextRequest) {
  * Called from the confirm page's form submission.
  */
 export async function POST(request: NextRequest) {
+  // Rate limit by IP
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown"
+  const limit = rateLimitRideRespond(ip)
+  if (!limit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    )
+  }
+
   let token: string | null = null
   let action: string | null = null
 

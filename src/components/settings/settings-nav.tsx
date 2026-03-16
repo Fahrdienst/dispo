@@ -15,6 +15,7 @@ const settingsNavItems: SettingsNavItem[] = [
   { href: "/settings/geocoding", label: "Geocoding" },
   { href: "/settings/organization", label: "Organisation" },
   { href: "/settings/system", label: "System" },
+  { href: "/settings/security", label: "Sicherheit" },
 ]
 
 export function SettingsNav() {

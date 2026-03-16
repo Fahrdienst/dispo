@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { driverSchema } from "@/lib/validations/drivers"
+import { logAudit } from "@/lib/audit/logger"
 import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
@@ -38,6 +39,15 @@ export async function createDriver(
   if (error) {
     return { success: false, error: error.message }
   }
+
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: auth.role,
+    action: "create",
+    entityType: "driver",
+    entityId: data.id,
+  }).catch(() => {})
 
   revalidatePath("/drivers")
   redirect("/drivers")
@@ -77,6 +87,16 @@ export async function updateDriver(
     return { success: false, error: error.message }
   }
 
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: auth.role,
+    action: "update",
+    entityType: "driver",
+    entityId: id,
+    metadata: { fields: Object.keys(result.data) },
+  }).catch(() => {})
+
   revalidatePath("/drivers")
   redirect("/drivers")
 }
@@ -101,6 +121,16 @@ export async function toggleDriverActive(
   if (error) {
     return { success: false, error: error.message }
   }
+
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: auth.role,
+    action: isActive ? "activate" : "deactivate",
+    entityType: "driver",
+    entityId: id,
+    changes: { is_active: { old: !isActive, new: isActive } },
+  }).catch(() => {})
 
   revalidatePath("/drivers")
   return { success: true, data: undefined }

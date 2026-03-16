@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { getBillingData, formatBillingCsv } from "@/lib/billing/export"
+import { rateLimitBillingExport } from "@/lib/security/rate-limit"
 import type { Enums } from "@/lib/types/database"
 
 const VALID_STATUSES: ReadonlySet<string> = new Set([
@@ -30,7 +31,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: auth.error }, { status: 403 })
   }
 
-  // 2. Parse and validate search params
+  // 2. Rate limit by authenticated user
+  const limit = rateLimitBillingExport(auth.userId)
+  if (!limit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    )
+  }
+
+  // 3. Parse and validate search params
   const { searchParams } = request.nextUrl
   const dateFrom = searchParams.get("dateFrom")
   const dateTo = searchParams.get("dateTo")
@@ -69,17 +79,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     validatedStatuses.push(s as Enums<"ride_status">)
   }
 
-  // 3. Fetch billing data
+  // 4. Fetch billing data
   const { rows } = await getBillingData({
     dateFrom,
     dateTo,
     status: validatedStatuses.length > 0 ? validatedStatuses : undefined,
   })
 
-  // 4. Format CSV
+  // 5. Format CSV
   const csv = formatBillingCsv(rows)
 
-  // 5. Return CSV response with proper headers
+  // 6. Return CSV response with proper headers
   const filename = `verrechnung_${dateFrom}_${dateTo}.csv`
 
   return new NextResponse(csv, {

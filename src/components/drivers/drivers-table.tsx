@@ -8,13 +8,14 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { DriverCard } from "@/components/drivers/driver-card"
 import { DriverDetailSheet } from "@/components/drivers/driver-detail-sheet"
 import { toggleDriverActive } from "@/actions/drivers"
-import type { Tables } from "@/lib/types/database"
+import type { Tables, Enums } from "@/lib/types/database"
 
 interface DriversTableProps {
   drivers: Tables<"drivers">[]
+  userRole?: Enums<"user_role">
 }
 
-export function DriversTable({ drivers }: DriversTableProps) {
+export function DriversTable({ drivers, userRole }: DriversTableProps) {
   const [search, setSearch] = useState("")
   const [showInactive, setShowInactive] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -86,6 +87,7 @@ export function DriversTable({ drivers }: DriversTableProps) {
         }}
         onToggleActive={handleToggle}
         isPending={isPending}
+        userRole={userRole}
       />
     </div>
   )

@@ -1,13 +1,35 @@
 "use client"
 
+import { useState } from "react"
 import { useFormState } from "react-dom"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { SubmitButton } from "@/components/shared/submit-button"
+import { MfaVerifyForm } from "@/components/auth/mfa-verify-form"
 import { login } from "@/actions/auth"
 
 export function LoginForm() {
   const [state, formAction] = useFormState(login, null)
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null)
+  const router = useRouter()
+
+  // After successful login, check if MFA is required
+  if (state?.success && state.data?.mfaRequired && state.data.factorId && !mfaFactorId) {
+    // Trigger MFA step
+    setMfaFactorId(state.data.factorId)
+  }
+
+  // Show MFA verification form
+  if (mfaFactorId) {
+    return (
+      <MfaVerifyForm
+        factorId={mfaFactorId}
+        onSuccess={() => router.push("/")}
+        onCancel={() => setMfaFactorId(null)}
+      />
+    )
+  }
 
   return (
     <form action={formAction} className="space-y-4">

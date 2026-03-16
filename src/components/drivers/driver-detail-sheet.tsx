@@ -23,8 +23,10 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ActiveBadge } from "@/components/shared/active-badge"
 import { DeactivateDialog } from "@/components/shared/deactivate-dialog"
+import { AnonymizeDialog } from "@/components/shared/anonymize-dialog"
+import { anonymizeDriver } from "@/actions/gdpr"
 import { cn } from "@/lib/utils"
-import type { Tables } from "@/lib/types/database"
+import type { Tables, Enums } from "@/lib/types/database"
 
 const vehicleTypeLabels: Record<string, string> = {
   standard: "Standard",
@@ -44,6 +46,7 @@ interface DriverDetailSheetProps {
   onOpenChange: (open: boolean) => void
   onToggleActive: (id: string, currentActive: boolean) => void
   isPending: boolean
+  userRole?: Enums<"user_role">
 }
 
 export function DriverDetailSheet({
@@ -52,6 +55,7 @@ export function DriverDetailSheet({
   onOpenChange,
   onToggleActive,
   isPending,
+  userRole,
 }: DriverDetailSheetProps) {
   if (!driver) return null
 
@@ -182,7 +186,7 @@ export function DriverDetailSheet({
           )}
         </div>
 
-        <SheetFooter>
+        <SheetFooter className="flex-col gap-2 sm:flex-col">
           <DeactivateDialog
             isActive={driver.is_active}
             entityLabel={fullName}
@@ -192,6 +196,14 @@ export function DriverDetailSheet({
               onOpenChange(false)
             }}
           />
+          {userRole === "admin" && driver.first_name !== "ANONYMISIERT" && (
+            <AnonymizeDialog
+              entityId={driver.id}
+              entityLabel={fullName}
+              onAnonymize={anonymizeDriver}
+              onComplete={() => onOpenChange(false)}
+            />
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>

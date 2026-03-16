@@ -15,7 +15,9 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ActiveBadge } from "@/components/shared/active-badge"
 import { DeactivateDialog } from "@/components/shared/deactivate-dialog"
-import type { Tables } from "@/lib/types/database"
+import { AnonymizeDialog } from "@/components/shared/anonymize-dialog"
+import { anonymizePatient } from "@/actions/gdpr"
+import type { Tables, Enums } from "@/lib/types/database"
 
 const IMPAIRMENT_LABELS: Record<string, string> = {
   rollator: "Rollator",
@@ -34,6 +36,7 @@ interface PatientDetailSheetProps {
   onOpenChange: (open: boolean) => void
   onToggleActive: (id: string, currentActive: boolean) => void
   isPending: boolean
+  userRole?: Enums<"user_role">
 }
 
 export function PatientDetailSheet({
@@ -42,6 +45,7 @@ export function PatientDetailSheet({
   onOpenChange,
   onToggleActive,
   isPending,
+  userRole,
 }: PatientDetailSheetProps) {
   if (!patient) return null
 
@@ -187,6 +191,14 @@ export function PatientDetailSheet({
               onOpenChange(false)
             }}
           />
+          {userRole === "admin" && patient.first_name !== "ANONYMISIERT" && (
+            <AnonymizeDialog
+              entityId={patient.id}
+              entityLabel={fullName}
+              onAnonymize={anonymizePatient}
+              onComplete={() => onOpenChange(false)}
+            />
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>

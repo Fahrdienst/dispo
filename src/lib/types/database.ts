@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          id: string
+          user_id: string | null
+          user_role: string | null
+          action: string
+          entity_type: string
+          entity_id: string | null
+          changes: Json | null
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          user_role?: string | null
+          action: string
+          entity_type: string
+          entity_id?: string | null
+          changes?: Json | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          user_role?: string | null
+          action?: string
+          entity_type?: string
+          entity_id?: string | null
+          changes?: Json | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       acceptance_tracking: {
         Row: {
           created_at: string
@@ -938,6 +974,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      anonymize_driver: {
+        Args: { p_driver_id: string }
+        Returns: undefined
+      }
+      anonymize_patient: {
+        Args: { p_patient_id: string }
+        Returns: undefined
+      }
       archive_old_rides: {
         Args: { months_old?: number }
         Returns: {

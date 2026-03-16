@@ -2,12 +2,18 @@
 
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { rateLimitLogin } from "@/lib/security/rate-limit"
 import type { ActionResult } from "@/actions/shared"
 
+interface LoginData {
+  mfaRequired?: boolean
+  factorId?: string
+}
+
 export async function login(
-  _prevState: ActionResult | null,
+  _prevState: ActionResult<LoginData> | null,
   formData: FormData
-): Promise<ActionResult> {
+): Promise<ActionResult<LoginData>> {
   const supabase = await createClient()
 
   const email = formData.get("email") as string
@@ -17,7 +23,16 @@ export async function login(
     return { success: false, error: "E-Mail und Passwort sind erforderlich" }
   }
 
-  const { error } = await supabase.auth.signInWithPassword({
+  // Rate limit by email (no reliable IP in Server Actions)
+  const limit = rateLimitLogin(email)
+  if (!limit.success) {
+    return {
+      success: false,
+      error: "Zu viele Anmeldeversuche. Bitte warten Sie 15 Minuten.",
+    }
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
@@ -25,6 +40,29 @@ export async function login(
   if (error) {
     return { success: false, error: "E-Mail oder Passwort ist falsch" }
   }
+
+  // Check if MFA is required (AAL2 not yet reached)
+  const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+
+  if (
+    aalData &&
+    aalData.nextLevel === "aal2" &&
+    aalData.currentLevel === "aal1"
+  ) {
+    // Find the TOTP factor to challenge
+    const { data: factorsData } = await supabase.auth.mfa.listFactors()
+    const totpFactor = factorsData?.totp.find((f) => f.status === "verified")
+
+    if (totpFactor) {
+      return {
+        success: true,
+        data: { mfaRequired: true, factorId: totpFactor.id },
+      }
+    }
+  }
+
+  // Suppress unused variable warning — data is checked by the MFA flow above
+  void data
 
   redirect("/")
 }

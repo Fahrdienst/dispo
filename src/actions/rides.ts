@@ -22,6 +22,7 @@ import {
   generateDatesForSeries,
   expandDirections,
 } from "@/lib/ride-series/generate"
+import { logAudit } from "@/lib/audit/logger"
 import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables, Enums } from "@/lib/types/database"
@@ -163,6 +164,16 @@ export async function createRide(
   if (error) {
     return { success: false, error: error.message }
   }
+
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: auth.role,
+    action: "create",
+    entityType: "ride",
+    entityId: outboundRide.id,
+    metadata: { status, direction: rideData.direction },
+  }).catch(() => {})
 
   // 2. Optionally create return ride
   if (create_return_ride && rideData.direction === "outbound") {
@@ -623,6 +634,16 @@ export async function updateRide(
     return { success: false, error: error.message }
   }
 
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: auth.role,
+    action: "update",
+    entityType: "ride",
+    entityId: id,
+    metadata: { fields: Object.keys(rideData) },
+  }).catch(() => {})
+
   revalidatePath("/rides")
   revalidatePath("/dispatch")
   redirect(`/rides?date=${rideData.date}`)
@@ -669,6 +690,16 @@ export async function updateRideStatus(
   if (error) {
     return { success: false, error: error.message }
   }
+
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: auth.role,
+    action: "status_change",
+    entityType: "ride",
+    entityId: rideId,
+    changes: { status: { old: ride.status, new: newStatus } },
+  }).catch(() => {})
 
   revalidatePath("/rides")
   revalidatePath("/my/rides")
@@ -887,6 +918,16 @@ export async function toggleRideActive(
   if (error) {
     return { success: false, error: error.message }
   }
+
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: auth.role,
+    action: isActive ? "activate" : "deactivate",
+    entityType: "ride",
+    entityId: id,
+    changes: { is_active: { old: !isActive, new: isActive } },
+  }).catch(() => {})
 
   revalidatePath("/rides")
   return { success: true, data: undefined }
