@@ -13,6 +13,8 @@ const settingsNavItems: SettingsNavItem[] = [
   { href: "/settings/zones", label: "Zonen" },
   { href: "/settings/fares", label: "Tarife" },
   { href: "/settings/geocoding", label: "Geocoding" },
+  { href: "/settings/organization", label: "Organisation" },
+  { href: "/settings/system", label: "System" },
 ]
 
 export function SettingsNav() {
