@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/dashboard/page-header"
+import { Breadcrumb } from "@/components/shared/breadcrumb"
 import { AvailabilityGrid } from "@/components/drivers/availability-grid"
 import { DateSpecificAvailability } from "@/components/drivers/date-specific-availability"
 
@@ -42,11 +43,16 @@ export default async function AvailabilityPage({ params }: AvailabilityPageProps
 
   return (
     <div className="space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Fahrer", href: "/drivers" },
+          { label: `${driver.first_name} ${driver.last_name}`, href: `/drivers/${id}/edit` },
+          { label: "Verfuegbarkeit" },
+        ]}
+      />
       <PageHeader
         title={`Verfuegbarkeit: ${driver.first_name} ${driver.last_name}`}
         description="Woechentliches Verfuegbarkeitsraster und datumsspezifische Einmal-Slots"
-        backHref={`/drivers/${id}/edit`}
-        backLabel="Zurueck zum Fahrer"
       />
       <AvailabilityGrid
         driverId={id}

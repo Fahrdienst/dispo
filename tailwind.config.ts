@@ -78,6 +78,12 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
       },
+      height: {
+        "map-desktop": "var(--panel-map)",
+        "map-mobile": "var(--panel-map-mobile)",
+        "touch-target": "44px",
+        "touch-target-lg": "48px",
+      },
       // Layout dimension tokens exposed as Tailwind width values
       // Usage: w-panel-ride-list (operator left panel)
       width: {

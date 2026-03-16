@@ -101,3 +101,117 @@ function calculateReturnPickup(
 
   return addMinutesToTime(appointmentEndTime, bufferMinutes)
 }
+
+// ---------------------------------------------------------------------------
+// Time Conflict Detection
+// ---------------------------------------------------------------------------
+
+/** Default ride duration fallback in seconds (60 minutes). */
+const DEFAULT_RIDE_DURATION_SECONDS = 3600
+
+/** Minimal ride input for conflict detection. */
+export interface ConflictRideInput {
+  id: string
+  pickup_time: string
+  duration_seconds: number | null
+  driver_id: string | null
+  status: string
+}
+
+/** A pair of rides that overlap in time for the same driver. */
+export interface ConflictInfo {
+  rideIdA: string
+  rideIdB: string
+  driverId: string
+  /** Overlap window start in "HH:MM" format */
+  overlapStart: string
+  /** Overlap window end in "HH:MM" format */
+  overlapEnd: string
+}
+
+/**
+ * Parse a time string ("HH:MM" or "HH:MM:SS") to minutes since midnight.
+ */
+function timeToMinutes(time: string): number {
+  const parts = time.split(":")
+  const hours = parseInt(parts[0] ?? "0", 10)
+  const minutes = parseInt(parts[1] ?? "0", 10)
+  return hours * 60 + minutes
+}
+
+/**
+ * Format minutes since midnight to "HH:MM".
+ */
+function minutesToTime(totalMinutes: number): string {
+  const clamped = Math.max(0, Math.min(totalMinutes, 1439))
+  const h = Math.floor(clamped / 60)
+  const m = clamped % 60
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+}
+
+/**
+ * Detect time conflicts among rides assigned to the same driver.
+ *
+ * Algorithm: O(n log n) — group by driver, sort by pickup_time, then
+ * check consecutive pairs for overlap.
+ *
+ * A ride's time window is [pickup_time, pickup_time + duration_seconds].
+ * If duration_seconds is null, DEFAULT_RIDE_DURATION_SECONDS (60 min) is used.
+ *
+ * Rides with status "cancelled" or "no_show" are excluded.
+ * Rides without a driver_id are excluded.
+ */
+export function detectTimeConflicts(rides: ConflictRideInput[]): ConflictInfo[] {
+  // Filter to assigned, non-terminal rides
+  const activeRides = rides.filter(
+    (r) =>
+      r.driver_id !== null &&
+      r.status !== "cancelled" &&
+      r.status !== "no_show"
+  )
+
+  // Group by driver
+  const byDriver = new Map<string, ConflictRideInput[]>()
+  for (const ride of activeRides) {
+    const driverId = ride.driver_id!
+    const group = byDriver.get(driverId) ?? []
+    group.push(ride)
+    byDriver.set(driverId, group)
+  }
+
+  const conflicts: ConflictInfo[] = []
+
+  for (const [driverId, driverRides] of byDriver) {
+    if (driverRides.length < 2) continue
+
+    // Sort by pickup_time (string comparison works for HH:MM format)
+    driverRides.sort((a, b) => a.pickup_time.localeCompare(b.pickup_time))
+
+    for (let i = 0; i < driverRides.length - 1; i++) {
+      const current = driverRides[i]!
+      const next = driverRides[i + 1]!
+
+      const currentStart = timeToMinutes(current.pickup_time)
+      const currentDuration = current.duration_seconds ?? DEFAULT_RIDE_DURATION_SECONDS
+      const currentEnd = currentStart + Math.ceil(currentDuration / 60)
+
+      const nextStart = timeToMinutes(next.pickup_time)
+      const nextDuration = next.duration_seconds ?? DEFAULT_RIDE_DURATION_SECONDS
+      const nextEnd = nextStart + Math.ceil(nextDuration / 60)
+
+      if (currentEnd > nextStart) {
+        const overlapStart = Math.max(currentStart, nextStart)
+        const overlapEnd = Math.min(currentEnd, nextEnd)
+        conflicts.push({
+          rideIdA: current.id,
+          rideIdB: next.id,
+          driverId,
+          overlapStart: minutesToTime(overlapStart),
+          overlapEnd: minutesToTime(overlapEnd),
+        })
+      }
+    }
+  }
+
+  return conflicts
+}

@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { SettingsNav } from "@/components/settings/settings-nav"
+import { Breadcrumb } from "@/components/shared/breadcrumb"
 import { ZonesTable } from "@/components/zones/zones-table"
 
 export const metadata: Metadata = {
@@ -17,6 +18,12 @@ export default async function ZonesPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Einstellungen", href: "/settings/zones" },
+          { label: "Zonen" },
+        ]}
+      />
       <PageHeader
         title="Zonen"
         description="Verwalten Sie geografische Zonen fuer die Tarifberechnung."

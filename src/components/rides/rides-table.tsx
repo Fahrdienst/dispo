@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { RideStatusBadge } from "@/components/shared/ride-status-badge"
+import { StatusFilterChips } from "@/components/shared/status-filter-chips"
 import { EmptyState } from "@/components/shared/empty-state"
 import { toggleRideActive, updateRideStatus } from "@/actions/rides"
 import { getValidTransitionsForRole } from "@/lib/rides/status-machine"
@@ -104,43 +105,14 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
         />
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={() => setStatusFilter("all")}
-            className={cn(
-              "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-colors",
-              statusFilter === "all"
-                ? "bg-foreground text-background"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            )}
-          >
-            Alle
-          </button>
-          {ALL_STATUSES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setStatusFilter(s)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                statusFilter === s
-                  ? RIDE_STATUS_COLORS[s]
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              )}
-            >
-              {statusFilter === s && (
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    RIDE_STATUS_DOT_COLORS[s]
-                  )}
-                />
-              )}
-              {RIDE_STATUS_LABELS[s]}
-            </button>
-          ))}
-        </div>
+        <StatusFilterChips
+          statuses={ALL_STATUSES}
+          labels={RIDE_STATUS_LABELS}
+          value={statusFilter}
+          onChange={setStatusFilter}
+          colors={RIDE_STATUS_COLORS}
+          dotColors={RIDE_STATUS_DOT_COLORS}
+        />
       </div>
 
       {filtered.length === 0 ? (

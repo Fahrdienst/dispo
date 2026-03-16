@@ -17,11 +17,11 @@ export const metadata: Metadata = {
 }
 
 interface RidesPageProps {
-  searchParams: Promise<{ date?: string; week?: string }>
+  searchParams: Promise<{ date?: string; week?: string; driver_id?: string }>
 }
 
 export default async function RidesPage({ searchParams }: RidesPageProps) {
-  const { date, week } = await searchParams
+  const { date, week, driver_id } = await searchParams
   const today = getToday()
 
   const supabase = await createClient()
@@ -34,19 +34,38 @@ export default async function RidesPage({ searchParams }: RidesPageProps) {
   const userRole: Enums<"user_role"> = profile?.role ?? "driver"
   const isStaff = userRole === "admin" || userRole === "operator"
 
+  // Resolve driver name for filter banner
+  let driverFilterName: string | null = null
+  if (driver_id) {
+    const { data: driverData } = await supabase
+      .from("drivers")
+      .select("first_name, last_name")
+      .eq("id", driver_id)
+      .single()
+    if (driverData) {
+      driverFilterName = `${driverData.last_name}, ${driverData.first_name}`
+    }
+  }
+
   // --- DAY VIEW (when ?date= param is present) ---
   if (date) {
     const selectedDate = date
     const prevDate = addDays(selectedDate, -1)
     const nextDate = addDays(selectedDate, 1)
 
-    const { data: rides } = await supabase
+    let dayQuery = supabase
       .from("rides")
       .select(
         "*, patients(id, first_name, last_name), destinations(id, display_name), drivers(id, first_name, last_name)"
       )
       .eq("date", selectedDate)
       .order("pickup_time")
+    if (driver_id) {
+      dayQuery = dayQuery.eq("driver_id", driver_id)
+    }
+    const { data: rides } = await dayQuery
+
+    const driverParam = driver_id ? `&driver_id=${driver_id}` : ""
 
     return (
       <div className="space-y-6">
@@ -57,9 +76,18 @@ export default async function RidesPage({ searchParams }: RidesPageProps) {
           createLabel="Neue Fahrt"
         />
 
+        {driverFilterName && (
+          <div className="flex items-center justify-between rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
+            <span>Gefiltert nach Fahrer: <strong>{driverFilterName}</strong></span>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={`/rides?date=${date}`}>Filter entfernen</Link>
+            </Button>
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/rides?date=${prevDate}`}>
+            <Link href={`/rides?date=${prevDate}${driverParam}`}>
               &larr; Vorheriger Tag
             </Link>
           </Button>
@@ -67,17 +95,17 @@ export default async function RidesPage({ searchParams }: RidesPageProps) {
             {formatDateDE(selectedDate)}
           </span>
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/rides?date=${nextDate}`}>
+            <Link href={`/rides?date=${nextDate}${driverParam}`}>
               Naechster Tag &rarr;
             </Link>
           </Button>
           {selectedDate !== today && (
             <Button variant="outline" size="sm" asChild>
-              <Link href="/rides">Heute</Link>
+              <Link href={`/rides${driverParam ? `?${driverParam.slice(1)}` : ""}`}>Heute</Link>
             </Button>
           )}
           <Button variant="ghost" size="sm" asChild>
-            <Link href={`/rides?week=${getMondayOf(selectedDate)}`}>
+            <Link href={`/rides?week=${getMondayOf(selectedDate)}${driverParam}`}>
               Wochenansicht
             </Link>
           </Button>
@@ -98,7 +126,7 @@ export default async function RidesPage({ searchParams }: RidesPageProps) {
   const todayWeekStart = getMondayOf(today)
   const weekDates = getWeekDates(weekStart)
 
-  const { data: weekRides } = await supabase
+  let weekQuery = supabase
     .from("rides")
     .select("id, date, pickup_time, status, patients(first_name, last_name)")
     .gte("date", weekStart)
@@ -106,6 +134,10 @@ export default async function RidesPage({ searchParams }: RidesPageProps) {
     .eq("is_active", true)
     .order("date")
     .order("pickup_time")
+  if (driver_id) {
+    weekQuery = weekQuery.eq("driver_id", driver_id)
+  }
+  const { data: weekRides } = await weekQuery
 
   // Group rides by date
   type WeekRide = {
@@ -138,6 +170,15 @@ export default async function RidesPage({ searchParams }: RidesPageProps) {
         createHref={isStaff ? "/rides/new" : undefined}
         createLabel="Neue Fahrt"
       />
+
+      {driverFilterName && (
+        <div className="flex items-center justify-between rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
+          <span>Gefiltert nach Fahrer: <strong>{driverFilterName}</strong></span>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={week ? `/rides?week=${week}` : "/rides"}>Filter entfernen</Link>
+          </Button>
+        </div>
+      )}
 
       <WeekNav
         weekStart={weekStart}

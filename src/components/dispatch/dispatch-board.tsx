@@ -15,14 +15,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { RideStatusBadge } from "@/components/shared/ride-status-badge"
+import { RideQuickSheet } from "@/components/rides/ride-quick-sheet"
 import {
   RIDE_STATUS_LABELS,
   RIDE_STATUS_BORDER_COLORS,
   RIDE_DIRECTION_LABELS,
   VEHICLE_TYPE_LABELS,
 } from "@/lib/rides/constants"
+import { detectTimeConflicts, type ConflictInfo } from "@/lib/rides/time-calc"
 import { assignDriver } from "@/actions/rides"
 import type { Enums } from "@/lib/types/database"
+import { addDays, formatDateDE, getMondayOf } from "@/lib/utils/dates"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,6 +44,7 @@ export interface DispatchRide {
   driver_id: string | null
   appointment_time: string | null
   parent_ride_id: string | null
+  duration_seconds: number | null
   patient_first_name: string
   patient_last_name: string
   destination_name: string
@@ -129,12 +133,6 @@ const STATUS_CHIP_COLORS: Record<RideStatus, string> = {
   cancelled:   "bg-slate-400 text-white",
   no_show:     "bg-rose-600 text-white",
 }
-
-// ---------------------------------------------------------------------------
-// Day Navigation Helpers
-// ---------------------------------------------------------------------------
-
-import { addDays, formatDateDE, getMondayOf } from "@/lib/utils/dates"
 
 // ---------------------------------------------------------------------------
 // Sub-Components
@@ -227,6 +225,8 @@ export function DispatchBoard({
   const [isPending, startTransition] = useTransition()
   const [statusFilter, setStatusFilter] = useState<RideStatus | "all">("all")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [selectedRideId, setSelectedRideId] = useState<string | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   // -- Derived data --
 
@@ -241,46 +241,63 @@ export function DispatchBoard({
     return set
   }, [driverAvailability])
 
-  // Build conflict map: for each slot, which drivers already have rides
-  const slotDriverConflicts = useMemo(() => {
-    const map = new Map<string, Map<string, number>>()
-    for (const ride of rides) {
-      if (!ride.driver_id) continue
-      // Only count non-terminal rides as conflicts
-      if (ride.status === "cancelled" || ride.status === "completed" || ride.status === "no_show") continue
-      const slot = getSlotForTime(ride.pickup_time)
-      if (!slot) continue
-      const driverMap = map.get(slot) ?? new Map<string, number>()
-      driverMap.set(ride.driver_id, (driverMap.get(ride.driver_id) ?? 0) + 1)
-      map.set(slot, driverMap)
+  // Detect precise time conflicts between rides assigned to the same driver
+  const timeConflicts = useMemo(() => detectTimeConflicts(rides), [rides])
+
+  // Set of ride IDs that are part of any conflict
+  const conflictRideIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const c of timeConflicts) {
+      set.add(c.rideIdA)
+      set.add(c.rideIdB)
+    }
+    return set
+  }, [timeConflicts])
+
+  // Set of driver IDs that have at least one time conflict
+  const conflictDriverIdSet = useMemo(() => {
+    const set = new Set<string>()
+    for (const c of timeConflicts) {
+      set.add(c.driverId)
+    }
+    return set
+  }, [timeConflicts])
+
+  // Map from ride ID to its conflict details (for tooltip text)
+  const conflictsByRideId = useMemo(() => {
+    const map = new Map<string, ConflictInfo[]>()
+    for (const c of timeConflicts) {
+      const listA = map.get(c.rideIdA) ?? []
+      listA.push(c)
+      map.set(c.rideIdA, listA)
+
+      const listB = map.get(c.rideIdB) ?? []
+      listB.push(c)
+      map.set(c.rideIdB, listB)
     }
     return map
-  }, [rides])
+  }, [timeConflicts])
+
+  // Map from driver ID to conflict details (for sidebar tooltip)
+  const conflictsByDriverId = useMemo(() => {
+    const map = new Map<string, ConflictInfo[]>()
+    for (const c of timeConflicts) {
+      const list = map.get(c.driverId) ?? []
+      list.push(c)
+      map.set(c.driverId, list)
+    }
+    return map
+  }, [timeConflicts])
 
   /**
-   * For a given ride, return the set of driver IDs that have a conflict
-   * (already assigned to another ride in the same slot).
+   * For a given ride, return the set of driver IDs that have a time conflict.
+   * Used in the driver select dropdown to warn about busy drivers.
    */
   const getConflictDriverIds = useCallback(
-    (ride: DispatchRide): Set<string> => {
-      const slot = getSlotForTime(ride.pickup_time)
-      if (!slot) return new Set()
-      const driverMap = slotDriverConflicts.get(slot)
-      if (!driverMap) return new Set()
-
-      const conflicts = new Set<string>()
-      for (const [driverId, count] of driverMap) {
-        // A driver has a conflict if they have rides in this slot
-        // but exclude the current ride's own driver from its own conflict count
-        if (driverId === ride.driver_id) {
-          if (count > 1) conflicts.add(driverId)
-        } else {
-          conflicts.add(driverId)
-        }
-      }
-      return conflicts
+    (_ride: DispatchRide): Set<string> => {
+      return conflictDriverIdSet
     },
-    [slotDriverConflicts]
+    [conflictDriverIdSet]
   )
 
   // Filter rides by status
@@ -324,6 +341,11 @@ export function DispatchBoard({
     []
   )
 
+  const handleRideClick = useCallback((rideId: string) => {
+    setSelectedRideId(rideId)
+    setSheetOpen(true)
+  }, [])
+
   // -- Navigation --
 
   const prevDate = addDays(selectedDate, -1)
@@ -333,6 +355,9 @@ export function DispatchBoard({
   const unassignedCount = rides.filter(
     (r) => !r.driver_id && r.status !== "cancelled" && r.status !== "completed" && r.status !== "no_show"
   ).length
+
+  // -- Count conflicts for stats bar --
+  const conflictCount = timeConflicts.length
 
   return (
     <div className="space-y-6">
@@ -378,6 +403,12 @@ export function DispatchBoard({
         {unassignedCount > 0 && (
           <Badge variant="destructive">
             {unassignedCount} ohne Fahrer
+          </Badge>
+        )}
+        {conflictCount > 0 && (
+          <Badge variant="outline" className="border-amber-400 bg-amber-50 text-amber-800">
+            <AlertTriangle className="mr-1 h-3 w-3" />
+            {conflictCount} {conflictCount === 1 ? "Zeitkonflikt" : "Zeitkonflikte"}
           </Badge>
         )}
       </div>
@@ -431,18 +462,41 @@ export function DispatchBoard({
           ) : (
             filteredRides.map((ride) => {
               const slot = getSlotForTime(ride.pickup_time)
-              const conflictDriverIds = getConflictDriverIds(ride)
-              const hasOwnConflict = ride.driver_id !== null && conflictDriverIds.has(ride.driver_id)
+              const driverConflicts = getConflictDriverIds(ride)
+              const hasOwnConflict = conflictRideIds.has(ride.id)
+              const rideConflicts = conflictsByRideId.get(ride.id)
+
+              // Build conflict tooltip text
+              const conflictTitle = rideConflicts
+                ? `Zeitkonflikt: ${rideConflicts.length === 1 ? "1 Ueberschneidung" : `${rideConflicts.length} Ueberschneidungen`} (${rideConflicts.map((c) => `${c.overlapStart}-${c.overlapEnd}`).join(", ")})`
+                : undefined
 
               return (
                 <div
                   key={ride.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement
+                    if (target.closest("[data-dispatch-select]")) return
+                    handleRideClick(ride.id)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      const target = e.target as HTMLElement
+                      if (target.closest("[data-dispatch-select]")) return
+                      e.preventDefault()
+                      handleRideClick(ride.id)
+                    }
+                  }}
                   className={cn(
-                    "rounded-lg border bg-card p-4 shadow-sm",
+                    "cursor-pointer rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-muted/50",
                     "border-l-4",
+                    hasOwnConflict && "ring-1 ring-amber-300",
                     ride.status === "unplanned" && !ride.driver_id
                       ? "border-l-red-600"
-                      : RIDE_STATUS_BORDER_COLORS[ride.status]
+                      : RIDE_STATUS_BORDER_COLORS[ride.status],
+                    hasOwnConflict && "border-amber-400"
                   )}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -480,26 +534,35 @@ export function DispatchBoard({
                         <Badge
                           variant="outline"
                           className="border-amber-400 bg-amber-50 text-amber-800"
+                          title={conflictTitle}
                         >
-                          Konflikt
+                          <AlertTriangle className="mr-1 h-3 w-3" />
+                          Zeitkonflikt
                         </Badge>
                       )}
                     </div>
 
                     {/* Right: Driver Select */}
-                    <div className="w-full sm:w-64">
+                    <div className="w-full sm:w-64" data-dispatch-select>
                       <DriverSelect
                         rideId={ride.id}
                         currentDriverId={ride.driver_id}
                         drivers={drivers}
                         availableSlots={availableSlotSet}
                         rideSlot={slot}
-                        conflictDriverIds={conflictDriverIds}
+                        conflictDriverIds={driverConflicts}
                         isPending={isPending}
                         onAssign={handleAssign}
                       />
                     </div>
                   </div>
+                  {/* Conflict detail line */}
+                  {hasOwnConflict && rideConflicts && (
+                    <p className="mt-2 text-xs font-medium text-amber-700">
+                      Zeitkonflikt: Ueberschneidung{" "}
+                      {rideConflicts.map((c) => `${c.overlapStart}\u2013${c.overlapEnd}`).join(", ")}
+                    </p>
+                  )}
                   {ride.notes && (
                     <p className="mt-2 text-xs text-muted-foreground">
                       {ride.notes}
@@ -528,18 +591,37 @@ export function DispatchBoard({
                 const rideCount = driverRideCounts.get(driver.id) ?? 0
                 const availableSlots = driverAvailability[driver.id] ?? []
                 const isAvailableToday = availableSlots.length > 0
+                const driverConflictList = conflictsByDriverId.get(driver.id)
+                const hasConflict =
+                  driverConflictList !== undefined &&
+                  driverConflictList.length > 0
+                const driverConflictTitle = hasConflict
+                  ? `Zeitkonflikt: ${driverConflictList.length} Ueberschneidung${driverConflictList.length > 1 ? "en" : ""}`
+                  : undefined
 
                 return (
                   <div
                     key={driver.id}
                     className={cn(
                       "flex items-center justify-between rounded-md border px-3 py-2",
-                      isAvailableToday ? "border-green-200 bg-green-50" : "border-gray-200 bg-gray-50"
+                      hasConflict
+                        ? "border-amber-300 bg-amber-50"
+                        : isAvailableToday
+                          ? "border-green-200 bg-green-50"
+                          : "border-gray-200 bg-gray-50"
                     )}
                   >
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">
+                      <span className="flex items-center gap-1.5 text-sm font-medium">
                         {driver.last_name}, {driver.first_name}
+                        {hasConflict && (
+                          <span
+                            title={driverConflictTitle}
+                            aria-label={driverConflictTitle}
+                          >
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                          </span>
+                        )}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {VEHICLE_TYPE_LABELS[driver.vehicle_type]}
@@ -558,10 +640,26 @@ export function DispatchBoard({
                       <span
                         className={cn(
                           "h-2.5 w-2.5 shrink-0 rounded-full",
-                          isAvailableToday ? "bg-green-500" : "bg-gray-300"
+                          hasConflict
+                            ? "bg-amber-500"
+                            : isAvailableToday
+                              ? "bg-green-500"
+                              : "bg-gray-300"
                         )}
-                        title={isAvailableToday ? "Heute verfuegbar" : "Heute nicht verfuegbar"}
-                        aria-label={isAvailableToday ? "Heute verfuegbar" : "Heute nicht verfuegbar"}
+                        title={
+                          hasConflict
+                            ? "Zeitkonflikt"
+                            : isAvailableToday
+                              ? "Heute verfuegbar"
+                              : "Heute nicht verfuegbar"
+                        }
+                        aria-label={
+                          hasConflict
+                            ? "Zeitkonflikt"
+                            : isAvailableToday
+                              ? "Heute verfuegbar"
+                              : "Heute nicht verfuegbar"
+                        }
                       />
                     </div>
                   </div>
@@ -571,6 +669,13 @@ export function DispatchBoard({
           </CardContent>
         </Card>
       </div>
+
+      {/* Ride Quick Sheet */}
+      <RideQuickSheet
+        rideId={selectedRideId}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+      />
     </div>
   )
 }

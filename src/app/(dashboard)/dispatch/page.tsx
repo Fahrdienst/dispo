@@ -108,7 +108,7 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="-mx-4 mx-auto max-w-none space-y-6 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
       <PageHeader
         title="Disposition"
         description="Wochenuebersicht"
@@ -141,7 +141,7 @@ async function renderDayView(selectedDate: string, today: string) {
   const [ridesResult, driversResult, weeklyAvailResult, dateAvailResult, trackingResult] = await Promise.all([
     supabase
       .from("rides")
-      .select("id, pickup_time, date, status, direction, notes, driver_id, appointment_time, parent_ride_id, patients(first_name, last_name), destinations(display_name)")
+      .select("id, pickup_time, date, status, direction, notes, driver_id, appointment_time, parent_ride_id, duration_seconds, patients(first_name, last_name), destinations(display_name)")
       .eq("date", selectedDate)
       .eq("is_active", true)
       .order("pickup_time"),
@@ -194,6 +194,7 @@ async function renderDayView(selectedDate: string, today: string) {
       driver_id: ride.driver_id,
       appointment_time: ride.appointment_time,
       parent_ride_id: ride.parent_ride_id,
+      duration_seconds: ride.duration_seconds,
       patient_first_name: patient?.first_name ?? "\u2013",
       patient_last_name: patient?.last_name ?? "\u2013",
       destination_name: destination?.display_name ?? "\u2013",
@@ -263,7 +264,7 @@ async function renderDayView(selectedDate: string, today: string) {
   queueEntries.sort((a, b) => a.pickup_time.localeCompare(b.pickup_time))
 
   return (
-    <div className="space-y-6">
+    <div className="-mx-4 mx-auto max-w-none space-y-6 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
       <PageHeader
         title="Disposition"
         description="Tagesuebersicht und Fahrerzuweisung"

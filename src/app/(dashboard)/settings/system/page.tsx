@@ -9,6 +9,7 @@ import {
 import { CheckCircle2, XCircle, AlertTriangle, MinusCircle } from "lucide-react"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { SettingsNav } from "@/components/settings/settings-nav"
+import { Breadcrumb } from "@/components/shared/breadcrumb"
 
 // =============================================================================
 // STATUS ICON
@@ -67,6 +68,12 @@ export default async function SystemPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Einstellungen", href: "/settings/zones" },
+          { label: "System" },
+        ]}
+      />
       <PageHeader
         title="Einstellungen"
         description="Status der externen Dienste und Systemkonfiguration"

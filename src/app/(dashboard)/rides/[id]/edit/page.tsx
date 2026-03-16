@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { RideForm } from "@/components/rides/ride-form"
+import { Breadcrumb } from "@/components/shared/breadcrumb"
 
 export const metadata: Metadata = {
   title: "Fahrt bearbeiten - Dispo",
@@ -46,6 +47,13 @@ export default async function EditRidePage({ params }: EditRidePageProps) {
 
   return (
     <div className="mx-auto max-w-5xl">
+      <Breadcrumb
+        items={[
+          { label: "Fahrten", href: "/rides" },
+          { label: `Fahrt #${id.slice(0, 8)}`, href: `/rides/${id}` },
+          { label: "Bearbeiten" },
+        ]}
+      />
       <RideForm
         ride={rideRes.data}
         patients={patientsRes.data ?? []}

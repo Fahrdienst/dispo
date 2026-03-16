@@ -891,3 +891,98 @@ export async function toggleRideActive(
   revalidatePath("/rides")
   return { success: true, data: undefined }
 }
+
+// ---------------------------------------------------------------------------
+// Ride Quick Details (for dispatch quick sheet)
+// ---------------------------------------------------------------------------
+
+export interface RideQuickDetails {
+  id: string
+  date: string
+  pickup_time: string
+  appointment_time: string | null
+  status: Enums<"ride_status">
+  direction: Enums<"ride_direction">
+  notes: string | null
+  patient: {
+    first_name: string
+    last_name: string
+    street: string | null
+    house_number: string | null
+    postal_code: string | null
+    city: string | null
+  } | null
+  destination: {
+    display_name: string
+    street: string | null
+    house_number: string | null
+    postal_code: string | null
+    city: string | null
+  } | null
+  driver: {
+    first_name: string
+    last_name: string
+  } | null
+  impairments: Enums<"impairment_type">[]
+}
+
+/**
+ * Load quick-view details for a single ride (dispatch sheet).
+ * Returns only the fields needed for the side panel.
+ */
+export async function getRideQuickDetails(
+  rideId: string
+): Promise<ActionResult<RideQuickDetails>> {
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: "Nicht autorisiert" }
+  }
+
+  const parsed = uuidSchema.safeParse(rideId)
+  if (!parsed.success) {
+    return { success: false, error: "Ungueltige Fahrt-ID" }
+  }
+
+  const supabase = await createClient()
+
+  // Fetch ride with patient, destination, driver
+  const { data: ride, error } = await supabase
+    .from("rides")
+    .select("id, date, pickup_time, appointment_time, status, direction, notes, patient_id, patients(first_name, last_name, street, house_number, postal_code, city), destinations(display_name, street, house_number, postal_code, city), drivers(first_name, last_name)")
+    .eq("id", parsed.data)
+    .single()
+
+  if (error || !ride) {
+    return { success: false, error: error?.message ?? "Fahrt nicht gefunden" }
+  }
+
+  // Fetch patient impairments
+  const { data: impairmentRows } = await supabase
+    .from("patient_impairments")
+    .select("impairment_type")
+    .eq("patient_id", ride.patient_id)
+
+  const patient = ride.patients as RideQuickDetails["patient"]
+  const destination = ride.destinations as RideQuickDetails["destination"]
+  const driver = ride.drivers as RideQuickDetails["driver"]
+  const impairments = (impairmentRows ?? []).map(
+    (r) => r.impairment_type as Enums<"impairment_type">
+  )
+
+  return {
+    success: true,
+    data: {
+      id: ride.id,
+      date: ride.date,
+      pickup_time: ride.pickup_time,
+      appointment_time: ride.appointment_time,
+      status: ride.status,
+      direction: ride.direction,
+      notes: ride.notes,
+      patient,
+      destination,
+      driver,
+      impairments,
+    },
+  }
+}

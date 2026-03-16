@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { PatientForm } from "@/components/patients/patient-form"
+import { Breadcrumb } from "@/components/shared/breadcrumb"
 
 export const metadata: Metadata = {
   title: "Patient bearbeiten - Dispo",
@@ -28,6 +29,12 @@ export default async function EditPatientPage({
 
   return (
     <div className="mx-auto max-w-2xl">
+      <Breadcrumb
+        items={[
+          { label: "Patienten", href: "/patients" },
+          { label: "Bearbeiten" },
+        ]}
+      />
       <PatientForm patient={patient} />
     </div>
   )

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { MapPin, Phone, User, Building2, MessageSquare } from "lucide-react"
+import { MapPin, Phone, User, Building2, MessageSquare, Plus } from "lucide-react"
 import {
   Sheet,
   SheetContent,
@@ -155,7 +155,13 @@ export function DestinationDetailSheet({
           )}
         </div>
 
-        <SheetFooter>
+        <SheetFooter className="flex-col gap-2 sm:flex-col">
+          <Button variant="outline" className="w-full" asChild>
+            <Link href={`/rides/new?destination_id=${destination.id}`}>
+              <Plus className="mr-2 h-4 w-4" />
+              Neue Fahrt erfassen
+            </Link>
+          </Button>
           <DeactivateDialog
             isActive={destination.is_active}
             entityLabel={destination.display_name}

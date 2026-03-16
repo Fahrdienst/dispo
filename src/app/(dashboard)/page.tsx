@@ -27,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { RideStatusBadge } from "@/components/shared/ride-status-badge";
+import { StatCard } from "@/components/dashboard/stat-card";
 import { DashboardMap } from "@/components/dashboard/dashboard-map";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -388,208 +389,124 @@ export default async function DashboardPage() {
 
       {/* ---- Row 1: Daily Stats Cards ---- */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Heute gesamt
-            </CardTitle>
-            <div className="rounded-md bg-blue-100 p-2">
-              <CalendarDays className="h-4 w-4 text-blue-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{totalCount}</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Heute gesamt"
+          value={totalCount}
+          icon={CalendarDays}
+          iconColorClass="text-blue-600"
+          iconBgClass="bg-blue-100"
+        />
 
-        <Card className={cn(unplannedCount > 0 && "border-red-200 bg-red-50/40")}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Ungeplant
-            </CardTitle>
-            <div
-              className={cn(
-                "rounded-md p-2",
-                unplannedCount > 0 ? "bg-red-100" : "bg-gray-100"
-              )}
-            >
-              <AlertCircle
-                className={cn(
-                  "h-4 w-4",
-                  unplannedCount > 0 ? "text-red-600" : "text-gray-500"
-                )}
-              />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p
-              className={cn(
-                "text-3xl font-bold",
-                unplannedCount > 0 && "text-red-600"
-              )}
-            >
-              {unplannedCount}
-            </p>
-            {unplannedCount > 0 && (
-              <p className="mt-1 text-xs font-medium text-red-600">Sofort handeln</p>
-            )}
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Ungeplant"
+          value={unplannedCount}
+          icon={AlertCircle}
+          iconColorClass={unplannedCount > 0 ? "text-red-600" : "text-gray-500"}
+          iconBgClass={unplannedCount > 0 ? "bg-red-100" : "bg-gray-100"}
+          variant={unplannedCount > 0 ? "critical" : "default"}
+          valueClassName={unplannedCount > 0 ? "text-red-600" : undefined}
+        >
+          {unplannedCount > 0 && (
+            <p className="mt-1 text-xs font-medium text-red-600">Sofort handeln</p>
+          )}
+        </StatCard>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Aktive Fahrten
-            </CardTitle>
-            <div className="rounded-md bg-emerald-100 p-2">
-              <Car className="h-4 w-4 text-emerald-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{activeCount}</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Aktive Fahrten"
+          value={activeCount}
+          icon={Car}
+          iconColorClass="text-emerald-600"
+          iconBgClass="bg-emerald-100"
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Abgeschlossen
-            </CardTitle>
-            <div className="rounded-md bg-green-100 p-2">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{completedCount}</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Abgeschlossen"
+          value={completedCount}
+          icon={CheckCircle2}
+          iconColorClass="text-green-600"
+          iconBgClass="bg-green-100"
+        />
       </div>
 
       {/* ---- Row 2: Overview Cards (4-col) ---- */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Diese Woche */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Diese Woche
-            </CardTitle>
-            <div className="rounded-md bg-violet-100 p-2">
-              <BarChart3 className="h-4 w-4 text-violet-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold tabular-nums">{weekTotal}</p>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-xs text-muted-foreground">Ausfallquote</span>
-              <span
-                className={cn(
-                  "text-sm font-semibold tabular-nums",
-                  getDropoutRateColor(dropoutRate)
-                )}
-              >
-                {dropoutRate.toFixed(1)}%
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Diese Woche"
+          value={weekTotal}
+          icon={BarChart3}
+          iconColorClass="text-violet-600"
+          iconBgClass="bg-violet-100"
+          subtitle="Ausfallquote"
+          subtitleValue={`${dropoutRate.toFixed(1)}%`}
+          subtitleColorClass={getDropoutRateColor(dropoutRate)}
+        />
 
-        {/* Naechste Woche */}
-        <Card
-          className={cn(nextWeekUnplanned > 0 && "border-amber-200 bg-amber-50/40")}
+        <StatCard
+          title="Nächste Woche"
+          value={nextWeekTotal}
+          icon={CalendarRange}
+          iconColorClass="text-indigo-600"
+          iconBgClass="bg-indigo-100"
+          variant={nextWeekUnplanned > 0 ? "warning" : "default"}
+          subtitle="Ungeplant"
+          subtitleValue={nextWeekUnplanned}
+          subtitleColorClass={
+            nextWeekUnplanned > 0 ? "text-amber-600" : "text-green-600"
+          }
+        />
+
+        <StatCard
+          title="Letzter Monat"
+          value={lastMonthTotal}
+          icon={CalendarCheck}
+          iconColorClass="text-cyan-600"
+          iconBgClass="bg-cyan-100"
         >
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Nächste Woche
-            </CardTitle>
-            <div className="rounded-md bg-indigo-100 p-2">
-              <CalendarRange className="h-4 w-4 text-indigo-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold tabular-nums">{nextWeekTotal}</p>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-xs text-muted-foreground">Ungeplant</span>
+          <div className="mt-1 flex flex-col gap-0.5">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xs text-muted-foreground">Abschluss</span>
               <span
                 className={cn(
                   "text-sm font-semibold tabular-nums",
-                  nextWeekUnplanned > 0 ? "text-amber-600" : "text-green-600"
+                  getCompletionRateColor(lastMonthCompletionRate)
                 )}
               >
-                {nextWeekUnplanned}
+                {lastMonthCompletionRate.toFixed(1)}%
               </span>
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xs text-muted-foreground">Ausfall</span>
+              <span
+                className={cn(
+                  "text-sm font-semibold tabular-nums",
+                  getDropoutRateColor(lastMonthDropoutRate)
+                )}
+              >
+                {lastMonthDropoutRate.toFixed(1)}%
+              </span>
+            </div>
+          </div>
+        </StatCard>
 
-        {/* Letzter Monat */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Letzter Monat
-            </CardTitle>
-            <div className="rounded-md bg-cyan-100 p-2">
-              <CalendarCheck className="h-4 w-4 text-cyan-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold tabular-nums">{lastMonthTotal}</p>
-            <div className="mt-1 flex flex-col gap-0.5">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xs text-muted-foreground">Abschluss</span>
-                <span
-                  className={cn(
-                    "text-sm font-semibold tabular-nums",
-                    getCompletionRateColor(lastMonthCompletionRate)
-                  )}
-                >
-                  {lastMonthCompletionRate.toFixed(1)}%
-                </span>
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xs text-muted-foreground">Ausfall</span>
-                <span
-                  className={cn(
-                    "text-sm font-semibold tabular-nums",
-                    getDropoutRateColor(lastMonthDropoutRate)
-                  )}
-                >
-                  {lastMonthDropoutRate.toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Fahrer heute */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Fahrer heute
-            </CardTitle>
-            <div className="rounded-md bg-amber-100 p-2">
-              <Users className="h-4 w-4 text-amber-600" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold tabular-nums">
+        <StatCard
+          title="Fahrer heute"
+          value={
+            <>
               {driversOnDuty}
               <span className="text-lg font-normal text-muted-foreground">
                 /{totalDrivers}
               </span>
-            </p>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-xs text-muted-foreground">Verfügbar ohne Fahrt</span>
-              <span
-                className={cn(
-                  "text-sm font-semibold tabular-nums",
-                  idleDrivers.length > 0 ? "text-amber-600" : "text-muted-foreground"
-                )}
-              >
-                {idleDrivers.length}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+            </>
+          }
+          icon={Users}
+          iconColorClass="text-amber-600"
+          iconBgClass="bg-amber-100"
+          subtitle="Verfügbar ohne Fahrt"
+          subtitleValue={idleDrivers.length}
+          subtitleColorClass={
+            idleDrivers.length > 0 ? "text-amber-600" : "text-muted-foreground"
+          }
+        />
       </div>
 
       {/* Idle drivers banner */}

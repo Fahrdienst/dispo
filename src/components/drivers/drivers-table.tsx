@@ -1,37 +1,14 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import Link from "next/link"
-import { MoreHorizontal } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
-import { ActiveBadge } from "@/components/shared/active-badge"
 import { EmptyState } from "@/components/shared/empty-state"
+import { DriverCard } from "@/components/drivers/driver-card"
+import { DriverDetailSheet } from "@/components/drivers/driver-detail-sheet"
 import { toggleDriverActive } from "@/actions/drivers"
 import type { Tables } from "@/lib/types/database"
-
-const vehicleTypeLabels: Record<string, string> = {
-  standard: "Standard",
-  wheelchair: "Rollstuhl",
-  stretcher: "Trage",
-}
 
 interface DriversTableProps {
   drivers: Tables<"drivers">[]
@@ -41,6 +18,7 @@ export function DriversTable({ drivers }: DriversTableProps) {
   const [search, setSearch] = useState("")
   const [showInactive, setShowInactive] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [selected, setSelected] = useState<Tables<"drivers"> | null>(null)
 
   const filtered = drivers.filter((d) => {
     if (!showInactive && !d.is_active) return false
@@ -83,77 +61,32 @@ export function DriversTable({ drivers }: DriversTableProps) {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState message="Keine Fahrer gefunden." createHref="/drivers/new" createLabel="Fahrer erfassen" />
+        <EmptyState
+          message="Keine Fahrer gefunden."
+          createHref="/drivers/new"
+          createLabel="Fahrer erfassen"
+        />
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Telefon</TableHead>
-                <TableHead>Ort</TableHead>
-                <TableHead>Fahrzeugtyp</TableHead>
-                <TableHead>Fahrzeug</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[80px]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((driver) => (
-                <TableRow
-                  key={driver.id}
-                  className={cn(
-                    "cursor-pointer transition-colors hover:bg-muted/60",
-                    !driver.is_active && "opacity-50"
-                  )}
-                >
-                  <TableCell className="font-medium">
-                    {driver.last_name}, {driver.first_name}
-                  </TableCell>
-                  <TableCell>{driver.phone ?? "\u2013"}</TableCell>
-                  <TableCell>{driver.city ?? "\u2013"}</TableCell>
-                  <TableCell>
-                    {vehicleTypeLabels[driver.vehicle_type] ?? driver.vehicle_type}
-                  </TableCell>
-                  <TableCell>{driver.vehicle ?? "\u2013"}</TableCell>
-                  <TableCell>
-                    <ActiveBadge isActive={driver.is_active} />
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isPending}>
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Aktionen</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/drivers/${driver.id}/edit`}>
-                            Bearbeiten
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/drivers/${driver.id}/availability`}>
-                            Verfuegbarkeit
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            handleToggle(driver.id, driver.is_active)
-                          }
-                        >
-                          {driver.is_active ? "Deaktivieren" : "Aktivieren"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((driver) => (
+            <DriverCard
+              key={driver.id}
+              driver={driver}
+              onClick={() => setSelected(driver)}
+            />
+          ))}
         </div>
       )}
+
+      <DriverDetailSheet
+        driver={selected}
+        open={selected !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null)
+        }}
+        onToggleActive={handleToggle}
+        isPending={isPending}
+      />
     </div>
   )
 }

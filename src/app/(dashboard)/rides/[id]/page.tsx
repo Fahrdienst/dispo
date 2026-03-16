@@ -4,6 +4,7 @@ import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { PageHeader } from "@/components/dashboard/page-header"
+import { Breadcrumb } from "@/components/shared/breadcrumb"
 import { RideStatusBadge } from "@/components/shared/ride-status-badge"
 import { CommunicationTimeline } from "@/components/rides/communication-timeline"
 import { Button } from "@/components/ui/button"
@@ -145,20 +146,20 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
     phone: string | null
   } | null
 
-  const backHref = isStaff
+  const listHref = isStaff
     ? `/rides?date=${ride.date}`
     : `/my/rides?date=${ride.date}`
-  const backLabel = isStaff
-    ? "Zurueck zu Fahrten"
-    : "Zurueck zu Meine Fahrten"
+  const listLabel = isStaff ? "Fahrten" : "Meine Fahrten"
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Fahrtdetails"
-        backHref={backHref}
-        backLabel={backLabel}
+      <Breadcrumb
+        items={[
+          { label: listLabel, href: listHref },
+          { label: `Fahrt #${id.slice(0, 8)}` },
+        ]}
       />
+      <PageHeader title="Fahrtdetails" />
 
       {/* Ride summary */}
       <Card>
@@ -303,10 +304,17 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
         <CardContent>
           {patient ? (
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <DetailItem
-                label="Name"
-                value={`${patient.last_name}, ${patient.first_name}`}
-              />
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">Name</dt>
+                <dd className="mt-1 text-sm">
+                  <Link
+                    href={`/patients/${patient.id}/edit`}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    {patient.last_name}, {patient.first_name}
+                  </Link>
+                </dd>
+              </div>
               {patient.phone && (
                 <DetailItem label="Telefon" value={patient.phone} />
               )}
@@ -327,7 +335,17 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
         <CardContent>
           {destination ? (
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <DetailItem label="Name" value={destination.display_name} />
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">Name</dt>
+                <dd className="mt-1 text-sm">
+                  <Link
+                    href={`/destinations/${destination.id}/edit`}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    {destination.display_name}
+                  </Link>
+                </dd>
+              </div>
               {(destination.street || destination.city) && (
                 <DetailItem
                   label="Adresse"

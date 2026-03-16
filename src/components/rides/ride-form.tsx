@@ -41,6 +41,10 @@ import type { Tables } from "@/lib/types/database"
 interface RideFormProps {
   ride?: Tables<"rides">
   defaultDate?: string
+  /** Pre-select patient from URL parameter */
+  defaultPatientId?: string
+  /** Pre-select destination from URL parameter */
+  defaultDestinationId?: string
   patients: Pick<Tables<"patients">, "id" | "first_name" | "last_name">[]
   destinations: Pick<Tables<"destinations">, "id" | "display_name">[]
   drivers: Pick<Tables<"drivers">, "id" | "first_name" | "last_name">[]
@@ -76,6 +80,8 @@ function formatDuration(seconds: number): string {
 export function RideForm({
   ride,
   defaultDate,
+  defaultPatientId,
+  defaultDestinationId,
   patients,
   destinations,
   drivers,
@@ -116,10 +122,10 @@ export function RideForm({
 
   // --- Route calculation state ---
   const [selectedPatientId, setSelectedPatientId] = useState<string>(
-    ride?.patient_id ?? ""
+    ride?.patient_id ?? defaultPatientId ?? ""
   )
   const [selectedDestinationId, setSelectedDestinationId] = useState<string>(
-    ride?.destination_id ?? ""
+    ride?.destination_id ?? defaultDestinationId ?? ""
   )
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null)
   const [routeError, setRouteError] = useState<string | null>(null)
@@ -367,81 +373,222 @@ export function RideForm({
                 </div>
               )}
 
-              {/* --- Patient & Destination --- */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="patient_id">Patient</Label>
-                    {!isEdit && (
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0 text-xs"
-                        onClick={() => setPatientDialogOpen(true)}
-                      >
-                        + Neuer Patient
-                      </Button>
+              {/* --- 2-Column Desktop Layout for core fields --- */}
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                {/* LEFT COLUMN: Patient, Destination, Direction */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="patient_id">Patient</Label>
+                      {!isEdit && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => setPatientDialogOpen(true)}
+                        >
+                          + Neuer Patient
+                        </Button>
+                      )}
+                    </div>
+                    <Select
+                      name="patient_id"
+                      value={selectedPatientId}
+                      onValueChange={setSelectedPatientId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Patient waehlen..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {patientList.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.last_name}, {p.first_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {fieldErrors?.patient_id && (
+                      <p className="text-sm text-destructive">
+                        {fieldErrors.patient_id[0]}
+                      </p>
                     )}
                   </div>
-                  <Select
-                    name="patient_id"
-                    value={selectedPatientId}
-                    onValueChange={setSelectedPatientId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Patient waehlen..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {patientList.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.last_name}, {p.first_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {fieldErrors?.patient_id && (
-                    <p className="text-sm text-destructive">
-                      {fieldErrors.patient_id[0]}
-                    </p>
-                  )}
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="destination_id">Ziel</Label>
+                      {!isEdit && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => setDestinationDialogOpen(true)}
+                        >
+                          + Neues Ziel
+                        </Button>
+                      )}
+                    </div>
+                    <Select
+                      name="destination_id"
+                      value={selectedDestinationId}
+                      onValueChange={setSelectedDestinationId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Ziel waehlen..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {destinationList.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.display_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {fieldErrors?.destination_id && (
+                      <p className="text-sm text-destructive">
+                        {fieldErrors.destination_id[0]}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="direction">Richtung</Label>
+                    <Select
+                      name="direction"
+                      defaultValue={ride?.direction ?? "outbound"}
+                      onValueChange={setDirection}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(
+                          Object.entries(RIDE_DIRECTION_LABELS) as [
+                            string,
+                            string,
+                          ][]
+                        ).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {fieldErrors?.direction && (
+                      <p className="text-sm text-destructive">
+                        {fieldErrors.direction[0]}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="destination_id">Ziel</Label>
-                    {!isEdit && (
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0 text-xs"
-                        onClick={() => setDestinationDialogOpen(true)}
-                      >
-                        + Neues Ziel
-                      </Button>
+
+                {/* RIGHT COLUMN: Date, Pickup Time, Driver, Notes */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Datum</Label>
+                    <Input
+                      id="date"
+                      name="date"
+                      type="date"
+                      required
+                      defaultValue={ride?.date ?? defaultDate ?? ""}
+                    />
+                    {fieldErrors?.date && (
+                      <p className="text-sm text-destructive">
+                        {fieldErrors.date[0]}
+                      </p>
                     )}
                   </div>
-                  <Select
-                    name="destination_id"
-                    value={selectedDestinationId}
-                    onValueChange={setSelectedDestinationId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Ziel waehlen..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {destinationList.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {d.display_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {fieldErrors?.destination_id && (
-                    <p className="text-sm text-destructive">
-                      {fieldErrors.destination_id[0]}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pickup_time">Abholzeit</Label>
+                    <Input
+                      id="pickup_time"
+                      name="pickup_time"
+                      type="time"
+                      required
+                      value={pickupTime}
+                      onChange={(e) => {
+                        setPickupTime(e.target.value)
+                        setPickupTimeIsManual(true)
+                      }}
+                    />
+                    {suggestedTimes.suggestedPickupTime &&
+                      !pickupTimeIsManual && (
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-amber-700">
+                            Empfehlung: {suggestedTimes.suggestedPickupTime}{" "}
+                            (Termin - Fahrzeit -{" "}
+                            {DEFAULT_PICKUP_BUFFER_MINUTES} Min. Puffer)
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-6 shrink-0 px-2 text-xs"
+                            onClick={() => {
+                              setPickupTime(
+                                suggestedTimes.suggestedPickupTime!
+                              )
+                              setPickupTimeIsManual(true)
+                            }}
+                          >
+                            Uebernehmen
+                          </Button>
+                        </div>
+                      )}
+                    {fieldErrors?.pickup_time && (
+                      <p className="text-sm text-destructive">
+                        {fieldErrors.pickup_time[0]}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="driver_id">Fahrer</Label>
+                    <Select
+                      name="driver_id"
+                      defaultValue={ride?.driver_id ?? ""}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Kein Fahrer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Kein Fahrer</SelectItem>
+                        {drivers.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.last_name}, {d.first_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {fieldErrors?.driver_id && (
+                      <p className="text-sm text-destructive">
+                        {fieldErrors.driver_id[0]}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Optional — Fahrer kann spaeter im Disposition-Board
+                      zugewiesen werden.
                     </p>
-                  )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notizen</Label>
+                    <Textarea
+                      id="notes"
+                      name="notes"
+                      rows={3}
+                      defaultValue={ride?.notes ?? ""}
+                    />
+                    {fieldErrors?.notes && (
+                      <p className="text-sm text-destructive">
+                        {fieldErrors.notes[0]}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -473,97 +620,6 @@ export function RideForm({
                   )}
                 </div>
               )}
-
-              {/* --- Date, Pickup Time, Direction --- */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="date">Datum</Label>
-                  <Input
-                    id="date"
-                    name="date"
-                    type="date"
-                    required
-                    defaultValue={ride?.date ?? defaultDate ?? ""}
-                  />
-                  {fieldErrors?.date && (
-                    <p className="text-sm text-destructive">
-                      {fieldErrors.date[0]}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pickup_time">Abholzeit</Label>
-                  <Input
-                    id="pickup_time"
-                    name="pickup_time"
-                    type="time"
-                    required
-                    value={pickupTime}
-                    onChange={(e) => {
-                      setPickupTime(e.target.value)
-                      setPickupTimeIsManual(true)
-                    }}
-                  />
-                  {suggestedTimes.suggestedPickupTime &&
-                    !pickupTimeIsManual && (
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-amber-700">
-                          Empfehlung: {suggestedTimes.suggestedPickupTime}{" "}
-                          (Termin - Fahrzeit -{" "}
-                          {DEFAULT_PICKUP_BUFFER_MINUTES} Min. Puffer)
-                        </p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-6 shrink-0 px-2 text-xs"
-                          onClick={() => {
-                            setPickupTime(
-                              suggestedTimes.suggestedPickupTime!
-                            )
-                            setPickupTimeIsManual(true)
-                          }}
-                        >
-                          Uebernehmen
-                        </Button>
-                      </div>
-                    )}
-                  {fieldErrors?.pickup_time && (
-                    <p className="text-sm text-destructive">
-                      {fieldErrors.pickup_time[0]}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="direction">Richtung</Label>
-                  <Select
-                    name="direction"
-                    defaultValue={ride?.direction ?? "outbound"}
-                    onValueChange={setDirection}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(
-                        Object.entries(RIDE_DIRECTION_LABELS) as [
-                          string,
-                          string,
-                        ][]
-                      ).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {fieldErrors?.direction && (
-                    <p className="text-sm text-destructive">
-                      {fieldErrors.direction[0]}
-                    </p>
-                  )}
-                </div>
-              </div>
 
               {/* --- Appointment Times (ADR-008) --- */}
               <fieldset className="space-y-4 rounded-lg border bg-muted/30 p-4">
@@ -646,36 +702,6 @@ export function RideForm({
                   </div>
                 )}
               </fieldset>
-
-              {/* --- Driver --- */}
-              <div className="space-y-2">
-                <Label htmlFor="driver_id">Fahrer</Label>
-                <Select
-                  name="driver_id"
-                  defaultValue={ride?.driver_id ?? ""}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Kein Fahrer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Kein Fahrer</SelectItem>
-                    {drivers.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.last_name}, {d.first_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {fieldErrors?.driver_id && (
-                  <p className="text-sm text-destructive">
-                    {fieldErrors.driver_id[0]}
-                  </p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Optional — Fahrer kann spaeter im Disposition-Board
-                  zugewiesen werden.
-                </p>
-              </div>
 
               {/* --- Hidden field for series toggle --- */}
               {!isEdit && (
@@ -799,22 +825,6 @@ export function RideForm({
                   )}
                 </fieldset>
               )}
-
-              {/* --- Notes --- */}
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notizen</Label>
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  rows={3}
-                  defaultValue={ride?.notes ?? ""}
-                />
-                {fieldErrors?.notes && (
-                  <p className="text-sm text-destructive">
-                    {fieldErrors.notes[0]}
-                  </p>
-                )}
-              </div>
 
               {/* --- Price Override (ADR-010, Issue #60) --- */}
               <fieldset className="space-y-4 rounded-lg border bg-muted/30 p-4">

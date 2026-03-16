@@ -53,7 +53,12 @@
     --status-urgent: 0 72% 51%;
 
     --panel-ride-list: 380px;
+    --panel-dispatch-sidebar: 320px;
+    --panel-map: 400px;
+    --panel-map-mobile: 280px;
     --header-height: 62px;
+    --transition-fast: 150ms;
+    --transition-normal: 200ms;
   }
 
   .dark {
