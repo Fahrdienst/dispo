@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { fareVersionSchema, fareRuleSchema } from "@/lib/validations/fares"
+import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
 
@@ -51,6 +52,8 @@ export async function updateFareVersion(
   _prevState: ActionResult<Tables<"fare_versions">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"fare_versions">>> {
+  uuidSchema.parse(id)
+
   const auth = await requireAuth(["admin"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }
@@ -84,6 +87,8 @@ export async function toggleFareVersionActive(
   id: string,
   isActive: boolean
 ): Promise<ActionResult> {
+  uuidSchema.parse(id)
+
   const auth = await requireAuth(["admin"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }
@@ -112,6 +117,8 @@ export async function createFareRule(
   _prevState: ActionResult<Tables<"fare_rules">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"fare_rules">>> {
+  uuidSchema.parse(fareVersionId)
+
   const auth = await requireAuth(["admin"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }
@@ -155,6 +162,8 @@ export async function updateFareRule(
   _prevState: ActionResult<Tables<"fare_rules">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"fare_rules">>> {
+  uuidSchema.parse(ruleId)
+
   const auth = await requireAuth(["admin"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }
@@ -196,6 +205,8 @@ export async function updateFareRule(
 }
 
 export async function deleteFareRule(ruleId: string): Promise<ActionResult> {
+  uuidSchema.parse(ruleId)
+
   const auth = await requireAuth(["admin"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }

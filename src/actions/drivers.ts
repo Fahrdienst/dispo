@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { driverSchema } from "@/lib/validations/drivers"
+import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
 
@@ -47,6 +48,8 @@ export async function updateDriver(
   _prevState: ActionResult<Tables<"drivers">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"drivers">>> {
+  uuidSchema.parse(id)
+
   const auth = await requireAuth(["admin", "operator"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }
@@ -82,6 +85,8 @@ export async function toggleDriverActive(
   id: string,
   isActive: boolean
 ): Promise<ActionResult> {
+  uuidSchema.parse(id)
+
   const auth = await requireAuth(["admin", "operator"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }

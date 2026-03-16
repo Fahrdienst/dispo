@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { patientSchema, patientInlineSchema } from "@/lib/validations/patients"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { geocodeAndUpdateRecord } from "@/lib/maps/geocode"
+import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
 
@@ -13,11 +14,9 @@ export async function createPatient(
   _prevState: ActionResult<Tables<"patients">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"patients">>> {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: "Nicht authentifiziert" }
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
   }
 
   const impairments = formData.getAll("impairments") as string[]
@@ -33,6 +32,7 @@ export async function createPatient(
 
   const { impairments: validatedImpairments, ...patientData } = result.data
 
+  const supabase = await createClient()
   const { data: patient, error } = await supabase
     .from("patients")
     .insert(patientData)
@@ -77,11 +77,11 @@ export async function updatePatient(
   _prevState: ActionResult<Tables<"patients">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"patients">>> {
-  const supabase = await createClient()
+  uuidSchema.parse(id)
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: "Nicht authentifiziert" }
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
   }
 
   const impairments = formData.getAll("impairments") as string[]
@@ -97,6 +97,7 @@ export async function updatePatient(
 
   const { impairments: validatedImpairments, ...patientData } = result.data
 
+  const supabase = await createClient()
   const { error } = await supabase
     .from("patients")
     .update(patientData)
@@ -196,13 +197,14 @@ export async function togglePatientActive(
   id: string,
   isActive: boolean
 ): Promise<ActionResult> {
-  const supabase = await createClient()
+  uuidSchema.parse(id)
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: "Nicht authentifiziert" }
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
   }
 
+  const supabase = await createClient()
   const { error } = await supabase
     .from("patients")
     .update({ is_active: isActive })

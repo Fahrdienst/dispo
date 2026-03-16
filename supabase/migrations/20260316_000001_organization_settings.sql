@@ -53,6 +53,7 @@ VALUES ('Fahrdienst')
 ON CONFLICT DO NOTHING;
 
 -- Trigger für updated_at
+DROP TRIGGER IF EXISTS organization_settings_updated_at ON organization_settings;
 CREATE TRIGGER organization_settings_updated_at
     BEFORE UPDATE ON organization_settings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

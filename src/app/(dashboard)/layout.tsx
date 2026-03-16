@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Activity, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
 import { logout } from "@/actions/auth";
@@ -44,10 +44,6 @@ export default async function DashboardLayout({
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-center gap-2 rounded-xl border border-cyan-200/70 bg-cyan-50/70 px-3 py-2 text-xs font-medium text-cyan-900">
-          <Activity className="h-3.5 w-3.5" />
-          Live-Dispositionsumgebung
-        </div>
         {children}
       </main>
     </div>

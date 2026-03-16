@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { communicationLogSchema } from "@/lib/validations/communication-log"
+import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 
 export async function addMessage(
@@ -11,6 +12,8 @@ export async function addMessage(
   _prevState: ActionResult | null,
   formData: FormData
 ): Promise<ActionResult> {
+  uuidSchema.parse(rideId)
+
   const auth = await requireAuth()
   if (!auth.authorized) {
     return { success: false, error: auth.error }

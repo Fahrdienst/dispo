@@ -5,31 +5,10 @@ import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { updateOrganizationSchema } from "@/lib/validations/organization"
 import type { ActionResult } from "@/actions/shared"
+import type { Tables } from "@/lib/types/database"
 
-// =============================================================================
-// TYPES (not in auto-generated DB types yet — run db:types after migration)
-// =============================================================================
-
-export interface OrganizationSettings {
-  id: string
-  org_name: string
-  org_street: string | null
-  org_postal_code: string | null
-  org_city: string | null
-  org_country: string
-  org_phone: string | null
-  org_email: string | null
-  org_website: string | null
-  logo_url: string | null
-  primary_color: string
-  secondary_color: string
-  email_enabled: boolean
-  sms_enabled: boolean
-  email_from_name: string
-  email_from_address: string | null
-  created_at: string
-  updated_at: string
-}
+// Use the auto-generated type from Supabase
+export type OrganizationSettings = Tables<"organization_settings">
 
 // =============================================================================
 // GET ORGANIZATION SETTINGS
@@ -38,7 +17,7 @@ export interface OrganizationSettings {
 export async function getOrganizationSettings(): Promise<OrganizationSettings | null> {
   const supabase = await createClient()
 
-const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("organization_settings")
     .select("*")
     .limit(1)
@@ -48,7 +27,7 @@ const { data, error } = await (supabase as any)
     return null
   }
 
-  return data as OrganizationSettings
+  return data
 }
 
 // =============================================================================
@@ -77,7 +56,7 @@ export async function updateOrganizationSettings(
   const supabase = await createClient()
 
   // Get singleton row
-const { data: current } = await (supabase as any)
+  const { data: current } = await supabase
     .from("organization_settings")
     .select("id")
     .limit(1)
@@ -87,7 +66,7 @@ const { data: current } = await (supabase as any)
     return { success: false, error: "Organisationseinstellungen nicht gefunden" }
   }
 
-const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("organization_settings")
     .update(result.data)
     .eq("id", current.id)
@@ -100,7 +79,7 @@ const { data, error } = await (supabase as any)
   }
 
   revalidatePath("/settings")
-  return { success: true, data: data as OrganizationSettings }
+  return { success: true, data }
 }
 
 // =============================================================================
@@ -148,14 +127,14 @@ export async function uploadOrganizationLogo(
     .getPublicUrl(fileName)
 
   // Update settings
-const { data: current } = await (supabase as any)
+  const { data: current } = await supabase
     .from("organization_settings")
     .select("id")
     .limit(1)
     .single()
 
   if (current) {
-    await (supabase as any)
+    await supabase
       .from("organization_settings")
       .update({ logo_url: urlData.publicUrl })
       .eq("id", current.id)
@@ -177,7 +156,7 @@ export async function deleteOrganizationLogo(): Promise<ActionResult> {
 
   const supabase = await createClient()
 
-const { data: settings } = await (supabase as any)
+  const { data: settings } = await supabase
     .from("organization_settings")
     .select("id, logo_url")
     .limit(1)
@@ -198,7 +177,7 @@ const { data: settings } = await (supabase as any)
     // Ignore storage delete errors
   }
 
-await (supabase as any)
+  await supabase
     .from("organization_settings")
     .update({ logo_url: null })
     .eq("id", settings.id)

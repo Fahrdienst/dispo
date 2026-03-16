@@ -66,7 +66,7 @@ export default async function MyRidesPage({ searchParams }: MyRidesPageProps) {
   const [ridesResult, trackingResult] = await Promise.all([
     supabase
       .from("rides")
-      .select("id, pickup_time, date, status, direction, notes, patients(first_name, last_name), destinations(display_name)")
+      .select("id, pickup_time, date, status, direction, notes, patients(first_name, last_name), destinations(display_name, street, postal_code, city)")
       .eq("driver_id", auth.driverId)
       .eq("date", selectedDate)
       .eq("is_active", true)
@@ -120,7 +120,21 @@ export default async function MyRidesPage({ searchParams }: MyRidesPageProps) {
     .filter((ride) => !activeTrackingRideIds.has(ride.id))
     .map((ride) => {
       const patient = ride.patients as { first_name: string; last_name: string } | null
-      const destination = ride.destinations as { display_name: string } | null
+      const destination = ride.destinations as {
+        display_name: string
+        street: string | null
+        postal_code: string | null
+        city: string | null
+      } | null
+
+      // Build full address for Google Maps deep link
+      const addressParts = [
+        destination?.street,
+        destination?.postal_code,
+        destination?.city,
+      ].filter(Boolean)
+      const destinationAddress = addressParts.length > 0 ? addressParts.join(", ") : null
+
       return {
         id: ride.id,
         pickup_time: ride.pickup_time,
@@ -131,6 +145,7 @@ export default async function MyRidesPage({ searchParams }: MyRidesPageProps) {
         patient_first_name: patient?.first_name ?? "–",
         patient_last_name: patient?.last_name ?? "–",
         destination_name: destination?.display_name ?? "–",
+        destination_address: destinationAddress,
       }
     })
 

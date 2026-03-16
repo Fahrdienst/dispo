@@ -11,8 +11,11 @@ export const createUserSchema = z
       .toLowerCase(),
     password: z
       .string()
-      .min(8, "Passwort muss mindestens 8 Zeichen lang sein")
-      .max(72, "Passwort darf maximal 72 Zeichen lang sein"),
+      .min(12, "Passwort muss mindestens 12 Zeichen lang sein")
+      .max(72, "Passwort darf maximal 72 Zeichen lang sein")
+      .regex(/[A-Z]/, "Mindestens ein Grossbuchstabe")
+      .regex(/[a-z]/, "Mindestens ein Kleinbuchstabe")
+      .regex(/[0-9]/, "Mindestens eine Zahl"),
     display_name: z
       .string()
       .min(1, "Anzeigename ist erforderlich")

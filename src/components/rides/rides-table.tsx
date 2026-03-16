@@ -6,13 +6,6 @@ import { MoreHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Table,
   TableBody,
   TableCell,
@@ -35,6 +28,8 @@ import { getValidTransitionsForRole } from "@/lib/rides/status-machine"
 import {
   RIDE_STATUS_LABELS,
   RIDE_DIRECTION_LABELS,
+  RIDE_STATUS_COLORS,
+  RIDE_STATUS_DOT_COLORS,
 } from "@/lib/rides/constants"
 import type { Tables, Enums } from "@/lib/types/database"
 
@@ -109,19 +104,43 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
         />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Alle Status</SelectItem>
-            {ALL_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {RIDE_STATUS_LABELS[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setStatusFilter("all")}
+            className={cn(
+              "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-colors",
+              statusFilter === "all"
+                ? "bg-foreground text-background"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            )}
+          >
+            Alle
+          </button>
+          {ALL_STATUSES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setStatusFilter(s)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                statusFilter === s
+                  ? RIDE_STATUS_COLORS[s]
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {statusFilter === s && (
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    RIDE_STATUS_DOT_COLORS[s]
+                  )}
+                />
+              )}
+              {RIDE_STATUS_LABELS[s]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -151,6 +170,7 @@ export function RidesTable({ rides, userRole }: RidesTableProps) {
                     key={ride.id}
                     className={cn(
                       "cursor-pointer transition-colors hover:bg-muted/60",
+                      `ride-row-border-${ride.status.replaceAll("_", "-")}`,
                       !ride.is_active && "opacity-50"
                     )}
                   >

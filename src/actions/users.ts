@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { createUserSchema, updateUserSchema } from "@/lib/validations/users"
+import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
 
@@ -100,6 +101,8 @@ export async function updateUser(
   _prevState: ActionResult<Tables<"profiles">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"profiles">>> {
+  uuidSchema.parse(id)
+
   const auth = await requireAdmin()
   if (!auth.authorized) {
     return { success: false, error: auth.error }
@@ -207,6 +210,8 @@ export async function toggleUserActive(
   id: string,
   isActive: boolean
 ): Promise<ActionResult> {
+  uuidSchema.parse(id)
+
   const auth = await requireAdmin()
   if (!auth.authorized) {
     return { success: false, error: auth.error }

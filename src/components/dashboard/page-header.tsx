@@ -8,6 +8,7 @@ interface PageHeaderProps {
   createLabel?: string
   backHref?: string
   backLabel?: string
+  actions?: React.ReactNode
 }
 
 export function PageHeader({
@@ -17,6 +18,7 @@ export function PageHeader({
   createLabel,
   backHref,
   backLabel,
+  actions,
 }: PageHeaderProps) {
   return (
     <div className="glass-panel space-y-3 rounded-2xl p-5 sm:p-6">
@@ -37,11 +39,14 @@ export function PageHeader({
             <p className="text-muted-foreground">{description}</p>
           )}
         </div>
-        {createHref && createLabel && (
-          <Button asChild>
-            <Link href={createHref}>{createLabel}</Link>
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {actions}
+          {createHref && createLabel && (
+            <Button asChild>
+              <Link href={createHref}>{createLabel}</Link>
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )

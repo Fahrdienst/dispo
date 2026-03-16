@@ -108,8 +108,26 @@ export function assertTransition(from: RideStatus, to: RideStatus): void {
  * VALID_TRANSITIONS (state machine) and ROLE_TRANSITIONS (authorization)
  * to be allowed.
  *
- * Staff (admin/operator): dispatch authority — confirm, re-plan, cancel.
- * Driver: execution chain — reject, start, progress, complete, no-show.
+ * Allowed transitions per role:
+ *
+ * ADMIN / OPERATOR (dispatch authority):
+ *   unplanned  -> planned, cancelled
+ *   planned    -> confirmed, cancelled
+ *   rejected   -> planned, cancelled       (re-assign after driver rejection)
+ *   confirmed  -> cancelled
+ *   in_progress -> cancelled               (emergency cancellation only)
+ *   picked_up  -> cancelled                (emergency cancellation only)
+ *   arrived    -> cancelled                (emergency cancellation only)
+ *
+ * DRIVER (execution chain):
+ *   planned    -> rejected                 (decline assignment)
+ *   confirmed  -> in_progress              (start ride)
+ *   in_progress -> picked_up, no_show      (patient picked up or not found)
+ *   picked_up  -> arrived                  (reached destination)
+ *   arrived    -> completed                (ride finished)
+ *
+ * NOTE: Drivers cannot cancel rides. Only staff can cancel at any stage.
+ * NOTE: Drivers can only update rides assigned to them (enforced in updateRideStatus).
  */
 const ROLE_TRANSITIONS: Record<UserRole, Partial<Record<RideStatus, readonly RideStatus[]>>> = {
   admin: {

@@ -22,6 +22,7 @@ import {
   generateDatesForSeries,
   expandDirections,
 } from "@/lib/ride-series/generate"
+import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables, Enums } from "@/lib/types/database"
 
@@ -491,6 +492,8 @@ export async function updateRide(
   _prevState: ActionResult<Tables<"rides">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"rides">>> {
+  uuidSchema.parse(id)
+
   const auth = await requireAuth(["admin", "operator"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }
@@ -629,6 +632,8 @@ export async function updateRideStatus(
   rideId: string,
   newStatus: Enums<"ride_status">
 ): Promise<ActionResult> {
+  uuidSchema.parse(rideId)
+
   const auth = await requireAuth()
   if (!auth.authorized) {
     return { success: false, error: auth.error }
@@ -674,6 +679,9 @@ export async function assignDriver(
   rideId: string,
   driverId: string | null
 ): Promise<ActionResult> {
+  uuidSchema.parse(rideId)
+  if (driverId !== null) uuidSchema.parse(driverId)
+
   const auth = await requireAuth(["admin", "operator"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }
@@ -776,6 +784,7 @@ export async function calculateRouteForRide(
   patientId: string,
   destinationId: string
 ): Promise<
+
   ActionResult<{
     distance_meters: number
     duration_seconds: number
@@ -785,6 +794,9 @@ export async function calculateRouteForRide(
     dest_lng: number
   }>
 > {
+  uuidSchema.parse(patientId)
+  uuidSchema.parse(destinationId)
+
   const auth = await requireAuth(["admin", "operator"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }
@@ -859,6 +871,8 @@ export async function toggleRideActive(
   id: string,
   isActive: boolean
 ): Promise<ActionResult> {
+  uuidSchema.parse(id)
+
   const auth = await requireAuth(["admin", "operator"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }

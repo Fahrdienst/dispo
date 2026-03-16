@@ -499,7 +499,7 @@ export default async function DashboardPage() {
         >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Naechste Woche
+              Nächste Woche
             </CardTitle>
             <div className="rounded-md bg-indigo-100 p-2">
               <CalendarRange className="h-4 w-4 text-indigo-600" />
@@ -578,7 +578,7 @@ export default async function DashboardPage() {
               </span>
             </p>
             <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-xs text-muted-foreground">Verfuegbar ohne Fahrt</span>
+              <span className="text-xs text-muted-foreground">Verfügbar ohne Fahrt</span>
               <span
                 className={cn(
                   "text-sm font-semibold tabular-nums",
@@ -600,7 +600,7 @@ export default async function DashboardPage() {
               <UserX className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <div>
                 <p className="text-sm font-medium text-amber-800">
-                  Verfuegbare Fahrer ohne Fahrt
+                  Verfügbare Fahrer ohne Fahrt
                 </p>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {idleDrivers.map((driver) => (
@@ -625,7 +625,7 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Naechste Fahrten</CardTitle>
+              <CardTitle>Nächste Fahrten</CardTitle>
               <Link href="/rides" className="text-sm text-muted-foreground hover:underline">
                 Alle anzeigen
               </Link>

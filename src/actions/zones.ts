@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { zoneSchema, zonePostalCodeSchema } from "@/lib/validations/zones"
+import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
 
@@ -47,6 +48,8 @@ export async function updateZone(
   _prevState: ActionResult<Tables<"zones">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"zones">>> {
+  uuidSchema.parse(id)
+
   const auth = await requireAuth(["admin", "operator"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }
@@ -80,6 +83,8 @@ export async function toggleZoneActive(
   id: string,
   isActive: boolean
 ): Promise<ActionResult> {
+  uuidSchema.parse(id)
+
   const auth = await requireAuth(["admin", "operator"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }
@@ -104,6 +109,8 @@ export async function addPostalCodesToZone(
   _prevState: ActionResult | null,
   formData: FormData
 ): Promise<ActionResult> {
+  uuidSchema.parse(zoneId)
+
   const auth = await requireAuth(["admin", "operator"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }
@@ -164,6 +171,8 @@ export async function addPostalCodesToZone(
 export async function removePostalCodeFromZone(
   postalCodeId: string
 ): Promise<ActionResult> {
+  uuidSchema.parse(postalCodeId)
+
   const auth = await requireAuth(["admin", "operator"])
   if (!auth.authorized) {
     return { success: false, error: auth.error }

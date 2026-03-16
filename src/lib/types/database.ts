@@ -16,61 +16,60 @@ export type Database = {
     Tables: {
       acceptance_tracking: {
         Row: {
-          id: string
-          ride_id: string
+          created_at: string
           driver_id: string
-          stage: Database["public"]["Enums"]["acceptance_stage"]
+          id: string
           is_short_notice: boolean
           notified_at: string
+          rejection_reason_code:
+            | Database["public"]["Enums"]["rejection_reason"]
+            | null
+          rejection_reason_text: string | null
           reminder_1_at: string | null
           reminder_2_at: string | null
           resolved_at: string | null
           resolved_by: Database["public"]["Enums"]["resolution_method"] | null
-          rejection_reason_code: Database["public"]["Enums"]["rejection_reason"] | null
-          rejection_reason_text: string | null
-          created_at: string
+          ride_id: string
+          stage: Database["public"]["Enums"]["acceptance_stage"]
           updated_at: string
         }
         Insert: {
-          id?: string
-          ride_id: string
+          created_at?: string
           driver_id: string
-          stage?: Database["public"]["Enums"]["acceptance_stage"]
+          id?: string
           is_short_notice?: boolean
           notified_at?: string
+          rejection_reason_code?:
+            | Database["public"]["Enums"]["rejection_reason"]
+            | null
+          rejection_reason_text?: string | null
           reminder_1_at?: string | null
           reminder_2_at?: string | null
           resolved_at?: string | null
           resolved_by?: Database["public"]["Enums"]["resolution_method"] | null
-          rejection_reason_code?: Database["public"]["Enums"]["rejection_reason"] | null
-          rejection_reason_text?: string | null
-          created_at?: string
+          ride_id: string
+          stage?: Database["public"]["Enums"]["acceptance_stage"]
           updated_at?: string
         }
         Update: {
-          id?: string
-          ride_id?: string
+          created_at?: string
           driver_id?: string
-          stage?: Database["public"]["Enums"]["acceptance_stage"]
+          id?: string
           is_short_notice?: boolean
           notified_at?: string
+          rejection_reason_code?:
+            | Database["public"]["Enums"]["rejection_reason"]
+            | null
+          rejection_reason_text?: string | null
           reminder_1_at?: string | null
           reminder_2_at?: string | null
           resolved_at?: string | null
           resolved_by?: Database["public"]["Enums"]["resolution_method"] | null
-          rejection_reason_code?: Database["public"]["Enums"]["rejection_reason"] | null
-          rejection_reason_text?: string | null
-          created_at?: string
+          ride_id?: string
+          stage?: Database["public"]["Enums"]["acceptance_stage"]
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "acceptance_tracking_ride_id_fkey"
-            columns: ["ride_id"]
-            isOneToOne: false
-            referencedRelation: "rides"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "acceptance_tracking_driver_id_fkey"
             columns: ["driver_id"]
@@ -78,55 +77,62 @@ export type Database = {
             referencedRelation: "drivers"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      assignment_tokens: {
-        Row: {
-          id: string
-          ride_id: string
-          driver_id: string
-          token_hash: string
-          expires_at: string
-          used_at: string | null
-          action: string | null
-          reminders_sent: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          ride_id: string
-          driver_id: string
-          token_hash: string
-          expires_at: string
-          used_at?: string | null
-          action?: string | null
-          reminders_sent?: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          ride_id?: string
-          driver_id?: string
-          token_hash?: string
-          expires_at?: string
-          used_at?: string | null
-          action?: string | null
-          reminders_sent?: number
-          created_at?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "assignment_tokens_ride_id_fkey"
+            foreignKeyName: "acceptance_tracking_ride_id_fkey"
             columns: ["ride_id"]
             isOneToOne: false
             referencedRelation: "rides"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      assignment_tokens: {
+        Row: {
+          action: string | null
+          created_at: string
+          driver_id: string
+          expires_at: string
+          id: string
+          reminders_sent: number
+          ride_id: string
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          driver_id: string
+          expires_at: string
+          id?: string
+          reminders_sent?: number
+          ride_id: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          driver_id?: string
+          expires_at?: string
+          id?: string
+          reminders_sent?: number
+          ride_id?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: [
           {
             foreignKeyName: "assignment_tokens_driver_id_fkey"
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_tokens_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
             referencedColumns: ["id"]
           },
         ]
@@ -343,45 +349,123 @@ export type Database = {
         }
         Relationships: []
       }
-      mail_log: {
+      fare_rules: {
         Row: {
-          id: string
-          ride_id: string | null
-          driver_id: string | null
-          template: string
-          recipient: string
-          status: string
-          error: string | null
+          base_price: number
           created_at: string
+          fare_version_id: string
+          from_zone_id: string
+          id: string
+          price_per_km: number
+          to_zone_id: string
+          updated_at: string
         }
         Insert: {
-          id?: string
-          ride_id?: string | null
-          driver_id?: string | null
-          template: string
-          recipient: string
-          status?: string
-          error?: string | null
+          base_price: number
           created_at?: string
+          fare_version_id: string
+          from_zone_id: string
+          id?: string
+          price_per_km?: number
+          to_zone_id: string
+          updated_at?: string
         }
         Update: {
-          id?: string
-          ride_id?: string | null
-          driver_id?: string | null
-          template?: string
-          recipient?: string
-          status?: string
-          error?: string | null
+          base_price?: number
           created_at?: string
+          fare_version_id?: string
+          from_zone_id?: string
+          id?: string
+          price_per_km?: number
+          to_zone_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "mail_log_ride_id_fkey"
-            columns: ["ride_id"]
+            foreignKeyName: "fare_rules_fare_version_id_fkey"
+            columns: ["fare_version_id"]
             isOneToOne: false
-            referencedRelation: "rides"
+            referencedRelation: "fare_versions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fare_rules_from_zone_id_fkey"
+            columns: ["from_zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fare_rules_to_zone_id_fkey"
+            columns: ["to_zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fare_versions: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          valid_from: string
+          valid_to: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          valid_from: string
+          valid_to?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          valid_from?: string
+          valid_to?: string | null
+        }
+        Relationships: []
+      }
+      mail_log: {
+        Row: {
+          created_at: string
+          driver_id: string | null
+          error: string | null
+          id: string
+          recipient: string
+          ride_id: string | null
+          status: string
+          template: string
+        }
+        Insert: {
+          created_at?: string
+          driver_id?: string | null
+          error?: string | null
+          id?: string
+          recipient: string
+          ride_id?: string | null
+          status?: string
+          template: string
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string | null
+          error?: string | null
+          id?: string
+          recipient?: string
+          ride_id?: string | null
+          status?: string
+          template?: string
+        }
+        Relationships: [
           {
             foreignKeyName: "mail_log_driver_id_fkey"
             columns: ["driver_id"]
@@ -389,26 +473,96 @@ export type Database = {
             referencedRelation: "drivers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "mail_log_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      organization_settings: {
+        Row: {
+          created_at: string
+          email_enabled: boolean
+          email_from_address: string | null
+          email_from_name: string | null
+          id: string
+          logo_url: string | null
+          org_city: string | null
+          org_country: string | null
+          org_email: string | null
+          org_name: string
+          org_phone: string | null
+          org_postal_code: string | null
+          org_street: string | null
+          org_website: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          sms_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email_enabled?: boolean
+          email_from_address?: string | null
+          email_from_name?: string | null
+          id?: string
+          logo_url?: string | null
+          org_city?: string | null
+          org_country?: string | null
+          org_email?: string | null
+          org_name?: string
+          org_phone?: string | null
+          org_postal_code?: string | null
+          org_street?: string | null
+          org_website?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          sms_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email_enabled?: boolean
+          email_from_address?: string | null
+          email_from_name?: string | null
+          id?: string
+          logo_url?: string | null
+          org_city?: string | null
+          org_country?: string | null
+          org_email?: string | null
+          org_name?: string
+          org_phone?: string | null
+          org_postal_code?: string | null
+          org_street?: string | null
+          org_website?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          sms_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
       }
       patient_impairments: {
         Row: {
-          id: string
-          patient_id: string
-          impairment_type: Database["public"]["Enums"]["impairment_type"]
           created_at: string
+          id: string
+          impairment_type: Database["public"]["Enums"]["impairment_type"]
+          patient_id: string
         }
         Insert: {
-          id?: string
-          patient_id: string
-          impairment_type: Database["public"]["Enums"]["impairment_type"]
           created_at?: string
+          id?: string
+          impairment_type: Database["public"]["Enums"]["impairment_type"]
+          patient_id: string
         }
         Update: {
-          id?: string
-          patient_id?: string
-          impairment_type?: Database["public"]["Enums"]["impairment_type"]
           created_at?: string
+          id?: string
+          impairment_type?: Database["public"]["Enums"]["impairment_type"]
+          patient_id?: string
         }
         Relationships: [
           {
@@ -605,148 +759,10 @@ export type Database = {
           },
         ]
       }
-      zones: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          is_active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      zone_postal_codes: {
-        Row: {
-          id: string
-          zone_id: string
-          postal_code: string
-        }
-        Insert: {
-          id?: string
-          zone_id: string
-          postal_code: string
-        }
-        Update: {
-          id?: string
-          zone_id?: string
-          postal_code?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "zone_postal_codes_zone_id_fkey"
-            columns: ["zone_id"]
-            isOneToOne: false
-            referencedRelation: "zones"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      fare_versions: {
-        Row: {
-          id: string
-          name: string
-          valid_from: string
-          valid_to: string | null
-          is_active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          valid_from: string
-          valid_to?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          valid_from?: string
-          valid_to?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      fare_rules: {
-        Row: {
-          id: string
-          fare_version_id: string
-          from_zone_id: string
-          to_zone_id: string
-          base_price: number
-          price_per_km: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          fare_version_id: string
-          from_zone_id: string
-          to_zone_id: string
-          base_price: number
-          price_per_km?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          fare_version_id?: string
-          from_zone_id?: string
-          to_zone_id?: string
-          base_price?: number
-          price_per_km?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fare_rules_fare_version_id_fkey"
-            columns: ["fare_version_id"]
-            isOneToOne: false
-            referencedRelation: "fare_versions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fare_rules_from_zone_id_fkey"
-            columns: ["from_zone_id"]
-            isOneToOne: false
-            referencedRelation: "zones"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fare_rules_to_zone_id_fkey"
-            columns: ["to_zone_id"]
-            isOneToOne: false
-            referencedRelation: "zones"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       rides: {
         Row: {
-          appointment_time: string | null
           appointment_end_time: string | null
+          appointment_time: string | null
           calculated_price: number | null
           created_at: string
           date: string
@@ -770,8 +786,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          appointment_time?: string | null
           appointment_end_time?: string | null
+          appointment_time?: string | null
           calculated_price?: number | null
           created_at?: string
           date: string
@@ -795,8 +811,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          appointment_time?: string | null
           appointment_end_time?: string | null
+          appointment_time?: string | null
           calculated_price?: number | null
           created_at?: string
           date?: string
@@ -835,6 +851,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "rides_fare_rule_id_fkey"
+            columns: ["fare_rule_id"]
+            isOneToOne: false
+            referencedRelation: "fare_rules"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "rides_parent_ride_id_fkey"
             columns: ["parent_ride_id"]
             isOneToOne: false
@@ -855,20 +878,73 @@ export type Database = {
             referencedRelation: "ride_series"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      zone_postal_codes: {
+        Row: {
+          id: string
+          postal_code: string
+          zone_id: string
+        }
+        Insert: {
+          id?: string
+          postal_code: string
+          zone_id: string
+        }
+        Update: {
+          id?: string
+          postal_code?: string
+          zone_id?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "rides_fare_rule_id_fkey"
-            columns: ["fare_rule_id"]
+            foreignKeyName: "zone_postal_codes_zone_id_fkey"
+            columns: ["zone_id"]
             isOneToOne: false
-            referencedRelation: "fare_rules"
+            referencedRelation: "zones"
             referencedColumns: ["id"]
           },
         ]
+      }
+      zones: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      archive_old_rides: {
+        Args: { months_old?: number }
+        Returns: {
+          archived_rides_count: number
+          deleted_logs_count: number
+        }[]
+      }
       get_user_driver_id: { Args: never; Returns: string }
       get_user_role: {
         Args: never
@@ -892,11 +968,25 @@ export type Database = {
         | "friday"
         | "saturday"
         | "sunday"
-      facility_type: "practice" | "hospital" | "therapy_center" | "day_care" | "other"
+      facility_type:
+        | "practice"
+        | "hospital"
+        | "therapy_center"
+        | "day_care"
+        | "other"
       impairment_type: "rollator" | "wheelchair" | "stretcher" | "companion"
-      rejection_reason: "schedule_conflict" | "too_far" | "vehicle_issue" | "personal" | "other"
-      resolution_method: "driver_email" | "driver_app" | "dispatcher_override" | "timeout"
       recurrence_type: "daily" | "weekly" | "biweekly" | "monthly"
+      rejection_reason:
+        | "schedule_conflict"
+        | "too_far"
+        | "vehicle_issue"
+        | "personal"
+        | "other"
+      resolution_method:
+        | "driver_email"
+        | "driver_app"
+        | "dispatcher_override"
+        | "timeout"
       ride_direction: "outbound" | "return" | "both"
       ride_status:
         | "unplanned"
@@ -1056,11 +1146,28 @@ export const Constants = {
         "saturday",
         "sunday",
       ],
-      facility_type: ["practice", "hospital", "therapy_center", "day_care", "other"],
+      facility_type: [
+        "practice",
+        "hospital",
+        "therapy_center",
+        "day_care",
+        "other",
+      ],
       impairment_type: ["rollator", "wheelchair", "stretcher", "companion"],
       recurrence_type: ["daily", "weekly", "biweekly", "monthly"],
-      rejection_reason: ["schedule_conflict", "too_far", "vehicle_issue", "personal", "other"],
-      resolution_method: ["driver_email", "driver_app", "dispatcher_override", "timeout"],
+      rejection_reason: [
+        "schedule_conflict",
+        "too_far",
+        "vehicle_issue",
+        "personal",
+        "other",
+      ],
+      resolution_method: [
+        "driver_email",
+        "driver_app",
+        "dispatcher_override",
+        "timeout",
+      ],
       ride_direction: ["outbound", "return", "both"],
       ride_status: [
         "unplanned",

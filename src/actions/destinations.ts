@@ -9,6 +9,7 @@ import {
 } from "@/lib/validations/destinations"
 import { geocodeAndUpdateRecord } from "@/lib/maps/geocode"
 import { requireAuth } from "@/lib/auth/require-auth"
+import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
 
@@ -16,13 +17,9 @@ export async function createDestination(
   _prevState: ActionResult<Tables<"destinations">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"destinations">>> {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: "Nicht authentifiziert" }
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
   }
 
   const raw = Object.fromEntries(formData)
@@ -56,6 +53,7 @@ export async function createDestination(
       }
     : destinationData
 
+  const supabase = await createClient()
   const { data: destination, error } = await supabase
     .from("destinations")
     .insert(insertData)
@@ -93,13 +91,11 @@ export async function updateDestination(
   _prevState: ActionResult<Tables<"destinations">> | null,
   formData: FormData
 ): Promise<ActionResult<Tables<"destinations">>> {
-  const supabase = await createClient()
+  uuidSchema.parse(id)
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: "Nicht authentifiziert" }
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
   }
 
   const raw = Object.fromEntries(formData)
@@ -133,6 +129,7 @@ export async function updateDestination(
       }
     : destinationData
 
+  const supabase = await createClient()
   const { error } = await supabase
     .from("destinations")
     .update(updateData)
@@ -170,15 +167,14 @@ export async function toggleDestinationActive(
   id: string,
   isActive: boolean
 ): Promise<ActionResult> {
-  const supabase = await createClient()
+  uuidSchema.parse(id)
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: "Nicht authentifiziert" }
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
   }
 
+  const supabase = await createClient()
   const { error } = await supabase
     .from("destinations")
     .update({ is_active: isActive })
