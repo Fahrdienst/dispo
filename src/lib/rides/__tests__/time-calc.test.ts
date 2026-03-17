@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest"
 import {
   calculateRideTimes,
+  detectTimeConflicts,
   DEFAULT_PICKUP_BUFFER_MINUTES,
 } from "../time-calc"
+import type { ConflictRideInput } from "../time-calc"
 
 describe("calculateRideTimes", () => {
   // -------------------------------------------------------------------------
@@ -180,5 +182,165 @@ describe("calculateRideTimes", () => {
     it("exports DEFAULT_PICKUP_BUFFER_MINUTES as 5", () => {
       expect(DEFAULT_PICKUP_BUFFER_MINUTES).toBe(5)
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// detectTimeConflicts
+// ---------------------------------------------------------------------------
+
+describe("detectTimeConflicts", () => {
+  const makeRide = (
+    overrides: Partial<ConflictRideInput> & { id: string; pickup_time: string }
+  ): ConflictRideInput => ({
+    driver_id: "driver-1",
+    duration_seconds: 1800, // 30 minutes
+    status: "confirmed",
+    ...overrides,
+  })
+
+  // ---- No conflicts ----
+
+  it("returns empty array when there are no rides", () => {
+    expect(detectTimeConflicts([])).toEqual([])
+  })
+
+  it("returns empty array for a single ride", () => {
+    const rides = [makeRide({ id: "r1", pickup_time: "08:00" })]
+    expect(detectTimeConflicts(rides)).toEqual([])
+  })
+
+  it("returns empty array when rides do not overlap", () => {
+    const rides = [
+      makeRide({ id: "r1", pickup_time: "08:00", duration_seconds: 1800 }), // 08:00-08:30
+      makeRide({ id: "r2", pickup_time: "09:00", duration_seconds: 1800 }), // 09:00-09:30
+    ]
+    expect(detectTimeConflicts(rides)).toEqual([])
+  })
+
+  it("returns empty array when rides are back-to-back (no gap, no overlap)", () => {
+    const rides = [
+      makeRide({ id: "r1", pickup_time: "08:00", duration_seconds: 3600 }), // 08:00-09:00
+      makeRide({ id: "r2", pickup_time: "09:00", duration_seconds: 1800 }), // 09:00-09:30
+    ]
+    // currentEnd (09:00) is NOT > nextStart (09:00) → no conflict
+    expect(detectTimeConflicts(rides)).toEqual([])
+  })
+
+  // ---- Overlapping rides ----
+
+  it("detects overlap between two rides of the same driver", () => {
+    const rides = [
+      makeRide({ id: "r1", pickup_time: "08:00", duration_seconds: 3600 }), // 08:00-09:00
+      makeRide({ id: "r2", pickup_time: "08:30", duration_seconds: 1800 }), // 08:30-09:00
+    ]
+    const conflicts = detectTimeConflicts(rides)
+    expect(conflicts).toHaveLength(1)
+    expect(conflicts[0]).toMatchObject({
+      rideIdA: "r1",
+      rideIdB: "r2",
+      driverId: "driver-1",
+      overlapStart: "08:30",
+      overlapEnd: "09:00",
+    })
+  })
+
+  it("detects overlap when rides have the exact same time", () => {
+    const rides = [
+      makeRide({ id: "r1", pickup_time: "10:00", duration_seconds: 1800 }),
+      makeRide({ id: "r2", pickup_time: "10:00", duration_seconds: 1800 }),
+    ]
+    const conflicts = detectTimeConflicts(rides)
+    expect(conflicts).toHaveLength(1)
+    expect(conflicts[0]).toMatchObject({
+      rideIdA: "r1",
+      rideIdB: "r2",
+      driverId: "driver-1",
+    })
+  })
+
+  // ---- Different drivers ----
+
+  it("does not flag overlap between different drivers", () => {
+    const rides = [
+      makeRide({ id: "r1", pickup_time: "08:00", driver_id: "driver-1", duration_seconds: 3600 }),
+      makeRide({ id: "r2", pickup_time: "08:30", driver_id: "driver-2", duration_seconds: 1800 }),
+    ]
+    expect(detectTimeConflicts(rides)).toEqual([])
+  })
+
+  // ---- Excluded statuses ----
+
+  it("excludes cancelled rides from conflict detection", () => {
+    const rides = [
+      makeRide({ id: "r1", pickup_time: "08:00", duration_seconds: 3600 }),
+      makeRide({ id: "r2", pickup_time: "08:30", status: "cancelled", duration_seconds: 1800 }),
+    ]
+    expect(detectTimeConflicts(rides)).toEqual([])
+  })
+
+  it("excludes no_show rides from conflict detection", () => {
+    const rides = [
+      makeRide({ id: "r1", pickup_time: "08:00", duration_seconds: 3600 }),
+      makeRide({ id: "r2", pickup_time: "08:30", status: "no_show", duration_seconds: 1800 }),
+    ]
+    expect(detectTimeConflicts(rides)).toEqual([])
+  })
+
+  // ---- Unassigned rides ----
+
+  it("excludes rides without a driver_id", () => {
+    const rides = [
+      makeRide({ id: "r1", pickup_time: "08:00", driver_id: null, duration_seconds: 3600 }),
+      makeRide({ id: "r2", pickup_time: "08:30", driver_id: null, duration_seconds: 1800 }),
+    ]
+    expect(detectTimeConflicts(rides)).toEqual([])
+  })
+
+  // ---- Null duration fallback ----
+
+  it("uses 60-minute default when duration_seconds is null", () => {
+    const rides = [
+      makeRide({ id: "r1", pickup_time: "08:00", duration_seconds: null }), // 08:00-09:00 (60min default)
+      makeRide({ id: "r2", pickup_time: "08:50", duration_seconds: 600 }),  // 08:50-09:00
+    ]
+    const conflicts = detectTimeConflicts(rides)
+    expect(conflicts).toHaveLength(1)
+    expect(conflicts[0]).toMatchObject({
+      overlapStart: "08:50",
+      overlapEnd: "09:00",
+    })
+  })
+
+  // ---- Multiple conflicts ----
+
+  it("detects multiple consecutive conflicts for the same driver", () => {
+    const rides = [
+      makeRide({ id: "r1", pickup_time: "08:00", duration_seconds: 3600 }), // 08:00-09:00
+      makeRide({ id: "r2", pickup_time: "08:30", duration_seconds: 3600 }), // 08:30-09:30
+      makeRide({ id: "r3", pickup_time: "09:00", duration_seconds: 1800 }), // 09:00-09:30
+    ]
+    const conflicts = detectTimeConflicts(rides)
+    // r1 vs r2 overlap, r2 vs r3 overlap
+    expect(conflicts).toHaveLength(2)
+    expect(conflicts[0]!.rideIdA).toBe("r1")
+    expect(conflicts[0]!.rideIdB).toBe("r2")
+    expect(conflicts[1]!.rideIdA).toBe("r2")
+    expect(conflicts[1]!.rideIdB).toBe("r3")
+  })
+
+  // ---- Mixed drivers ----
+
+  it("handles conflicts across multiple drivers independently", () => {
+    const rides = [
+      makeRide({ id: "r1", pickup_time: "08:00", driver_id: "driver-1", duration_seconds: 3600 }),
+      makeRide({ id: "r2", pickup_time: "08:30", driver_id: "driver-1", duration_seconds: 1800 }),
+      makeRide({ id: "r3", pickup_time: "10:00", driver_id: "driver-2", duration_seconds: 3600 }),
+      makeRide({ id: "r4", pickup_time: "10:30", driver_id: "driver-2", duration_seconds: 1800 }),
+    ]
+    const conflicts = detectTimeConflicts(rides)
+    expect(conflicts).toHaveLength(2)
+    expect(conflicts[0]!.driverId).toBe("driver-1")
+    expect(conflicts[1]!.driverId).toBe("driver-2")
   })
 })

@@ -55,10 +55,12 @@ export function StatusFilterChips({
       : undefined
 
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+    <div role="radiogroup" aria-label="Statusfilter" className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
       {showAll && (
         <button
           type="button"
+          role="radio"
+          aria-checked={value === "all"}
           onClick={() => onChange("all")}
           className={cn(
             "inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-medium transition-colors",
@@ -84,6 +86,8 @@ export function StatusFilterChips({
           <button
             key={status}
             type="button"
+            role="radio"
+            aria-checked={isActive}
             onClick={() => onChange(status)}
             className={cn(
               "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
@@ -95,7 +99,7 @@ export function StatusFilterChips({
             )}
           >
             {isActive && dotClass && (
-              <span className={cn("h-1.5 w-1.5 rounded-full", dotClass)} />
+              <span className={cn("h-1.5 w-1.5 rounded-full", dotClass)} aria-hidden="true" />
             )}
             {labels[status] ?? status}
             {count != null && (

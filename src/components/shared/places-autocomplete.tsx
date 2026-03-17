@@ -32,7 +32,13 @@ interface PlacesAutocompleteProps {
 }
 
 const DEBOUNCE_MS = 300
+const FETCH_TIMEOUT_MS = 8000
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
+
+const LISTBOX_ID = "places-autocomplete-listbox"
+function optionId(index: number): string {
+  return `places-option-${index}`
+}
 
 /**
  * Client-side Places Autocomplete using the Google Places API (New) REST endpoints.
@@ -84,6 +90,9 @@ export function PlacesAutocomplete({
     setError(null)
 
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+
       const response = await fetch(
         "https://places.googleapis.com/v1/places:autocomplete",
         {
@@ -102,8 +111,11 @@ export function PlacesAutocomplete({
             },
             includedRegionCodes: ["ch"],
           }),
+          signal: controller.signal,
         }
       )
+
+      clearTimeout(timeout)
 
       if (!response.ok) {
         throw new Error(`Places API returned ${response.status}`)
@@ -118,7 +130,12 @@ export function PlacesAutocomplete({
       setHighlightedIndex(-1)
     } catch (err: unknown) {
       console.error("Places Autocomplete error:", err)
-      setError("Suche fehlgeschlagen")
+      const isTimeout = err instanceof DOMException && err.name === "AbortError"
+      setError(
+        isTimeout
+          ? "Zeitueberschreitung — bitte Adresse manuell eingeben"
+          : "Adresssuche nicht verfuegbar — bitte Adresse manuell eingeben"
+      )
       setSuggestions([])
       setIsOpen(false)
     } finally {
@@ -146,6 +163,9 @@ export function PlacesAutocomplete({
 
     // Fetch Place Details for coordinates and structured data
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+
       const response = await fetch(
         `https://places.googleapis.com/v1/places/${placeId}?` +
           `fields=displayName,formattedAddress,location,nationalPhoneNumber`,
@@ -155,8 +175,11 @@ export function PlacesAutocomplete({
             "Content-Type": "application/json",
             "X-Goog-Api-Key": API_KEY,
           },
+          signal: controller.signal,
         }
       )
+
+      clearTimeout(timeout)
 
       if (!response.ok) {
         throw new Error(`Place Details returned ${response.status}`)
@@ -224,24 +247,33 @@ export function PlacesAutocomplete({
         }}
         placeholder={placeholder}
         autoComplete="off"
+        role="combobox"
         aria-expanded={isOpen}
         aria-haspopup="listbox"
         aria-autocomplete="list"
+        aria-controls={LISTBOX_ID}
+        aria-activedescendant={
+          isOpen && highlightedIndex >= 0
+            ? optionId(highlightedIndex)
+            : undefined
+        }
       />
 
       {isLoading && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+        <div className="absolute right-3 top-1/2 -translate-y-1/2" role="status" aria-label="Adresse wird gesucht">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" aria-hidden="true" />
         </div>
       )}
 
       {error && (
-        <p className="mt-1 text-xs text-destructive">{error}</p>
+        <p className="mt-1 text-xs text-destructive" role="alert">{error}</p>
       )}
 
       {isOpen && suggestions.length > 0 && (
         <ul
+          id={LISTBOX_ID}
           role="listbox"
+          aria-label="Adressvorschlaege"
           className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover shadow-md"
         >
           {suggestions.map((suggestion, index) => {
@@ -254,6 +286,7 @@ export function PlacesAutocomplete({
             return (
               <li
                 key={prediction.placeId}
+                id={optionId(index)}
                 role="option"
                 aria-selected={index === highlightedIndex}
                 className={`cursor-pointer px-3 py-2 text-sm ${

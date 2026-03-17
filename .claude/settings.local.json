@@ -19,7 +19,15 @@
       "Bash(git pull:*)",
       "Bash(git stash:*)",
       "Bash(git checkout:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(npm install:*)",
+      "Bash(git rm:*)",
+      "Bash(npx supabase:*)",
+      "Bash(gh label:*)",
+      "Bash(gh api:*)",
+      "Bash(git status:*)",
+      "Bash(for i:*)",
+      "Bash(cat:*)"
     ]
   }
 }

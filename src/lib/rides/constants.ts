@@ -55,7 +55,7 @@ export const RIDE_DIRECTION_LABELS: Record<RideDirection, string> = {
 // picked_up   →  bg-orange-100     text-orange-800     #F97316 (orange-500)
 // arrived     →  bg-teal-100       text-teal-800       #14B8A6 (teal-500)
 // completed   →  bg-green-100      text-green-800      #16A34A (green-600)
-// cancelled   →  bg-slate-100      text-slate-600      #94A3B8 (slate-400)
+// cancelled   →  bg-slate-100      text-slate-700      #94A3B8 (slate-400)
 // rejected    →  bg-red-100        text-red-800        #EF4444 (red-500)
 // no_show     →  bg-rose-100       text-rose-800       #E11D48 (rose-600)
 // =============================================================================
@@ -73,7 +73,7 @@ export const RIDE_STATUS_COLORS: Record<RideStatus, string> = {
   picked_up:   "bg-orange-100 text-orange-800",
   arrived:     "bg-teal-100   text-teal-800",
   completed:   "bg-green-100  text-green-800",
-  cancelled:   "bg-slate-100  text-slate-600",
+  cancelled:   "bg-slate-100  text-slate-700",
   no_show:     "bg-rose-100   text-rose-800",
 }
 

@@ -177,3 +177,29 @@ All items from the design spec have been implemented:
 7. Shared date utils consolidated in src/lib/utils/dates.ts — DONE
 8. WeekNav shared component (week-nav.tsx) — DONE
 9. DeactivateDialog shared component (deactivate-dialog.tsx) — DONE
+
+## Codebase State (Session 6 verified)
+- drivers page: still uses DriversTable (classic table), NOT yet card grid
+- RidesTable: does NOT have status left-border on rows (only DispatchBoard has this)
+- Dispatch day view: DispatchBoard has status filter chips (color-coded), 320px driver sidebar
+- Dispatch week view: DispatchWeekView — separate component, /dispatch default
+- /rides default: week view (RidesWeekView), /rides?date=YYYY: day view with RidesTable
+- RideForm: uses 2-col layout hint (max-w-5xl), but currently single column in practice
+- MyRidesList: already h-12 buttons, text-3xl times, border-l-[5px] — well done
+- PendingAssignments: amber border, annehmen (green-600) + ablehnen (red outline) buttons
+- acceptance-queue.tsx + acceptance-stage-badge.tsx + rejection-dialog.tsx exist
+- Dispatch page fetches acceptance_tracking data for AcceptanceQueue component
+
+## Full UI/UX Concept (Session 6 — Created)
+- Full concept document saved at: C:/GIT/Fahrdienst/docs/ui-ux-concept.md
+- 12 chapters + bonus design system section
+- Covers: design principles, IA, user flows, screen concepts, driver UX, maps, components, accessibility, wireframes, MVP priorities, UX pitfalls
+- Key gaps identified vs current code:
+  - RidesTable missing status left-border (P1 quick win)
+  - Status filter chips not on /rides (P1 quick win)
+  - No navigation deep-link in driver app (P1 quick win)
+  - No progress indicator in driver app (P2)
+  - Drivers page still table, not card grid (P2)
+  - Ride quick-sheet (side panel in dispatch) not built (P2)
+  - max-w-7xl too narrow for dispatch day view — should consider max-w-none (P2)
+  - Breadcrumb navigation missing for deep pages like /drivers/[id]/availability (P3)

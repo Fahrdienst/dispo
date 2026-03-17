@@ -191,10 +191,10 @@ function DriverSelect({
             <SelectItem key={driver.id} value={driver.id}>
               <span className="flex items-center gap-2">
                 {isAvailable && (
-                  <Check className="h-3.5 w-3.5 shrink-0 text-green-600" />
+                  <Check className="h-3.5 w-3.5 shrink-0 text-green-600" aria-hidden="true" />
                 )}
                 {hasConflict && (
-                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden="true" />
                 )}
                 <span>
                   {driver.last_name}, {driver.first_name}
@@ -364,7 +364,7 @@ export function DispatchBoard({
       {/* Day Navigation */}
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/dispatch?date=${prevDate}`}>
+          <Link href={`/dispatch?date=${prevDate}`} aria-label={`Vorheriger Tag, ${formatDateDE(prevDate)}`}>
             &larr; Vorheriger Tag
           </Link>
         </Button>
@@ -372,7 +372,7 @@ export function DispatchBoard({
           {formatDateDE(selectedDate)}
         </span>
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/dispatch?date=${nextDate}`}>
+          <Link href={`/dispatch?date=${nextDate}`} aria-label={`Naechster Tag, ${formatDateDE(nextDate)}`}>
             Naechster Tag &rarr;
           </Link>
         </Button>
@@ -389,11 +389,13 @@ export function DispatchBoard({
       </div>
 
       {/* Error Message */}
-      {errorMessage && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-          {errorMessage}
-        </div>
-      )}
+      <div aria-live="assertive">
+        {errorMessage && (
+          <div role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            {errorMessage}
+          </div>
+        )}
+      </div>
 
       {/* Stats Bar */}
       <div className="flex flex-wrap items-center gap-4 text-sm">
@@ -407,15 +409,17 @@ export function DispatchBoard({
         )}
         {conflictCount > 0 && (
           <Badge variant="outline" className="border-amber-400 bg-amber-50 text-amber-800">
-            <AlertTriangle className="mr-1 h-3 w-3" />
+            <AlertTriangle className="mr-1 h-3 w-3" aria-hidden="true" />
             {conflictCount} {conflictCount === 1 ? "Zeitkonflikt" : "Zeitkonflikte"}
           </Badge>
         )}
       </div>
 
       {/* Status Filter Chips */}
-      <div className="flex flex-wrap gap-2">
+      <div role="radiogroup" aria-label="Statusfilter" className="flex flex-wrap gap-2">
         <button
+          role="radio"
+          aria-checked={statusFilter === "all"}
           onClick={() => setStatusFilter("all")}
           className={cn(
             "rounded-md px-3 py-1 text-xs font-medium transition-colors",
@@ -433,6 +437,8 @@ export function DispatchBoard({
           return (
             <button
               key={status}
+              role="radio"
+              aria-checked={isActive}
               onClick={() => setStatusFilter(status)}
               className={cn(
                 "rounded-md px-3 py-1 text-xs font-medium transition-colors",
@@ -536,7 +542,7 @@ export function DispatchBoard({
                           className="border-amber-400 bg-amber-50 text-amber-800"
                           title={conflictTitle}
                         >
-                          <AlertTriangle className="mr-1 h-3 w-3" />
+                          <AlertTriangle className="mr-1 h-3 w-3" aria-hidden="true" />
                           Zeitkonflikt
                         </Badge>
                       )}

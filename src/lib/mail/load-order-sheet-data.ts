@@ -55,6 +55,9 @@ export interface OrderSheetData {
   driverEmail: string | null
   driverVehicleType: string
 
+  // Organization
+  organizationName: string
+
   // Actions (token URLs)
   confirmUrl: string
   rejectUrl: string
@@ -172,6 +175,15 @@ export async function loadOrderSheetData(
   const destination = (ride as unknown as RideWithJoins).destinations
   const driverData = driver as DriverRow
 
+  // Load organization name (singleton row, fallback to default)
+  const { data: orgSettings } = await supabase
+    .from("organization_settings")
+    .select("org_name")
+    .limit(1)
+    .single()
+
+  const organizationName = orgSettings?.org_name ?? "Patienten-Fahrdienst Dübendorf"
+
   // Load patient impairments (separate query — junction table)
   const { data: impairmentRows } = await supabase
     .from("patient_impairments")
@@ -241,6 +253,9 @@ export async function loadOrderSheetData(
     driverPhone: driverData.phone,
     driverEmail: driverData.email,
     driverVehicleType: driverData.vehicle_type,
+
+    // Organization
+    organizationName,
 
     // Actions
     confirmUrl,

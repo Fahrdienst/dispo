@@ -48,7 +48,7 @@ export function StatCard({
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        <div className={cn("rounded-md p-2", iconBgClass)}>
+        <div className={cn("rounded-md p-2", iconBgClass)} aria-hidden="true">
           <Icon className={cn("h-4 w-4", iconColorClass)} />
         </div>
       </CardHeader>

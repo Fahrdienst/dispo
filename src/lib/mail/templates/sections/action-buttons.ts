@@ -12,7 +12,7 @@ export function renderActionButtons(data: OrderSheetData): string {
   }
 
   return `<!-- Action Buttons -->
-<tr>
+<tr class="action-buttons">
   <td style="padding:24px 32px 8px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       <tr>
@@ -42,7 +42,7 @@ export function renderActionButtons(data: OrderSheetData): string {
     </table>
   </td>
 </tr>
-<tr>
+<tr class="action-buttons">
   <td style="padding:12px 32px 8px;">
     <p style="margin:0;color:#a1a1aa;font-size:12px;text-align:center;">
       Dieser Link ist 48 Stunden g&uuml;ltig und kann nur einmal verwendet werden.

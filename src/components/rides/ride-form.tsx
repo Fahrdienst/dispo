@@ -349,7 +349,7 @@ export function RideForm({
             </CardHeader>
             <CardContent className="space-y-6">
               {state && !state.success && state.error && (
-                <p className="text-sm text-destructive">{state.error}</p>
+                <p className="text-sm text-destructive" role="alert">{state.error}</p>
               )}
 
               {/* Warning banner for linked rides (edit mode) */}
@@ -397,7 +397,7 @@ export function RideForm({
                       value={selectedPatientId}
                       onValueChange={setSelectedPatientId}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger aria-label="Patient auswaehlen" autoFocus={!isEdit}>
                         <SelectValue placeholder="Patient waehlen..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -594,10 +594,10 @@ export function RideForm({
 
               {/* --- Route info display (Issue #58) --- */}
               {(isCalculatingRoute || routeInfo || routeError) && (
-                <div className="rounded-md border px-4 py-3">
+                <div className="rounded-md border px-4 py-3" aria-live="polite">
                   {isCalculatingRoute && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" aria-hidden="true" />
                       Route wird berechnet...
                     </div>
                   )}
@@ -607,15 +607,15 @@ export function RideForm({
                       <span>
                         ~{formatDistance(routeInfo.distance_meters)}
                       </span>
-                      <span className="text-muted-foreground">|</span>
+                      <span className="text-muted-foreground" aria-hidden="true">|</span>
                       <span>
                         ~{formatDuration(routeInfo.duration_seconds)} Fahrzeit
                       </span>
                     </div>
                   )}
                   {!isCalculatingRoute && routeError && (
-                    <p className="text-sm text-amber-700">
-                      Routenberechnung nicht moeglich: {routeError}
+                    <p className="text-sm text-amber-700" role="alert">
+                      Routenberechnung nicht moeglich — die Fahrt kann trotzdem gespeichert werden. {routeError}
                     </p>
                   )}
                 </div>

@@ -65,6 +65,9 @@ function createTestData(overrides?: Partial<OrderSheetData>): OrderSheetData {
     driverEmail: "max@example.com",
     driverVehicleType: "standard",
 
+    // Organization
+    organizationName: "Patienten-Fahrdienst Dübendorf",
+
     // Actions
     confirmUrl: "https://fahrdienst.vercel.app/api/rides/respond?token=abc123&action=confirm",
     rejectUrl: "https://fahrdienst.vercel.app/api/rides/respond?token=abc123&action=reject",
@@ -84,9 +87,9 @@ describe("renderHeader", () => {
     expect(html).toContain("F-260225-7890")
   })
 
-  it("contains the order reference label", () => {
+  it("contains the organization name in the header bar", () => {
     const html = renderHeader(createTestData())
-    expect(html).toContain("Auftrags-Nr.")
+    expect(html).toContain("Patienten-Fahrdienst D\u00fcbendorf")
   })
 
   it("contains the formatted date", () => {

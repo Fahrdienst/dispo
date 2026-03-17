@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { rateLimitLogin } from "@/lib/security/rate-limit"
+import { trackEvent } from "@/lib/telemetry"
 import type { ActionResult } from "@/actions/shared"
 
 interface LoginData {
@@ -38,8 +39,18 @@ export async function login(
   })
 
   if (error) {
+    trackEvent({
+      event: "login_failed",
+      properties: { reason: "invalid_credentials" },
+    })
     return { success: false, error: "E-Mail oder Passwort ist falsch" }
   }
+
+  trackEvent({
+    event: "login_success",
+    userId: data.user?.id,
+    properties: { has_mfa: false },
+  })
 
   // Check if MFA is required (AAL2 not yet reached)
   const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
@@ -54,6 +65,11 @@ export async function login(
     const totpFactor = factorsData?.totp.find((f) => f.status === "verified")
 
     if (totpFactor) {
+      trackEvent({
+        event: "login_mfa_required",
+        userId: data.user?.id,
+        properties: { factor_type: "totp" },
+      })
       return {
         success: true,
         data: { mfaRequired: true, factorId: totpFactor.id },

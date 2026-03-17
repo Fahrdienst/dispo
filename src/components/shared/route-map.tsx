@@ -48,11 +48,11 @@ export function RouteMap({
           </div>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" aria-hidden="true" />
               Abholung
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500" />
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500" aria-hidden="true" />
               Ziel
             </span>
           </div>
@@ -61,7 +61,7 @@ export function RouteMap({
       <CardContent className="p-0">
         <img
           src={url}
-          alt="Route"
+          alt="Kartenansicht der Route zwischen Abholort und Ziel"
           width={640}
           height={250}
           loading="lazy"

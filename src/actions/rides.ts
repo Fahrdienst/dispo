@@ -23,6 +23,7 @@ import {
   expandDirections,
 } from "@/lib/ride-series/generate"
 import { logAudit } from "@/lib/audit/logger"
+import { trackEvent } from "@/lib/telemetry"
 import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables, Enums } from "@/lib/types/database"
@@ -164,6 +165,18 @@ export async function createRide(
   if (error) {
     return { success: false, error: error.message }
   }
+
+  // Telemetry: track ride creation
+  trackEvent({
+    event: "ride_created",
+    userId: auth.userId,
+    properties: {
+      status,
+      direction: rideData.direction,
+      has_driver: Boolean(rideData.driver_id),
+      has_price: Boolean(priceFields.calculated_price),
+    },
+  })
 
   // Fire-and-forget audit log
   logAudit({

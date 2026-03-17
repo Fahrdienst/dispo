@@ -104,11 +104,11 @@ export async function DashboardMap() {
           </div>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" aria-hidden="true" />
               Patienten ({patientCoords.length})
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500" />
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500" aria-hidden="true" />
               Ziele ({destCoords.length})
             </span>
           </div>

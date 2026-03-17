@@ -119,6 +119,15 @@
 - `IMPAIRMENT_TYPE_LABELS` added to constants.ts: rollator/wheelchair/stretcher/companion
 - Email design: 600px max, table-based layout, inline CSS, system font stack, print-friendly @media
 
+## Audit Trail
+- `src/lib/audit/logger.ts` - `logAudit()` utility, uses admin client (service role), fire-and-forget safe
+- `audit_log` table: immutable, admin-read-only via RLS, no INSERT policy (service role only)
+- Migration: `supabase/migrations/20260316_000004_audit_trail.sql`
+- Integrated in: patients.ts, drivers.ts, rides.ts, users.ts actions
+- Pattern: `logAudit({...}).catch(() => {})` after successful DB operation
+- `requireAdmin()` has no `role` field -- hardcode `"admin"` in logAudit calls
+- Cast `Record<string, unknown>` to `Json` type when inserting changes/metadata
+
 ## Important Lessons
 - Dashboard page (`src/app/(dashboard)/page.tsx`) also queries destinations -- remember to update when renaming columns
 - `src/lib/rides/constants.ts` contains label maps for enums -- must be updated when enum types change

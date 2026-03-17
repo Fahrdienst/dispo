@@ -6,58 +6,122 @@ exports[`snapshot > matches the expected structure for a fully populated order s
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fahrauftrag - Patienten-Fahrdienst D&uuml;bendorf</title>
+  <title>Fahrauftrag - Patienten-Fahrdienst Dübendorf</title>
   <style type="text/css">
+    /* Mobile: stack columns on small screens */
+    @media only screen and (max-width: 480px) {
+      .col-left, .col-right {
+        display: block !important;
+        width: 100% !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        border-left: none !important;
+      }
+      .col-right {
+        padding-top: 12px !important;
+        margin-top: 12px !important;
+        border-top: 1px solid #e5e7eb !important;
+      }
+      .email-container {
+        width: 100% !important;
+      }
+    }
+    /* Print: clean output for drivers printing from email client */
     @media print {
-      body { background-color: #ffffff !important; }
-      .email-wrapper { padding: 0 !important; }
-      .email-container { box-shadow: none !important; border-radius: 0 !important; }
+      body { background-color: #ffffff !important; margin: 0 !important; }
+      .email-wrapper { padding: 0 !important; background-color: #ffffff !important; }
+      .email-container { box-shadow: none !important; border-radius: 0 !important; max-width: 100% !important; }
+      /* Hide action buttons in print — not useful on paper */
+      .action-buttons { display: none !important; }
+      /* Ensure dark header prints correctly */
+      .header-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#f8f8f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-wrapper" style="background-color:#f8f8f8;padding:32px 16px;">
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-wrapper" style="background-color:#f1f5f9;padding:32px 16px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-container" style="max-width:600px;background-color:#ffffff;border-radius:8px;overflow:hidden;">
-          <!-- Header & Order Overview -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-container" style="max-width:600px;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+          <!-- Header Bar -->
 <tr>
-  <td style="background-color:#18181b;padding:24px 32px;">
-    <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.01em;">Patienten-Fahrdienst D&uuml;bendorf</h1>
+  <td class="header-bar" style="background-color:#1e293b;padding:24px 32px;">
+    <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.01em;font-family:Arial,Helvetica,sans-serif;">Patienten-Fahrdienst Dübendorf</h1>
+    <p style="margin:6px 0 0;color:#94a3b8;font-size:13px;font-family:Arial,Helvetica,sans-serif;">Fahrauftrag</p>
   </td>
 </tr>
+
+<!-- Order Reference & Date -->
 <tr>
-  <td style="padding:24px 32px 16px;">
+  <td style="padding:20px 32px 0;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       <tr>
-        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Auftrags-Nr.</td>
-        <td style="color:#1a1a1a;font-size:14px;font-weight:600;padding:4px 0;">F-260225-7890</td>
-      </tr>
-      <tr>
-        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Datum</td>
-        <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Mittwoch, 25. Februar 2026</td>
-      </tr>
-      <tr>
-        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Abhol-Zeit</td>
-        <td style="color:#dc2626;font-size:18px;font-weight:700;padding:4px 0;">14:30</td>
-      </tr>
-      <tr>
-        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Termin</td>
-        <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">15:00</td>
-      </tr>
-      <tr>
-        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Richtung</td>
-        <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Hinfahrt</td>
-      </tr>
-      <tr>
-        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">R&uuml;ckfahrt ca.</td>
-        <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">16:30</td>
-      </tr>
-      <tr>
-        <td style="color:#71717a;font-size:13px;padding:4px 0;width:140px;">Status</td>
-        <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Geplant</td>
+        <td style="font-family:Arial,Helvetica,sans-serif;">
+          <span style="color:#1e293b;font-size:16px;font-weight:700;">F-260225-7890</span>
+          <span style="color:#94a3b8;font-size:14px;padding-left:12px;">Mittwoch, 25. Februar 2026</span>
+        </td>
       </tr>
     </table>
+  </td>
+</tr>
+
+<!-- Two-Column Order Overview -->
+<tr>
+  <td style="padding:16px 32px 20px;">
+    <!--[if mso]>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+    <td width="280" valign="top">
+    <![endif]-->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td class="col-left" style="width:50%;vertical-align:top;padding-right:16px;" valign="top">
+          <!-- Left Column: Order Details -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,Helvetica,sans-serif;">
+            <tr>
+              <td style="color:#71717a;font-size:13px;padding:4px 0;">Auftrags-Typ</td>
+              <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Hinfahrt</td>
+            </tr>
+            <tr>
+              <td style="color:#71717a;font-size:13px;padding:4px 0;">Auftraggeber</td>
+              <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Patienten-Fahrdienst Dübendorf</td>
+            </tr>
+            <tr>
+              <td style="color:#71717a;font-size:13px;padding:4px 0;">Richtung</td>
+              <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Hinfahrt</td>
+            </tr>
+            <tr>
+              <td style="color:#71717a;font-size:13px;padding:4px 0;">Status</td>
+              <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;">Geplant</td>
+            </tr>
+          </table>
+        </td>
+        <td class="col-right" style="width:50%;vertical-align:top;padding-left:16px;border-left:1px solid #e5e7eb;" valign="top">
+          <!-- Right Column: Times & Cost -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,Helvetica,sans-serif;">
+            <tr>
+              <td style="color:#71717a;font-size:13px;padding:4px 0;">Abhol-Zeit</td>
+              <td style="color:#dc2626;font-size:22px;font-weight:700;padding:4px 0;text-align:right;line-height:1.2;">14:30</td>
+            </tr>
+            <tr>
+        <td style="color:#71717a;font-size:13px;padding:4px 0;">Termin</td>
+        <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;text-align:right;">15:00</td>
+      </tr>
+            <tr>
+        <td style="color:#71717a;font-size:13px;padding:4px 0;">R&uuml;ckfahrt ca.</td>
+        <td style="color:#1a1a1a;font-size:14px;font-weight:500;padding:4px 0;text-align:right;">16:30</td>
+      </tr>
+            <tr>
+              <td style="color:#71717a;font-size:13px;padding:4px 0;">Kosten</td>
+              <td style="color:#1a1a1a;font-size:14px;font-weight:600;padding:4px 0;text-align:right;">Fr. 65.00</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      
+    </table>
+    <!--[if mso]>
+    </td></tr></table>
+    <![endif]-->
   </td>
 </tr>
           <!-- Patient Block -->
@@ -213,7 +277,7 @@ exports[`snapshot > matches the expected structure for a fully populated order s
   </td>
 </tr>
           <!-- Action Buttons -->
-<tr>
+<tr class="action-buttons">
   <td style="padding:24px 32px 8px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       <tr>
@@ -243,7 +307,7 @@ exports[`snapshot > matches the expected structure for a fully populated order s
     </table>
   </td>
 </tr>
-<tr>
+<tr class="action-buttons">
   <td style="padding:12px 32px 8px;">
     <p style="margin:0;color:#a1a1aa;font-size:12px;text-align:center;">
       Dieser Link ist 48 Stunden g&uuml;ltig und kann nur einmal verwendet werden.
@@ -253,9 +317,9 @@ exports[`snapshot > matches the expected structure for a fully populated order s
 
           <!-- Footer -->
           <tr>
-            <td style="padding:16px 32px;border-top:1px solid #e5e7eb;background-color:#f8f8f8;">
-              <p style="margin:0;color:#a1a1aa;font-size:12px;text-align:center;">
-                Patienten-Fahrdienst D&uuml;bendorf &middot; Mittwoch, 25. Februar 2026
+            <td style="padding:16px 32px;border-top:1px solid #e5e7eb;background-color:#f8fafc;">
+              <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;font-family:Arial,Helvetica,sans-serif;">
+                Patienten-Fahrdienst Dübendorf &middot; Mittwoch, 25. Februar 2026
               </p>
             </td>
           </tr>
