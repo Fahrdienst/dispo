@@ -128,6 +128,21 @@
 - `requireAdmin()` has no `role` field -- hardcode `"admin"` in logAudit calls
 - Cast `Record<string, unknown>` to `Json` type when inserting changes/metadata
 
+## Duebendorf Tariff Model
+- Migration: `supabase/migrations/20260317_000001_duebendorf_tariff.sql`
+- New rides columns: duration_category, is_tagesheim_imwil, has_escort, surcharge_amount, surcharge_details (jsonb), waiting_minutes, tariff_zone
+- `src/lib/billing/duebendorf-tariff.ts` - Pure tariff calculation (no DB/API), exports `calculateDuebendorfTariff()`
+- `src/lib/billing/zone-determination.ts` - PLZ-based zone resolution (gemeinde/zone_1-3/ausserkantonal), Zurich Limmat rule
+- `src/lib/billing/calculate-price.ts` - Orchestrator: zone lookup + route + tariff calc, new input object signature
+- `src/lib/billing/types.ts` - PriceCalculation interface extended with tariff_zone, breakdown, surcharge_amount
+- `src/components/rides/tariff-price-display.tsx` - Client component for live price breakdown display
+- Gemeinde Duebendorf (PLZ 8600): outbound CHF 8, round trip under 2h CHF 12, over 2h CHF 16, Tagesheim Imwil CHF 14
+- Zone tariffs: zone_1 (16/24), zone_2 (25/45), zone_3 (35/55) per duration category
+- Ausserkantonal: CHF 1.00/km + optional CHF 20 escort surcharge
+- Quick-capture dialog now has duration_category toggle (6th field)
+- Ride form: Tarif fieldset with duration toggle, Tagesheim Imwil checkbox (gemeinde only), escort checkbox, live tariff preview
+- `surcharge_details` jsonb must be cast `as unknown as Json` when inserting into Supabase
+
 ## Quick Capture / Combobox (G1/G2)
 - `src/components/shared/entity-combobox.tsx` - Reusable fuzzy-search combobox (no cmdk dependency)
 - Fuzzy matching: normalizes umlauts (ae/oe/ue), strips diacritics, token-based (order-independent)

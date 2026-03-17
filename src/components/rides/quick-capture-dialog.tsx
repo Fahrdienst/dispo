@@ -50,6 +50,8 @@ export function QuickCaptureDialog({
   const [destinations, setDestinations] = useState<ComboboxItem[]>([])
   const [dataLoaded, setDataLoaded] = useState(false)
 
+  type DurationCat = "under_2h" | "over_2h"
+
   // Form state
   const [patientId, setPatientId] = useState<string | null>(null)
   const [destinationId, setDestinationId] = useState<string | null>(null)
@@ -58,6 +60,7 @@ export function QuickCaptureDialog({
   )
   const [pickupTime, setPickupTime] = useState("")
   const [direction, setDirection] = useState<Direction>("outbound")
+  const [durationCategory, setDurationCategory] = useState<DurationCat>("under_2h")
   const [error, setError] = useState<string | null>(null)
 
   // Load combobox data when dialog opens
@@ -93,6 +96,7 @@ export function QuickCaptureDialog({
       )
       setPickupTime("")
       setDirection("outbound")
+      setDurationCategory("under_2h")
       setError(null)
     }
   }, [open, defaultDate])
@@ -124,6 +128,7 @@ export function QuickCaptureDialog({
         date,
         pickup_time: pickupTime,
         direction,
+        duration_category: durationCategory,
       })
 
       if (!result.success) {
@@ -142,7 +147,7 @@ export function QuickCaptureDialog({
       onOpenChange(false)
       router.refresh()
     })
-  }, [patientId, destinationId, date, pickupTime, direction, onOpenChange, router])
+  }, [patientId, destinationId, date, pickupTime, direction, durationCategory, onOpenChange, router])
 
   // Handle Enter key on the form to submit
   const handleFormKeyDown = useCallback(
@@ -249,6 +254,34 @@ export function QuickCaptureDialog({
                       : "border-input bg-white text-muted-foreground hover:bg-muted/50"
                   )}
                   aria-pressed={direction === opt.value}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 6. Duration Category Toggle */}
+          <div className="space-y-1.5">
+            <Label>Aufenthaltsdauer</Label>
+            <div className="flex gap-1.5">
+              {([
+                { value: "under_2h" as const, label: "Bis 1 Std." },
+                { value: "over_2h" as const, label: "Ab 2 Std." },
+              ]).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setDurationCategory(opt.value)}
+                  className={cn(
+                    "flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors",
+                    "min-h-[44px]",
+                    "focus:outline-none focus:ring-2 focus:ring-ring/40 focus:ring-offset-1",
+                    durationCategory === opt.value
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-input bg-white text-muted-foreground hover:bg-muted/50"
+                  )}
+                  aria-pressed={durationCategory === opt.value}
                 >
                   {opt.label}
                 </button>

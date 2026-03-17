@@ -87,6 +87,18 @@ export const rideSchema = z
       .transform(emptyToNull)
       .nullable()
       .optional(),
+    // --- Duebendorf tariff fields ---
+    duration_category: z
+      .enum(["under_2h", "over_2h"])
+      .default("under_2h"),
+    is_tagesheim_imwil: z
+      .string()
+      .optional()
+      .transform((v) => v === "on" || v === "true"),
+    has_escort: z
+      .string()
+      .optional()
+      .transform((v) => v === "on" || v === "true"),
     // --- Price override fields (ADR-010, Issue #60) ---
     price_override: z
       .string()

@@ -26,7 +26,7 @@ import { logAudit } from "@/lib/audit/logger"
 import { trackEvent } from "@/lib/telemetry"
 import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
-import type { Tables, Enums } from "@/lib/types/database"
+import type { Tables, Enums, Json } from "@/lib/types/database"
 
 /** Inline Zod schema for series fields extracted from the ride form. */
 const seriesFieldsSchema = z.object({
@@ -79,6 +79,9 @@ export async function createRide(
     create_return_ride,
     price_override,
     price_override_reason,
+    duration_category,
+    is_tagesheim_imwil,
+    has_escort,
     ...rideData
   } = result.data
   const status: Enums<"ride_status"> = rideData.driver_id
@@ -92,10 +95,20 @@ export async function createRide(
     distance_meters?: number
     duration_seconds?: number
     calculated_price?: number
-    fare_rule_id?: string
+    fare_rule_id?: string | null
     price_override?: number | null
     price_override_reason?: string | null
-  } = {}
+    tariff_zone?: string | null
+    surcharge_amount?: number
+    surcharge_details?: Json | null
+    duration_category?: string
+    is_tagesheim_imwil?: boolean
+    has_escort?: boolean
+  } = {
+    duration_category,
+    is_tagesheim_imwil,
+    has_escort,
+  }
 
   // Include manual override if provided
   if (price_override != null) {
@@ -113,7 +126,7 @@ export async function createRide(
         .single(),
       supabase
         .from("destinations")
-        .select("postal_code, lat, lng, geocode_status")
+        .select("postal_code, lat, lng, geocode_status, display_name")
         .eq("id", rideData.destination_id)
         .single(),
     ])
@@ -132,13 +145,17 @@ export async function createRide(
       const { calculateRidePrice } = await import(
         "@/lib/billing/calculate-price"
       )
-      const priceResult = await calculateRidePrice(
-        patient.postal_code,
-        dest.postal_code,
-        { lat: patient.lat, lng: patient.lng },
-        { lat: dest.lat, lng: dest.lng },
-        rideData.date
-      )
+      const priceResult = await calculateRidePrice({
+        patientPostalCode: patient.postal_code,
+        destinationPostalCode: dest.postal_code,
+        patientCoords: { lat: patient.lat, lng: patient.lng },
+        destinationCoords: { lat: dest.lat, lng: dest.lng },
+        direction: rideData.direction,
+        durationCategory: duration_category,
+        destinationName: dest.display_name,
+        hasEscort: has_escort,
+        isTagesheimImwilOverride: is_tagesheim_imwil,
+      })
 
       if (priceResult) {
         priceFields = {
@@ -147,6 +164,11 @@ export async function createRide(
           duration_seconds: priceResult.duration_seconds,
           calculated_price: priceResult.calculated_price,
           fare_rule_id: priceResult.fare_rule_id,
+          tariff_zone: priceResult.tariff_zone,
+          surcharge_amount: priceResult.surcharge_amount,
+          surcharge_details: priceResult.breakdown.length > 0
+            ? ({ items: priceResult.breakdown } as unknown as Json)
+            : null,
         }
       }
     }
@@ -264,6 +286,9 @@ async function createRideWithSeries(
     create_return_ride,
     price_override,
     price_override_reason,
+    duration_category,
+    is_tagesheim_imwil,
+    has_escort,
     ...rideData
   } = rideResult.data
   const seriesData = seriesResult.data
@@ -308,10 +333,20 @@ async function createRideWithSeries(
     distance_meters?: number
     duration_seconds?: number
     calculated_price?: number
-    fare_rule_id?: string
+    fare_rule_id?: string | null
     price_override?: number | null
     price_override_reason?: string | null
-  } = {}
+    tariff_zone?: string | null
+    surcharge_amount?: number
+    surcharge_details?: Json | null
+    duration_category?: string
+    is_tagesheim_imwil?: boolean
+    has_escort?: boolean
+  } = {
+    duration_category,
+    is_tagesheim_imwil,
+    has_escort,
+  }
 
   if (price_override != null) {
     priceFields.price_override = price_override
@@ -327,7 +362,7 @@ async function createRideWithSeries(
         .single(),
       supabase
         .from("destinations")
-        .select("postal_code, lat, lng, geocode_status")
+        .select("postal_code, lat, lng, geocode_status, display_name")
         .eq("id", rideData.destination_id)
         .single(),
     ])
@@ -346,13 +381,17 @@ async function createRideWithSeries(
       const { calculateRidePrice } = await import(
         "@/lib/billing/calculate-price"
       )
-      const priceResult = await calculateRidePrice(
-        patient.postal_code,
-        dest.postal_code,
-        { lat: patient.lat, lng: patient.lng },
-        { lat: dest.lat, lng: dest.lng },
-        rideData.date
-      )
+      const priceResult = await calculateRidePrice({
+        patientPostalCode: patient.postal_code,
+        destinationPostalCode: dest.postal_code,
+        patientCoords: { lat: patient.lat, lng: patient.lng },
+        destinationCoords: { lat: dest.lat, lng: dest.lng },
+        direction: rideData.direction,
+        durationCategory: duration_category,
+        destinationName: dest.display_name,
+        hasEscort: has_escort,
+        isTagesheimImwilOverride: is_tagesheim_imwil,
+      })
 
       if (priceResult) {
         priceFields = {
@@ -361,6 +400,11 @@ async function createRideWithSeries(
           duration_seconds: priceResult.duration_seconds,
           calculated_price: priceResult.calculated_price,
           fare_rule_id: priceResult.fare_rule_id,
+          tariff_zone: priceResult.tariff_zone,
+          surcharge_amount: priceResult.surcharge_amount,
+          surcharge_details: priceResult.breakdown.length > 0
+            ? ({ items: priceResult.breakdown } as unknown as Json)
+            : null,
         }
       }
     }
@@ -541,6 +585,9 @@ export async function updateRide(
     create_return_ride: _,
     price_override,
     price_override_reason,
+    duration_category,
+    is_tagesheim_imwil,
+    has_escort,
     ...rideData
   } = result.data
 
@@ -565,7 +612,17 @@ export async function updateRide(
     fare_rule_id?: string | null
     price_override?: number | null
     price_override_reason?: string | null
-  } = {}
+    tariff_zone?: string | null
+    surcharge_amount?: number
+    surcharge_details?: Json | null
+    duration_category?: string
+    is_tagesheim_imwil?: boolean
+    has_escort?: boolean
+  } = {
+    duration_category,
+    is_tagesheim_imwil,
+    has_escort,
+  }
 
   // Include manual override (or clear it if not provided)
   priceFields.price_override = price_override ?? null
@@ -581,7 +638,7 @@ export async function updateRide(
         .single(),
       supabase
         .from("destinations")
-        .select("postal_code, lat, lng, geocode_status")
+        .select("postal_code, lat, lng, geocode_status, display_name")
         .eq("id", rideData.destination_id)
         .single(),
     ])
@@ -600,13 +657,17 @@ export async function updateRide(
       const { calculateRidePrice } = await import(
         "@/lib/billing/calculate-price"
       )
-      const priceResult = await calculateRidePrice(
-        patient.postal_code,
-        dest.postal_code,
-        { lat: patient.lat, lng: patient.lng },
-        { lat: dest.lat, lng: dest.lng },
-        rideData.date
-      )
+      const priceResult = await calculateRidePrice({
+        patientPostalCode: patient.postal_code,
+        destinationPostalCode: dest.postal_code,
+        patientCoords: { lat: patient.lat, lng: patient.lng },
+        destinationCoords: { lat: dest.lat, lng: dest.lng },
+        direction: rideData.direction,
+        durationCategory: duration_category,
+        destinationName: dest.display_name,
+        hasEscort: has_escort,
+        isTagesheimImwilOverride: is_tagesheim_imwil,
+      })
 
       if (priceResult) {
         priceFields = {
@@ -615,6 +676,11 @@ export async function updateRide(
           duration_seconds: priceResult.duration_seconds,
           calculated_price: priceResult.calculated_price,
           fare_rule_id: priceResult.fare_rule_id,
+          tariff_zone: priceResult.tariff_zone,
+          surcharge_amount: priceResult.surcharge_amount,
+          surcharge_details: priceResult.breakdown.length > 0
+            ? ({ items: priceResult.breakdown } as unknown as Json)
+            : null,
         }
       }
     }

@@ -7,7 +7,7 @@ import { requireAuth } from "@/lib/auth/require-auth"
 import { logAudit } from "@/lib/audit/logger"
 import { trackEvent } from "@/lib/telemetry"
 import type { ActionResult } from "@/actions/shared"
-import type { Enums } from "@/lib/types/database"
+import type { Enums, Json } from "@/lib/types/database"
 
 const quickCaptureSchema = z.object({
   patient_id: z.string().uuid("Patient ist erforderlich"),
@@ -15,6 +15,7 @@ const quickCaptureSchema = z.object({
   date: z.string().min(1, "Datum ist erforderlich"),
   pickup_time: z.string().min(1, "Abholzeit ist erforderlich"),
   direction: z.enum(["outbound", "return", "both"]),
+  duration_category: z.enum(["under_2h", "over_2h"]).default("under_2h"),
 })
 
 export type QuickCaptureInput = z.infer<typeof quickCaptureSchema>
@@ -40,7 +41,7 @@ export async function quickCreateRide(
     return { success: false, error: firstError }
   }
 
-  const { patient_id, destination_id, date, pickup_time, direction } =
+  const { patient_id, destination_id, date, pickup_time, direction, duration_category } =
     parsed.data
   const supabase = await createClient()
 
@@ -49,8 +50,14 @@ export async function quickCreateRide(
     distance_meters?: number
     duration_seconds?: number
     calculated_price?: number
-    fare_rule_id?: string
-  } = {}
+    fare_rule_id?: string | null
+    tariff_zone?: string | null
+    surcharge_amount?: number
+    surcharge_details?: Json | null
+    duration_category?: string
+  } = {
+    duration_category,
+  }
 
   try {
     const [patientRes, destRes] = await Promise.all([
@@ -61,7 +68,7 @@ export async function quickCreateRide(
         .single(),
       supabase
         .from("destinations")
-        .select("postal_code, lat, lng, geocode_status")
+        .select("postal_code, lat, lng, geocode_status, display_name")
         .eq("id", destination_id)
         .single(),
     ])
@@ -80,20 +87,30 @@ export async function quickCreateRide(
       const { calculateRidePrice } = await import(
         "@/lib/billing/calculate-price"
       )
-      const priceResult = await calculateRidePrice(
-        patient.postal_code,
-        dest.postal_code,
-        { lat: patient.lat, lng: patient.lng },
-        { lat: dest.lat, lng: dest.lng },
-        date
-      )
+      const priceResult = await calculateRidePrice({
+        patientPostalCode: patient.postal_code,
+        destinationPostalCode: dest.postal_code,
+        patientCoords: { lat: patient.lat, lng: patient.lng },
+        destinationCoords: { lat: dest.lat, lng: dest.lng },
+        direction,
+        durationCategory: duration_category,
+        destinationName: dest.display_name,
+        hasEscort: false,
+        isTagesheimImwilOverride: false,
+      })
 
       if (priceResult) {
         priceFields = {
+          ...priceFields,
           distance_meters: priceResult.distance_meters,
           duration_seconds: priceResult.duration_seconds,
           calculated_price: priceResult.calculated_price,
           fare_rule_id: priceResult.fare_rule_id,
+          tariff_zone: priceResult.tariff_zone,
+          surcharge_amount: priceResult.surcharge_amount,
+          surcharge_details: priceResult.breakdown.length > 0
+            ? ({ items: priceResult.breakdown } as unknown as Json)
+            : null,
         }
       }
     }

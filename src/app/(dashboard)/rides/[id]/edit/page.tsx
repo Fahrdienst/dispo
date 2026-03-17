@@ -26,7 +26,7 @@ export default async function EditRidePage({ params }: EditRidePageProps) {
         .order("last_name"),
       supabase
         .from("destinations")
-        .select("id, display_name")
+        .select("id, display_name, postal_code")
         .eq("is_active", true)
         .order("display_name"),
       supabase

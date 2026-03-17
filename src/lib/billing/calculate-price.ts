@@ -1,56 +1,124 @@
 import "server-only"
 
-import { getFareRule } from "./zone-lookup"
+import { getZoneForPostalCode } from "./zone-lookup"
+import { determineTariffZone, isTagesheimImwil } from "./zone-determination"
+import { calculateDuebendorfTariff } from "./duebendorf-tariff"
 import { getRoute } from "@/lib/maps/directions"
 import type { GeoPoint } from "@/lib/maps/types"
 import type { PriceCalculation } from "./types"
+import type { DurationCategory, TariffZone } from "./duebendorf-tariff"
 
 /**
- * Calculate the price for a ride based on zone-based fare rules and route distance.
+ * Input parameters for ride price calculation.
+ */
+interface CalculateRidePriceInput {
+  patientPostalCode: string
+  destinationPostalCode: string
+  patientCoords: GeoPoint
+  destinationCoords: GeoPoint
+  direction: "outbound" | "return" | "both"
+  durationCategory: DurationCategory
+  destinationName: string
+  hasEscort: boolean
+  isTagesheimImwilOverride: boolean
+}
+
+/**
+ * Calculate the price for a ride using the Duebendorf tariff model.
  *
  * Steps:
- * 1. Look up fare rule for the from/to postal code combination on the given date
- * 2. Calculate driving route distance via Google Directions API
- * 3. Apply formula: base_price + (distance_km * price_per_km)
+ * 1. Determine tariff zone from destination postal code (with DB zone lookup fallback)
+ * 2. Detect Tagesheim Imwil special case
+ * 3. Calculate route distance via Google Directions API (needed for ausserkantonal)
+ * 4. Apply Duebendorf tariff calculation
  *
- * Returns null if:
- * - No fare rule exists for the zone combination
- * - The Directions API fails (coordinates missing or invalid)
+ * Returns null if the route calculation fails (e.g., missing coordinates).
  */
 export async function calculateRidePrice(
+  input: CalculateRidePriceInput
+): Promise<PriceCalculation | null> {
+  const {
+    patientPostalCode,
+    destinationPostalCode,
+    patientCoords,
+    destinationCoords,
+    direction,
+    durationCategory,
+    destinationName,
+    hasEscort,
+    isTagesheimImwilOverride,
+  } = input
+
+  // 1. Zone lookup: first check DB, then apply Duebendorf rules
+  const dbZone = await getZoneForPostalCode(destinationPostalCode)
+  const tariffZone: TariffZone = determineTariffZone(
+    destinationPostalCode,
+    dbZone?.name ?? null
+  )
+
+  // 2. Tagesheim Imwil detection
+  const isImwil = isTagesheimImwilOverride || isTagesheimImwil(destinationName)
+
+  // 3. Route calculation (needed for distance display and ausserkantonal pricing)
+  let routeDistance = 0
+  let routeDuration = 0
+  try {
+    const route = await getRoute(patientCoords, destinationCoords)
+    routeDistance = route.distance_meters
+    routeDuration = route.duration_seconds
+  } catch (err: unknown) {
+    console.error("Route calculation failed for price:", err)
+    // For ausserkantonal, we need the distance — return null
+    if (tariffZone === "ausserkantonal") {
+      return null
+    }
+    // For other zones, distance is informational; continue with 0
+  }
+
+  // 4. Apply tariff
+  const distanceKm = routeDistance / 1000
+  const tariffResult = calculateDuebendorfTariff({
+    zone: tariffZone,
+    direction,
+    durationCategory,
+    isTagesheimImwil: isImwil,
+    hasEscort,
+    distanceKm,
+  })
+
+  return {
+    calculated_price: tariffResult.price,
+    fare_rule_id: null, // Legacy field — not used with new tariff
+    distance_meters: routeDistance,
+    duration_seconds: routeDuration,
+    tariff_zone: tariffResult.zone,
+    breakdown: tariffResult.breakdown,
+    surcharge_amount: hasEscort && tariffZone === "ausserkantonal" ? 20 : 0,
+  }
+}
+
+/**
+ * Legacy-compatible wrapper for existing call sites that use the old signature.
+ * Delegates to the new calculateRidePrice with sensible defaults.
+ *
+ * @deprecated Use calculateRidePrice(input) directly for full tariff support.
+ */
+export async function calculateRidePriceLegacy(
   patientPostalCode: string,
   destinationPostalCode: string,
   patientCoords: GeoPoint,
   destinationCoords: GeoPoint,
-  rideDate: string
+  _rideDate: string
 ): Promise<PriceCalculation | null> {
-  // 1. Zone-Lookup via PLZ
-  const fareRule = await getFareRule(
+  return calculateRidePrice({
     patientPostalCode,
     destinationPostalCode,
-    rideDate
-  )
-  if (!fareRule) return null
-
-  // 2. Route via Directions API
-  let route
-  try {
-    route = await getRoute(patientCoords, destinationCoords)
-  } catch (err: unknown) {
-    console.error("Route calculation failed for price:", err)
-    return null
-  }
-
-  // 3. Calculate price
-  const distanceKm = route.distance_meters / 1000
-  const rawPrice =
-    Number(fareRule.base_price) + distanceKm * Number(fareRule.price_per_km)
-  const calculatedPrice = Math.round(rawPrice * 100) / 100
-
-  return {
-    calculated_price: calculatedPrice,
-    fare_rule_id: fareRule.id,
-    distance_meters: route.distance_meters,
-    duration_seconds: route.duration_seconds,
-  }
+    patientCoords,
+    destinationCoords,
+    direction: "outbound",
+    durationCategory: "under_2h",
+    destinationName: "",
+    hasEscort: false,
+    isTagesheimImwilOverride: false,
+  })
 }

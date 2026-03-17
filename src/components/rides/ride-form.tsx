@@ -36,7 +36,20 @@ import { EntityCombobox } from "@/components/shared/entity-combobox"
 import { PatientInlineDialog } from "@/components/patients/patient-inline-dialog"
 import { DestinationInlineDialog } from "@/components/destinations/destination-inline-dialog"
 import { RideTimeline } from "./ride-timeline"
+import { TariffPriceDisplay } from "./tariff-price-display"
 import { RouteMap } from "@/components/shared/route-map"
+import {
+  calculateDuebendorfTariff,
+  TARIFF_ZONE_LABELS,
+  DURATION_CATEGORY_LABELS,
+  type TariffResult,
+  type DurationCategory,
+  type TariffZone,
+} from "@/lib/billing/duebendorf-tariff"
+import {
+  determineTariffZone,
+  isTagesheimImwil as checkTagesheimImwil,
+} from "@/lib/billing/zone-determination"
 import type { Tables } from "@/lib/types/database"
 
 interface RideFormProps {
@@ -47,7 +60,7 @@ interface RideFormProps {
   /** Pre-select destination from URL parameter */
   defaultDestinationId?: string
   patients: Pick<Tables<"patients">, "id" | "first_name" | "last_name">[]
-  destinations: Pick<Tables<"destinations">, "id" | "display_name">[]
+  destinations: Pick<Tables<"destinations">, "id" | "display_name" | "postal_code">[]
   drivers: Pick<Tables<"drivers">, "id" | "first_name" | "last_name">[]
   /** Number of child rides linked to this ride (parent_ride_id = this ride) */
   linkedRideCount?: number
@@ -155,6 +168,19 @@ export function RideForm({
     ride?.price_override != null
   )
 
+  // --- Duebendorf tariff state ---
+  const [durationCategory, setDurationCategory] = useState<DurationCategory>(
+    (ride?.duration_category as DurationCategory) ?? "under_2h"
+  )
+  const [isTagesheimImwilChecked, setIsTagesheimImwilChecked] = useState(
+    ride?.is_tagesheim_imwil ?? false
+  )
+  const [hasEscort, setHasEscort] = useState(ride?.has_escort ?? false)
+  const [tariffResult, setTariffResult] = useState<TariffResult | null>(null)
+  const [resolvedZone, setResolvedZone] = useState<TariffZone | null>(
+    (ride?.tariff_zone as TariffZone) ?? null
+  )
+
   // --- Series toggle state (create mode only) ---
   const [enableSeries, setEnableSeries] = useState(false)
   const [recurrenceType, setRecurrenceType] = useState<string>("weekly")
@@ -182,7 +208,7 @@ export function RideForm({
   const handleDestinationCreated = useCallback(
     (destination: { id: string; display_name: string }) => {
       setDestinationList((prev) =>
-        [...prev, destination].sort((a, b) =>
+        [...prev, { ...destination, postal_code: null }].sort((a, b) =>
           a.display_name.localeCompare(b.display_name)
         )
       )
@@ -311,6 +337,51 @@ export function RideForm({
     routeInfo,
     suggestedTimes,
     isOutbound,
+  ])
+
+  // --- Live tariff calculation ---
+  useEffect(() => {
+    if (!selectedDestinationId) {
+      setTariffResult(null)
+      setResolvedZone(null)
+      return
+    }
+
+    const dest = destinations.find((d) => d.id === selectedDestinationId)
+    if (!dest?.postal_code) {
+      setTariffResult(null)
+      setResolvedZone(null)
+      return
+    }
+
+    // Determine zone from destination postal code (client-side, no DB lookup for zone name)
+    const zone = determineTariffZone(dest.postal_code, null)
+    setResolvedZone(zone)
+
+    // Auto-detect Tagesheim Imwil from destination name
+    const autoImwil = checkTagesheimImwil(dest.display_name)
+    if (autoImwil && !isTagesheimImwilChecked) {
+      setIsTagesheimImwilChecked(true)
+    }
+
+    const distanceKm = routeInfo ? routeInfo.distance_meters / 1000 : 0
+    const result = calculateDuebendorfTariff({
+      zone,
+      direction: direction as "outbound" | "return" | "both",
+      durationCategory,
+      isTagesheimImwil: isTagesheimImwilChecked || autoImwil,
+      hasEscort,
+      distanceKm,
+    })
+    setTariffResult(result)
+  }, [
+    selectedDestinationId,
+    destinations,
+    direction,
+    durationCategory,
+    isTagesheimImwilChecked,
+    hasEscort,
+    routeInfo,
   ])
 
   const hasLinkedRides = linkedRideCount > 0 || hasParentRide
@@ -834,10 +905,102 @@ export function RideForm({
                 </fieldset>
               )}
 
+              {/* --- Duebendorf Tariff Fields --- */}
+              <fieldset className="space-y-4 rounded-lg border bg-muted/30 p-4">
+                <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Tarif
+                </legend>
+
+                {/* Duration Category */}
+                <div className="space-y-2">
+                  <Label>Aufenthaltsdauer</Label>
+                  <div className="flex gap-1.5">
+                    {(
+                      Object.entries(DURATION_CATEGORY_LABELS) as [
+                        DurationCategory,
+                        string,
+                      ][]
+                    ).map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setDurationCategory(value)}
+                        className={[
+                          "flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors",
+                          "focus:outline-none focus:ring-2 focus:ring-ring/40 focus:ring-offset-1",
+                          durationCategory === value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-input bg-white text-muted-foreground hover:bg-muted/50",
+                        ].join(" ")}
+                        aria-pressed={durationCategory === value}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="hidden"
+                    name="duration_category"
+                    value={durationCategory}
+                  />
+                </div>
+
+                {/* Tagesheim Imwil (only when zone = gemeinde) */}
+                {resolvedZone === "gemeinde" && (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="is_tagesheim_imwil"
+                      name="is_tagesheim_imwil"
+                      checked={isTagesheimImwilChecked}
+                      onCheckedChange={(checked) =>
+                        setIsTagesheimImwilChecked(checked === true)
+                      }
+                    />
+                    <Label
+                      htmlFor="is_tagesheim_imwil"
+                      className="text-sm font-normal"
+                    >
+                      Tagesheim Imwil (Spezialpreis CHF 14)
+                    </Label>
+                  </div>
+                )}
+
+                {/* Hospital Escort */}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="has_escort"
+                    name="has_escort"
+                    checked={hasEscort}
+                    onCheckedChange={(checked) =>
+                      setHasEscort(checked === true)
+                    }
+                  />
+                  <Label
+                    htmlFor="has_escort"
+                    className="text-sm font-normal"
+                  >
+                    Begleitung im Spital (+CHF 20 bei ausserkantonal)
+                  </Label>
+                </div>
+
+                {/* Resolved zone info */}
+                {resolvedZone && (
+                  <p className="text-xs text-muted-foreground">
+                    Erkannte Zone: {TARIFF_ZONE_LABELS[resolvedZone]}
+                  </p>
+                )}
+
+                {/* Live tariff calculation display */}
+                <TariffPriceDisplay
+                  result={tariffResult}
+                  isLoading={isCalculatingRoute}
+                />
+              </fieldset>
+
               {/* --- Price Override (ADR-010, Issue #60) --- */}
               <fieldset className="space-y-4 rounded-lg border bg-muted/30 p-4">
                 <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Preis
+                  Preis ueberschreiben
                 </legend>
 
                 {/* Show calculated price if available (edit mode) */}

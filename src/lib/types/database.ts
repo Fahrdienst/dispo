@@ -806,10 +806,13 @@ export type Database = {
           direction: Database["public"]["Enums"]["ride_direction"]
           distance_meters: number | null
           driver_id: string | null
+          duration_category: string
           duration_seconds: number | null
           fare_rule_id: string | null
+          has_escort: boolean
           id: string
           is_active: boolean
+          is_tagesheim_imwil: boolean
           notes: string | null
           parent_ride_id: string | null
           patient_id: string
@@ -819,7 +822,11 @@ export type Database = {
           return_pickup_time: string | null
           ride_series_id: string | null
           status: Database["public"]["Enums"]["ride_status"]
+          surcharge_amount: number
+          surcharge_details: Json | null
+          tariff_zone: string | null
           updated_at: string
+          waiting_minutes: number
         }
         Insert: {
           appointment_end_time?: string | null
@@ -831,10 +838,13 @@ export type Database = {
           direction?: Database["public"]["Enums"]["ride_direction"]
           distance_meters?: number | null
           driver_id?: string | null
+          duration_category?: string
           duration_seconds?: number | null
           fare_rule_id?: string | null
+          has_escort?: boolean
           id?: string
           is_active?: boolean
+          is_tagesheim_imwil?: boolean
           notes?: string | null
           parent_ride_id?: string | null
           patient_id: string
@@ -844,7 +854,11 @@ export type Database = {
           return_pickup_time?: string | null
           ride_series_id?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
+          surcharge_amount?: number
+          surcharge_details?: Json | null
+          tariff_zone?: string | null
           updated_at?: string
+          waiting_minutes?: number
         }
         Update: {
           appointment_end_time?: string | null
@@ -856,10 +870,13 @@ export type Database = {
           direction?: Database["public"]["Enums"]["ride_direction"]
           distance_meters?: number | null
           driver_id?: string | null
+          duration_category?: string
           duration_seconds?: number | null
           fare_rule_id?: string | null
+          has_escort?: boolean
           id?: string
           is_active?: boolean
+          is_tagesheim_imwil?: boolean
           notes?: string | null
           parent_ride_id?: string | null
           patient_id?: string
@@ -869,7 +886,11 @@ export type Database = {
           return_pickup_time?: string | null
           ride_series_id?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
+          surcharge_amount?: number
+          surcharge_details?: Json | null
+          tariff_zone?: string | null
           updated_at?: string
+          waiting_minutes?: number
         }
         Relationships: [
           {

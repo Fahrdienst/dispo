@@ -27,7 +27,8 @@
       "Bash(gh api:*)",
       "Bash(git status:*)",
       "Bash(for i:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx vitest:*)"
     ]
   }
 }
