@@ -1,6 +1,6 @@
 "use client"
 
-import { APIProvider, Map, AdvancedMarker } from "@vis.gl/react-google-maps"
+import { APIProvider, Map, Marker } from "@vis.gl/react-google-maps"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RETRO_MAP_STYLES } from "@/lib/maps/styles"
 
@@ -33,7 +33,7 @@ export function LocationMap({ lat, lng, label, geocodeStatus }: LocationMapProps
               zoomControl
               aria-label={label ?? "Kartenansicht"}
             >
-              <AdvancedMarker position={center} title={label} />
+              <Marker position={center} title={label} />
             </Map>
           </APIProvider>
         </CardContent>
