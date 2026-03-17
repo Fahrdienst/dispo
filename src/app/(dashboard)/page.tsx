@@ -31,6 +31,7 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { DashboardMap } from "@/components/dashboard/dashboard-map";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { QuickCaptureButton } from "@/components/rides/quick-capture-button";
 import type { Enums } from "@/lib/types/database";
 
 export const metadata: Metadata = {
@@ -385,7 +386,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
+        <QuickCaptureButton />
+      </div>
 
       {/* ---- Row 1: Daily Stats Cards ---- */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

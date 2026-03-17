@@ -11,10 +11,8 @@ import {
 } from "@/components/dispatch/dispatch-board"
 import { DispatchWeekView } from "@/components/dispatch/dispatch-week-view"
 import { WeekNav } from "@/components/shared/week-nav"
-import {
-  AcceptanceQueue,
-  type QueueEntry,
-} from "@/components/acceptance/acceptance-queue"
+import { type QueueEntry } from "@/components/acceptance/acceptance-queue"
+import { AcceptanceQueueWrapper } from "@/components/acceptance/acceptance-queue-wrapper"
 import {
   isAcceptanceFlowEnabled,
   ACTIVE_STAGES,
@@ -22,6 +20,8 @@ import {
 import { checkPendingAcceptances } from "@/lib/acceptance/engine"
 import { getToday, getMondayOf, getSundayOf, getWeekDates } from "@/lib/utils/dates"
 import type { AcceptanceStage } from "@/lib/acceptance/types"
+import { PrintDayButton } from "@/components/dispatch/print-day-button"
+import { QuickCaptureButton } from "@/components/rides/quick-capture-button"
 import type { Enums } from "@/lib/types/database"
 
 export const metadata: Metadata = {
@@ -52,13 +52,14 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
   const { date, week } = await searchParams
   const today = getToday()
 
-  // --- DAY VIEW (when ?date= param is present) ---
-  if (date) {
-    return renderDayView(date, today)
+  // --- DAY VIEW (default: today, or specific ?date= param) ---
+  if (!week) {
+    const selectedDate = date ?? today
+    return renderDayView(selectedDate, today)
   }
 
-  // --- WEEK VIEW (default) ---
-  const weekStart = week ? getMondayOf(week) : getMondayOf(today)
+  // --- WEEK VIEW (only when ?week= param is present) ---
+  const weekStart = getMondayOf(week)
   const weekEnd = getSundayOf(weekStart)
   const todayWeekStart = getMondayOf(today)
   const weekDates = getWeekDates(weekStart)
@@ -112,6 +113,12 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
       <PageHeader
         title="Disposition"
         description="Wochenuebersicht"
+        actions={
+          <>
+            <QuickCaptureButton />
+            <PrintDayButton date={today} />
+          </>
+        }
       />
 
       <WeekNav
@@ -268,10 +275,16 @@ async function renderDayView(selectedDate: string, today: string) {
       <PageHeader
         title="Disposition"
         description="Tagesuebersicht und Fahrerzuweisung"
+        actions={
+          <>
+            <QuickCaptureButton defaultDate={selectedDate} />
+            <PrintDayButton date={selectedDate} />
+          </>
+        }
       />
 
       {queueEntries.length > 0 && (
-        <AcceptanceQueue entries={queueEntries} />
+        <AcceptanceQueueWrapper entries={queueEntries} />
       )}
 
       <DispatchBoard

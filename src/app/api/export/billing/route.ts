@@ -80,14 +80,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   // 4. Fetch billing data
-  const { rows } = await getBillingData({
+  const { rows, summary } = await getBillingData({
     dateFrom,
     dateTo,
     status: validatedStatuses.length > 0 ? validatedStatuses : undefined,
   })
 
-  // 5. Format CSV
-  const csv = formatBillingCsv(rows)
+  // 5. Format CSV with summary row
+  const csv = formatBillingCsv(rows, summary)
 
   // 6. Return CSV response with proper headers
   const filename = `verrechnung_${dateFrom}_${dateTo}.csv`

@@ -32,6 +32,7 @@ import {
   DEFAULT_PICKUP_BUFFER_MINUTES,
 } from "@/lib/rides/time-calc"
 import { generateDatesForSeries } from "@/lib/ride-series/generate"
+import { EntityCombobox } from "@/components/shared/entity-combobox"
 import { PatientInlineDialog } from "@/components/patients/patient-inline-dialog"
 import { DestinationInlineDialog } from "@/components/destinations/destination-inline-dialog"
 import { RideTimeline } from "./ride-timeline"
@@ -115,6 +116,24 @@ export function RideForm({
   // --- Stateful patient/destination lists (for inline create) ---
   const [patientList, setPatientList] = useState(patients)
   const [destinationList, setDestinationList] = useState(destinations)
+
+  // --- ComboboxItem adapters ---
+  const patientComboItems = useMemo(
+    () =>
+      patientList.map((p) => ({
+        id: p.id,
+        label: `${p.last_name}, ${p.first_name}`,
+      })),
+    [patientList]
+  )
+  const destinationComboItems = useMemo(
+    () =>
+      destinationList.map((d) => ({
+        id: d.id,
+        label: d.display_name,
+      })),
+    [destinationList]
+  )
 
   // --- Inline dialog state ---
   const [patientDialogOpen, setPatientDialogOpen] = useState(false)
@@ -392,22 +411,17 @@ export function RideForm({
                         </Button>
                       )}
                     </div>
-                    <Select
+                    <EntityCombobox
+                      items={patientComboItems}
+                      value={selectedPatientId || null}
+                      onChange={(id) => setSelectedPatientId(id ?? "")}
                       name="patient_id"
-                      value={selectedPatientId}
-                      onValueChange={setSelectedPatientId}
-                    >
-                      <SelectTrigger aria-label="Patient auswaehlen" autoFocus={!isEdit}>
-                        <SelectValue placeholder="Patient waehlen..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {patientList.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.last_name}, {p.first_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Patient suchen..."
+                      emptyMessage="Kein Patient gefunden"
+                      autoFocus={!isEdit}
+                      aria-label="Patient auswaehlen"
+                      onCreateNew={!isEdit ? () => setPatientDialogOpen(true) : undefined}
+                    />
                     {fieldErrors?.patient_id && (
                       <p className="text-sm text-destructive">
                         {fieldErrors.patient_id[0]}
@@ -430,22 +444,16 @@ export function RideForm({
                         </Button>
                       )}
                     </div>
-                    <Select
+                    <EntityCombobox
+                      items={destinationComboItems}
+                      value={selectedDestinationId || null}
+                      onChange={(id) => setSelectedDestinationId(id ?? "")}
                       name="destination_id"
-                      value={selectedDestinationId}
-                      onValueChange={setSelectedDestinationId}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Ziel waehlen..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {destinationList.map((d) => (
-                          <SelectItem key={d.id} value={d.id}>
-                            {d.display_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Ziel suchen..."
+                      emptyMessage="Kein Ziel gefunden"
+                      aria-label="Ziel auswaehlen"
+                      onCreateNew={!isEdit ? () => setDestinationDialogOpen(true) : undefined}
+                    />
                     {fieldErrors?.destination_id && (
                       <p className="text-sm text-destructive">
                         {fieldErrors.destination_id[0]}

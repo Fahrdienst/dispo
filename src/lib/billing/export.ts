@@ -12,6 +12,7 @@ export interface BillingExportRow {
   date: string
   pickup_time: string
   patient_name: string
+  pickup_address: string
   destination_name: string
   direction: string
   status: string
@@ -61,7 +62,7 @@ export async function getBillingData(
   let query = supabase
     .from("rides")
     .select(
-      "id, date, pickup_time, direction, status, notes, distance_meters, duration_seconds, calculated_price, price_override, price_override_reason, fare_rule_id, patients(first_name, last_name, postal_code), destinations(display_name, postal_code), drivers(first_name, last_name), fare_rules(fare_versions(name), from_zone:zones!fare_rules_from_zone_id_fkey(name), to_zone:zones!fare_rules_to_zone_id_fkey(name))"
+      "id, date, pickup_time, direction, status, notes, distance_meters, duration_seconds, calculated_price, price_override, price_override_reason, fare_rule_id, patients(first_name, last_name, postal_code, street, house_number, city), destinations(display_name, postal_code), drivers(first_name, last_name), fare_rules(fare_versions(name), from_zone:zones!fare_rules_from_zone_id_fkey(name), to_zone:zones!fare_rules_to_zone_id_fkey(name))"
     )
     .eq("is_active", true)
     .gte("date", params.dateFrom)
@@ -101,6 +102,9 @@ export async function getBillingData(
       first_name: string
       last_name: string
       postal_code: string | null
+      street: string | null
+      house_number: string | null
+      city: string | null
     } | null
     const destination = ride.destinations as {
       display_name: string
@@ -144,6 +148,22 @@ export async function getBillingData(
       missingZoneCount++
     }
 
+    // Build pickup address from patient address fields
+    const addressParts: string[] = []
+    if (patient?.street) {
+      addressParts.push(
+        patient.house_number
+          ? `${patient.street} ${patient.house_number}`
+          : patient.street
+      )
+    }
+    if (patient?.postal_code || patient?.city) {
+      addressParts.push(
+        [patient.postal_code, patient.city].filter(Boolean).join(" ")
+      )
+    }
+    const pickupAddress = addressParts.length > 0 ? addressParts.join(", ") : ""
+
     return {
       ride_id: ride.id,
       date: ride.date,
@@ -151,6 +171,7 @@ export async function getBillingData(
       patient_name: patient
         ? `${patient.last_name}, ${patient.first_name}`
         : "\u2013",
+      pickup_address: pickupAddress,
       destination_name: destination?.display_name ?? "\u2013",
       direction: RIDE_DIRECTION_LABELS[ride.direction] ?? ride.direction,
       status: RIDE_STATUS_LABELS[ride.status] ?? ride.status,
@@ -199,6 +220,7 @@ const CSV_HEADERS = [
   "date",
   "pickup_time",
   "patient_name",
+  "pickup_address",
   "destination_name",
   "direction",
   "status",
@@ -215,6 +237,30 @@ const CSV_HEADERS = [
   "effective_price",
   "fare_version",
 ] as const
+
+/** German display labels for CSV header row */
+const CSV_HEADER_LABELS: Record<(typeof CSV_HEADERS)[number], string> = {
+  ride_id: "Fahrt-ID",
+  date: "Datum",
+  pickup_time: "Abholzeit",
+  patient_name: "Patient",
+  pickup_address: "Abholadresse",
+  destination_name: "Ziel",
+  direction: "Richtung",
+  status: "Status",
+  driver_name: "Fahrer",
+  patient_postal_code: "PLZ Patient",
+  destination_postal_code: "PLZ Ziel",
+  from_zone: "Zone (von)",
+  to_zone: "Zone (nach)",
+  distance_km: "Distanz (km)",
+  duration_min: "Dauer (min)",
+  calculated_price: "Berechneter Preis (CHF)",
+  price_override: "Preisueberschreibung (CHF)",
+  price_override_reason: "Ueberschreibungsgrund",
+  effective_price: "Preis (CHF)",
+  fare_version: "Tarifversion",
+}
 
 /**
  * Escape a CSV field value for semicolon-separated format.
@@ -236,14 +282,30 @@ function escapeCsvField(value: string | null): string {
 /**
  * Format billing rows as a semicolon-separated CSV string with UTF-8 BOM.
  * Uses semicolons as separator (CH/DE standard for Excel compatibility).
+ * Includes a summary row at the end with total count and total price.
  */
-export function formatBillingCsv(rows: BillingExportRow[]): string {
+export function formatBillingCsv(
+  rows: BillingExportRow[],
+  summary?: BillingSummary
+): string {
   const BOM = "\uFEFF"
-  const header = CSV_HEADERS.join(";")
+  const header = CSV_HEADERS.map((key) => escapeCsvField(CSV_HEADER_LABELS[key])).join(";")
 
   const lines = rows.map((row) =>
     CSV_HEADERS.map((key) => escapeCsvField(row[key])).join(";")
   )
 
-  return BOM + header + "\n" + lines.join("\n") + "\n"
+  // Summary row at the end
+  const totalRevenue = summary?.totalRevenue ?? rows.reduce((sum, r) => {
+    const price = r.effective_price != null ? parseFloat(r.effective_price) : 0
+    return sum + (isNaN(price) ? 0 : price)
+  }, 0)
+
+  const summaryRow = CSV_HEADERS.map((key) => {
+    if (key === "ride_id") return escapeCsvField(`Total: ${rows.length} Fahrten`)
+    if (key === "effective_price") return escapeCsvField(totalRevenue.toFixed(2))
+    return ""
+  }).join(";")
+
+  return BOM + header + "\n" + lines.join("\n") + "\n" + summaryRow + "\n"
 }

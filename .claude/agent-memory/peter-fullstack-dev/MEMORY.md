@@ -128,6 +128,17 @@
 - `requireAdmin()` has no `role` field -- hardcode `"admin"` in logAudit calls
 - Cast `Record<string, unknown>` to `Json` type when inserting changes/metadata
 
+## Quick Capture / Combobox (G1/G2)
+- `src/components/shared/entity-combobox.tsx` - Reusable fuzzy-search combobox (no cmdk dependency)
+- Fuzzy matching: normalizes umlauts (ae/oe/ue), strips diacritics, token-based (order-independent)
+- `src/actions/combobox.ts` - getPatientsList() / getDestinationsList() return ComboboxItem[]
+- `src/actions/quick-capture.ts` - quickCreateRide() with no redirect (returns ActionResult)
+- `src/components/rides/quick-capture-dialog.tsx` - 5-field modal (patient, destination, date, time, direction)
+- `src/components/rides/quick-capture-button.tsx` - Client wrapper with variant="fab" option
+- Integrated in: dispatch page (both views), dashboard header
+- ride-form.tsx: Patient/Destination selects replaced by EntityCombobox
+- Pattern: For actions called from Client Components without useFormState, use direct function call + useTransition instead of formData
+
 ## Important Lessons
 - Dashboard page (`src/app/(dashboard)/page.tsx`) also queries destinations -- remember to update when renaming columns
 - `src/lib/rides/constants.ts` contains label maps for enums -- must be updated when enum types change
