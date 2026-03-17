@@ -163,13 +163,11 @@ export function PatientDetailSheet({
           {hasCoords && (
             <>
               <Separator />
-              <iframe
-                className="h-[200px] w-full rounded-md border-0"
+              <img
+                className="h-[200px] w-full rounded-md object-cover"
                 loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                src={`https://www.google.com/maps/embed/v1/place?key=${apiKey}&q=${patient.lat},${patient.lng}&zoom=15`}
-                title={`Karte: ${fullName}`}
-                allowFullScreen
+                src={`https://maps.googleapis.com/maps/api/staticmap?center=${patient.lat},${patient.lng}&zoom=15&size=640x200&scale=2&markers=color:red|${patient.lat},${patient.lng}&key=${apiKey}`}
+                alt={`Karte: ${fullName}`}
               />
             </>
           )}
