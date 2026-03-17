@@ -1,8 +1,5 @@
-"use client"
-
-import { APIProvider, Map, Marker } from "@vis.gl/react-google-maps"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { RETRO_MAP_STYLES } from "@/lib/maps/styles"
+import { retroStyleUrlParams } from "@/lib/maps/styles"
 
 interface LocationMapProps {
   lat: number | null
@@ -15,7 +12,17 @@ export function LocationMap({ lat, lng, label, geocodeStatus }: LocationMapProps
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
   if (lat != null && lng != null && apiKey) {
-    const center = { lat, lng }
+    const params = new URLSearchParams({
+      center: `${lat},${lng}`,
+      zoom: "15",
+      size: "640x300",
+      scale: "2",
+      markers: `color:red|label:S|${lat},${lng}`,
+      key: apiKey,
+    })
+
+    const styleParams = retroStyleUrlParams()
+    const url = `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}${styleParams ? `&${styleParams}` : ""}`
 
     return (
       <Card>
@@ -23,19 +30,12 @@ export function LocationMap({ lat, lng, label, geocodeStatus }: LocationMapProps
           <CardTitle className="text-base">Standort</CardTitle>
         </CardHeader>
         <CardContent>
-          <APIProvider apiKey={apiKey}>
-            <Map
-              className="h-[300px] w-full rounded-md"
-              defaultCenter={center}
-              defaultZoom={15}
-              styles={RETRO_MAP_STYLES}
-              disableDefaultUI
-              zoomControl
-              aria-label={label ?? "Kartenansicht"}
-            >
-              <Marker position={center} title={label} />
-            </Map>
-          </APIProvider>
+          <img
+            src={url}
+            alt={label ?? "Kartenansicht"}
+            className="h-[300px] w-full rounded-md object-cover"
+            loading="lazy"
+          />
         </CardContent>
       </Card>
     )
@@ -43,7 +43,7 @@ export function LocationMap({ lat, lng, label, geocodeStatus }: LocationMapProps
 
   const message =
     geocodeStatus === "failed"
-      ? "Geocoding fehlgeschlagen. Bitte Adresse pruefen."
+      ? "Geocoding fehlgeschlagen. Bitte Adresse prüfen."
       : "Adresse wurde noch nicht geocodet."
 
   return (

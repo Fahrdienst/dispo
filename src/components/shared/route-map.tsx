@@ -1,65 +1,11 @@
-"use client"
-
-import { useEffect, useState, useRef } from "react"
-import { APIProvider, Map, useMap, useMapsLibrary } from "@vis.gl/react-google-maps"
+import { MapPin } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { RETRO_MAP_STYLES } from "@/lib/maps/styles"
 
 interface RouteMapProps {
   originLat: number | null
   originLng: number | null
   destLat: number | null
   destLng: number | null
-}
-
-function DirectionsRoute({
-  originLat,
-  originLng,
-  destLat,
-  destLng,
-}: {
-  originLat: number
-  originLng: number
-  destLat: number
-  destLng: number
-}) {
-  const map = useMap()
-  const routesLib = useMapsLibrary("routes")
-  const rendererRef = useRef<google.maps.DirectionsRenderer | null>(null)
-  const [requested, setRequested] = useState(false)
-
-  useEffect(() => {
-    if (!map || !routesLib) return
-
-    const service = new routesLib.DirectionsService()
-    const renderer = new routesLib.DirectionsRenderer({
-      map,
-      suppressMarkers: false,
-    })
-    rendererRef.current = renderer
-
-    if (!requested) {
-      setRequested(true)
-      service.route(
-        {
-          origin: { lat: originLat, lng: originLng },
-          destination: { lat: destLat, lng: destLng },
-          travelMode: google.maps.TravelMode.DRIVING,
-        },
-        (result, status) => {
-          if (status === google.maps.DirectionsStatus.OK && result) {
-            renderer.setDirections(result)
-          }
-        }
-      )
-    }
-
-    return () => {
-      renderer.setMap(null)
-    }
-  }, [map, routesLib, originLat, originLng, destLat, destLng, requested])
-
-  return null
 }
 
 export function RouteMap({
@@ -80,33 +26,47 @@ export function RouteMap({
     return null
   }
 
-  const centerLat = (originLat + destLat) / 2
-  const centerLng = (originLng + destLng) / 2
+  const params = new URLSearchParams({
+    size: "640x250",
+    scale: "2",
+    maptype: "roadmap",
+    key: apiKey,
+  })
+
+  let url = `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`
+
+  url += `&markers=${encodeURIComponent(`color:red|label:H|${originLat},${originLng}`)}`
+  url += `&markers=${encodeURIComponent(`color:blue|label:Z|${destLat},${destLng}`)}`
 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Route</CardTitle>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-base">Route</CardTitle>
+          </div>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
+              Abholung
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-500" />
+              Ziel
+            </span>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent>
-        <APIProvider apiKey={apiKey}>
-          <Map
-            className="h-[250px] w-full rounded-md"
-            defaultCenter={{ lat: centerLat, lng: centerLng }}
-            defaultZoom={10}
-            styles={RETRO_MAP_STYLES}
-            disableDefaultUI
-            zoomControl
-            aria-label="Routenkarte"
-          >
-            <DirectionsRoute
-              originLat={originLat}
-              originLng={originLng}
-              destLat={destLat}
-              destLng={destLng}
-            />
-          </Map>
-        </APIProvider>
+      <CardContent className="p-0">
+        <img
+          src={url}
+          alt="Route"
+          width={640}
+          height={250}
+          loading="lazy"
+          className="h-[200px] w-full rounded-b-lg object-cover sm:h-[250px]"
+        />
       </CardContent>
     </Card>
   )
