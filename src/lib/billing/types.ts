@@ -14,6 +14,8 @@ export interface PriceCalculation {
   tariff_zone: TariffZone | null
   /** Human-readable price breakdown items */
   breakdown: TariffBreakdownItem[]
-  /** Surcharge amount in CHF */
+  /** Encoded polyline for route caching */
+  polyline: string
+  /** Surcharge amount in CHF (e.g. escort surcharge) */
   surcharge_amount: number
 }

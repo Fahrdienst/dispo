@@ -6,6 +6,7 @@ interface RouteMapProps {
   originLng: number | null
   destLat: number | null
   destLng: number | null
+  polyline?: string | null
 }
 
 export function RouteMap({
@@ -13,6 +14,7 @@ export function RouteMap({
   originLng,
   destLat,
   destLng,
+  polyline,
 }: RouteMapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
@@ -37,6 +39,10 @@ export function RouteMap({
 
   url += `&markers=${encodeURIComponent(`color:red|label:H|${originLat},${originLng}`)}`
   url += `&markers=${encodeURIComponent(`color:blue|label:Z|${destLat},${destLng}`)}`
+
+  if (polyline) {
+    url += `&path=${encodeURIComponent(`weight:4|color:0x0000ffcc|enc:${polyline}`)}`
+  }
 
   return (
     <Card>

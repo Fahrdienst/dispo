@@ -13,9 +13,9 @@ import type { Tables } from "@/lib/types/database"
 
 export async function updateUserPassword(
   id: string,
-  _prevState: ActionResult | null,
+  _prevState: ActionResult<string> | null,
   formData: FormData
-): Promise<ActionResult> {
+): Promise<ActionResult<string>> {
   uuidSchema.parse(id)
 
   const auth = await requireAdmin()

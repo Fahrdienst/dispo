@@ -27,8 +27,10 @@ export interface PlaceSelectResult {
 
 interface PlacesAutocompleteProps {
   onPlaceSelect: (place: PlaceSelectResult) => void
+  onClear?: () => void
   defaultValue?: string
   placeholder?: string
+  className?: string
 }
 
 const DEBOUNCE_MS = 300
@@ -42,15 +44,14 @@ function optionId(index: number): string {
 
 /**
  * Client-side Places Autocomplete using the Google Places API (New) REST endpoints.
- * Does NOT use the JavaScript SDK -- calls the REST API directly with NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.
- *
- * Location bias: Zurich area (47.37, 8.55), 50km radius.
- * Region: Switzerland only.
+ * Includes Session Token logic for cost optimization.
  */
 export function PlacesAutocomplete({
   onPlaceSelect,
+  onClear,
   defaultValue = "",
   placeholder = "Adresse oder Einrichtung suchen...",
+  className,
 }: PlacesAutocompleteProps) {
   const [query, setQuery] = useState(defaultValue)
   const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([])
@@ -58,8 +59,21 @@ export function PlacesAutocomplete({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const [sessionToken, setSessionToken] = useState<string>("")
+  
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Initialize session token on first interaction
+  const ensureSessionToken = useCallback(() => {
+    if (!sessionToken) {
+      setSessionToken(crypto.randomUUID())
+    }
+  }, [sessionToken])
+
+  const resetSession = useCallback(() => {
+    setSessionToken("")
+  }, [])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -75,7 +89,7 @@ export function PlacesAutocomplete({
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  const fetchSuggestions = useCallback(async (input: string) => {
+  const fetchSuggestions = useCallback(async (input: string, token: string) => {
     if (!API_KEY) {
       setError("Google Maps API Key nicht konfiguriert")
       return
@@ -103,6 +117,7 @@ export function PlacesAutocomplete({
           },
           body: JSON.stringify({
             input,
+            sessionToken: token,
             locationBias: {
               circle: {
                 center: { latitude: 47.37, longitude: 8.55 },
@@ -145,21 +160,33 @@ export function PlacesAutocomplete({
 
   function handleInputChange(value: string): void {
     setQuery(value)
+    if (value === "") {
+      onClear?.()
+      resetSession()
+    } else {
+      ensureSessionToken()
+    }
+
     if (debounceRef.current) {
       clearTimeout(debounceRef.current)
     }
     debounceRef.current = setTimeout(() => {
-      void fetchSuggestions(value)
+      // Use existing token or generate one if not yet present
+      const token = sessionToken || crypto.randomUUID()
+      if (!sessionToken) setSessionToken(token)
+      void fetchSuggestions(value, token)
     }, DEBOUNCE_MS)
   }
 
   async function handleSelect(suggestion: AutocompleteSuggestion): Promise<void> {
     const placeId = suggestion.placePrediction.placeId
     const displayText = suggestion.placePrediction.text.text
+    const currentToken = sessionToken
 
     setQuery(displayText)
     setIsOpen(false)
     setSuggestions([])
+    resetSession() // Reset for next search
 
     // Fetch Place Details for coordinates and structured data
     try {
@@ -168,7 +195,7 @@ export function PlacesAutocomplete({
 
       const response = await fetch(
         `https://places.googleapis.com/v1/places/${placeId}?` +
-          `fields=displayName,formattedAddress,location,nationalPhoneNumber`,
+          `fields=displayName,formattedAddress,location,nationalPhoneNumber&sessionToken=${currentToken}`,
         {
           method: "GET",
           headers: {

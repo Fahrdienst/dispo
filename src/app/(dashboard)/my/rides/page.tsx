@@ -6,6 +6,7 @@ import { requireAuth } from "@/lib/auth/require-auth"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { Button } from "@/components/ui/button"
 import { MyRidesList } from "@/components/my-rides/my-rides-list"
+import { getGoogleMapsNavUrl } from "@/lib/maps/utils"
 import {
   PendingAssignments,
   type PendingAssignment,
@@ -61,18 +62,20 @@ export default async function MyRidesPage({ searchParams }: MyRidesPageProps) {
 
   const supabase = await createClient()
   const acceptanceEnabled = isAcceptanceFlowEnabled()
+// Parallel fetches: rides for the day + pending acceptance trackings
+const [ridesResult, trackingResult] = await Promise.all([
+  supabase
+    .from("rides")
+    .select("id, pickup_time, date, status, direction, notes, patients(first_name, last_name, street, postal_code, city, lat, lng), destinations(display_name, street, postal_code, city, lat, lng)"
+    )
+    .eq("driver_id", auth.driverId)
+    .eq("date", selectedDate)
+    .eq("is_active", true)
+    .order("pickup_time"),
 
-  // Parallel fetches: rides for the day + pending acceptance trackings
-  const [ridesResult, trackingResult] = await Promise.all([
-    supabase
-      .from("rides")
-      .select("id, pickup_time, date, status, direction, notes, patients(first_name, last_name), destinations(display_name, street, postal_code, city)")
-      .eq("driver_id", auth.driverId)
-      .eq("date", selectedDate)
-      .eq("is_active", true)
-      .order("pickup_time"),
+  // Fetch active acceptance trackings for this driver (all dates)
+// ...
 
-    // Fetch active acceptance trackings for this driver (all dates)
     acceptanceEnabled
       ? supabase
           .from("acceptance_tracking")
@@ -119,21 +122,38 @@ export default async function MyRidesPage({ searchParams }: MyRidesPageProps) {
   const mappedRides = (ridesResult.data ?? [])
     .filter((ride) => !activeTrackingRideIds.has(ride.id))
     .map((ride) => {
-      const patient = ride.patients as { first_name: string; last_name: string } | null
+      const patient = ride.patients as {
+        first_name: string
+        last_name: string
+        street: string | null
+        postal_code: string | null
+        city: string | null
+        lat: number | null
+        lng: number | null
+      } | null
       const destination = ride.destinations as {
         display_name: string
         street: string | null
         postal_code: string | null
         city: string | null
+        lat: number | null
+        lng: number | null
       } | null
 
-      // Build full address for Google Maps deep link
-      const addressParts = [
+      // Build full address for Google Maps deep link fallback
+      const pAddressParts = [
+        patient?.street,
+        patient?.postal_code,
+        patient?.city,
+      ].filter(Boolean)
+      const pAddress = pAddressParts.length > 0 ? pAddressParts.join(", ") : null
+
+      const dAddressParts = [
         destination?.street,
         destination?.postal_code,
         destination?.city,
       ].filter(Boolean)
-      const destinationAddress = addressParts.length > 0 ? addressParts.join(", ") : null
+      const dAddress = dAddressParts.length > 0 ? dAddressParts.join(", ") : null
 
       return {
         id: ride.id,
@@ -145,7 +165,14 @@ export default async function MyRidesPage({ searchParams }: MyRidesPageProps) {
         patient_first_name: patient?.first_name ?? "–",
         patient_last_name: patient?.last_name ?? "–",
         destination_name: destination?.display_name ?? "–",
-        destination_address: destinationAddress,
+        pickup_nav_url: getGoogleMapsNavUrl(
+          patient?.lat != null && patient?.lng != null ? { lat: patient.lat, lng: patient.lng } : null,
+          pAddress
+        ),
+        destination_nav_url: getGoogleMapsNavUrl(
+          destination?.lat != null && destination?.lng != null ? { lat: destination.lat, lng: destination.lng } : null,
+          dAddress
+        ),
       }
     })
 

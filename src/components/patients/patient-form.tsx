@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { SubmitButton } from "@/components/shared/submit-button"
 import { AddressFields } from "@/components/shared/address-fields"
 import { LocationMap } from "@/components/shared/location-map"
+import { PlacesAutocomplete, type PlaceSelectResult } from "@/components/shared/places-autocomplete"
 import { createPatient, updatePatient } from "@/actions/patients"
 import type { Tables } from "@/lib/types/database"
 
@@ -35,6 +36,16 @@ export function PatientForm({ patient }: PatientFormProps) {
 
   const [state, formAction] = useFormState(action, null)
 
+  const [addressValues, setAddressValues] = useState({
+    street: patient?.street ?? "",
+    house_number: patient?.house_number ?? "",
+    postal_code: patient?.postal_code ?? "",
+    city: patient?.city ?? "",
+    place_id: patient?.place_id ?? "",
+    lat: patient?.lat?.toString() ?? "",
+    lng: patient?.lng?.toString() ?? "",
+  })
+
   const initialImpairments = (patient?.patient_impairments ?? []).map(
     (pi) => pi.impairment_type
   )
@@ -47,6 +58,23 @@ export function PatientForm({ patient }: PatientFormProps) {
     setCheckedImpairments((prev) =>
       checked ? [...prev, value] : prev.filter((v) => v !== value)
     )
+  }
+
+  const handlePlaceSelect = (place: PlaceSelectResult) => {
+    // Basic regex-based extraction for simple Swiss addresses (Street Number)
+    const streetMatch = place.formatted_address.match(/^([^,0-9]+)\s*([0-9a-zA-Z]*)/)
+    const street = streetMatch?.[1]?.trim() ?? ""
+    const houseNumber = streetMatch?.[2]?.trim() ?? ""
+
+    setAddressValues({
+      street,
+      house_number: houseNumber,
+      postal_code: place.formatted_address.match(/\b(\d{4})\b/)?.[1] ?? "",
+      city: place.formatted_address.split(",").slice(-2, -1)[0]?.replace(/\d{4}/, "").trim() ?? "",
+      place_id: place.place_id,
+      lat: place.lat.toString(),
+      lng: place.lng.toString(),
+    })
   }
 
   return (
@@ -108,11 +136,22 @@ export function PatientForm({ patient }: PatientFormProps) {
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label>Adresssuche (Google Maps)</Label>
+            <PlacesAutocomplete onPlaceSelect={handlePlaceSelect} />
+          </div>
+
           <AddressFields
-            defaultValues={patient}
+            values={addressValues}
+            onChange={(field, value) => setAddressValues(prev => ({ ...prev, [field]: value }))}
             errors={fieldErrors}
             required
           />
+
+          {/* Hidden fields for Geodata */}
+          <input type="hidden" name="place_id" value={addressValues.place_id} />
+          <input type="hidden" name="lat" value={addressValues.lat} />
+          <input type="hidden" name="lng" value={addressValues.lng} />
 
           {patient && (
             <LocationMap

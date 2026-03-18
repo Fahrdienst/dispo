@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/dashboard/page-header"
 import { SettingsNav } from "@/components/settings/settings-nav"
 import { Breadcrumb } from "@/components/shared/breadcrumb"
 import { RetryGeocodingCard } from "@/components/settings/retry-geocoding-card"
+import { MapsHealthDashboard } from "@/components/settings/maps-health-dashboard"
 
 export const metadata: Metadata = {
   title: "Geocoding - Dispo",
@@ -22,6 +23,7 @@ export default function GeocodingSettingsPage() {
         description="Verwaltung der Adress-Geocodierung fuer Patienten und Ziele."
       />
       <SettingsNav />
+      <MapsHealthDashboard />
       <RetryGeocodingCard />
     </div>
   )

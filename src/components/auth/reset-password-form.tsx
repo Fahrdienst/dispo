@@ -24,7 +24,7 @@ export function ResetPasswordForm() {
           required
           autoComplete="new-password"
         />
-        {state?.fieldErrors?.password && (
+        {state && !state.success && state.fieldErrors?.password && (
           <p className="text-xs text-destructive">{state.fieldErrors.password[0]}</p>
         )}
       </div>
@@ -38,7 +38,7 @@ export function ResetPasswordForm() {
           required
           autoComplete="new-password"
         />
-        {state?.fieldErrors?.confirmPassword && (
+        {state && !state.success && state.fieldErrors?.confirmPassword && (
           <p className="text-xs text-destructive">{state.fieldErrors.confirmPassword[0]}</p>
         )}
       </div>

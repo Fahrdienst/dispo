@@ -75,6 +75,7 @@ interface RouteInfo {
   origin_lng: number
   dest_lat: number
   dest_lng: number
+  polyline: string
 }
 
 function formatDistance(meters: number): string {
@@ -1103,6 +1104,7 @@ export function RideForm({
             originLng={routeInfo?.origin_lng ?? null}
             destLat={routeInfo?.dest_lat ?? null}
             destLng={routeInfo?.dest_lng ?? null}
+            polyline={routeInfo?.polyline}
           />
         </div>
       </div>

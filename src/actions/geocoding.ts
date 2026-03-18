@@ -20,8 +20,55 @@ interface RetryResult {
   errors: RetryError[]
 }
 
+export async function getMapsHealthStats(): Promise<ActionResult<{
+  patients: { total: number; geocoded: number; failed: number; pending: number }
+  destinations: { total: number; geocoded: number; failed: number; pending: number }
+}>> {
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: "Nicht berechtigt" }
+  }
+
+  const supabase = await createClient()
+
+  const [
+    { count: pTotal },
+    { count: pSuccess },
+    { count: pFailed },
+    { count: dTotal },
+    { count: dSuccess },
+    { count: dFailed },
+  ] = await Promise.all([
+    supabase.from("patients").select("id", { count: "exact", head: true }),
+    supabase.from("patients").select("id", { count: "exact", head: true }).eq("geocode_status", "success"),
+    supabase.from("patients").select("id", { count: "exact", head: true }).eq("geocode_status", "failed"),
+    supabase.from("destinations").select("id", { count: "exact", head: true }),
+    supabase.from("destinations").select("id", { count: "exact", head: true }).eq("geocode_status", "success"),
+    supabase.from("destinations").select("id", { count: "exact", head: true }).eq("geocode_status", "failed"),
+  ])
+
+  return {
+    success: true,
+    data: {
+      patients: {
+        total: pTotal ?? 0,
+        geocoded: pSuccess ?? 0,
+        failed: pFailed ?? 0,
+        pending: (pTotal ?? 0) - (pSuccess ?? 0) - (pFailed ?? 0),
+      },
+      destinations: {
+        total: dTotal ?? 0,
+        geocoded: dSuccess ?? 0,
+        failed: dFailed ?? 0,
+        pending: (dTotal ?? 0) - (dSuccess ?? 0) - (dFailed ?? 0),
+      },
+    },
+  }
+}
+
 /**
- * Re-geocodes all patients and destinations with failed, pending, or null
+ * Re-geocodes all patients and destinations
+ with failed, pending, or null
  * geocode_status that have complete address data.
  *
  * Uses a single Supabase client for efficiency instead of calling

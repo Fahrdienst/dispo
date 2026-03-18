@@ -62,10 +62,12 @@ export async function calculateRidePrice(
   // 3. Route calculation (needed for distance display and ausserkantonal pricing)
   let routeDistance = 0
   let routeDuration = 0
+  let routePolyline = ""
   try {
     const route = await getRoute(patientCoords, destinationCoords)
     routeDistance = route.distance_meters
     routeDuration = route.duration_seconds
+    routePolyline = route.polyline
   } catch (err: unknown) {
     console.error("Route calculation failed for price:", err)
     // For ausserkantonal, we need the distance — return null
@@ -93,6 +95,7 @@ export async function calculateRidePrice(
     duration_seconds: routeDuration,
     tariff_zone: tariffResult.zone,
     breakdown: tariffResult.breakdown,
+    polyline: routePolyline,
     surcharge_amount: hasEscort && tariffZone === "ausserkantonal" ? 20 : 0,
   }
 }

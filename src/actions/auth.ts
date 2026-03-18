@@ -91,9 +91,9 @@ export async function logout(): Promise<void> {
 }
 
 export async function requestPasswordReset(
-  _prevState: ActionResult | null,
+  _prevState: ActionResult<string> | null,
   formData: FormData
-): Promise<ActionResult> {
+): Promise<ActionResult<string>> {
   const email = formData.get("email") as string
   const result = forgotPasswordSchema.safeParse({ email })
 
@@ -115,10 +115,7 @@ export async function requestPasswordReset(
     console.error("Password reset request failed:", error)
   }
 
-  return {
-    success: true,
-    data: "Wenn ein Konto mit dieser E-Mail-Adresse existiert, wurde eine E-Mail zum Zurücksetzen des Passworts gesendet.",
-  }
+  return { success: true, data: "Falls ein Konto mit dieser E-Mail existiert, wurde ein Link zum Zurücksetzen gesendet." }
 }
 
 export async function resetPassword(
@@ -149,9 +146,9 @@ export async function resetPassword(
 }
 
 export async function changePassword(
-  _prevState: ActionResult | null,
+  _prevState: ActionResult<string> | null,
   formData: FormData
-): Promise<ActionResult> {
+): Promise<ActionResult<string>> {
   const raw = Object.fromEntries(formData)
   const result = resetPasswordSchema.safeParse(raw)
 

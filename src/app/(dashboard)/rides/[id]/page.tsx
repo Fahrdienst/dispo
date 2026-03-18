@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { RideDetailMap } from "@/components/rides/ride-detail-map"
 import { RIDE_DIRECTION_LABELS } from "@/lib/rides/constants"
+import { getGoogleMapsNavUrl } from "@/lib/maps/utils"
+import { ExternalLink, Navigation } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Fahrtdetails - Dispo",
@@ -41,6 +43,14 @@ function formatDurationDE(seconds: number): string {
     : `~${hours} Std.`
 }
 
+function calculateETA(pickupTime: string, durationSeconds: number): string {
+  const [hours, minutes] = pickupTime.split(":").map(Number)
+  const date = new Date()
+  date.setHours(hours ?? 0, minutes ?? 0, 0, 0)
+  date.setSeconds(date.getSeconds() + durationSeconds)
+  return date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) + " Uhr"
+}
+
 interface RideDetailPageProps {
   params: Promise<{ id: string }>
 }
@@ -61,7 +71,7 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
   const { data: ride } = await supabase
     .from("rides")
     .select(
-      "*, patients(id, first_name, last_name, phone, lat, lng), destinations(id, display_name, street, house_number, postal_code, city, lat, lng), drivers(id, first_name, last_name, phone)"
+      "*, patients(id, first_name, last_name, phone, lat, lng), destinations(id, display_name, street, house_number, postal_code, city, lat, lng, contact_phone), drivers(id, first_name, last_name, phone)"
     )
     .eq("id", id)
     .single()
@@ -137,6 +147,7 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
     city: string | null
     lat: number | null
     lng: number | null
+    contact_phone: string | null
   } | null
 
   const driver = ride.drivers as {
@@ -225,10 +236,16 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
                 />
               )}
               {ride.duration_seconds != null && (
-                <DetailItem
-                  label="Geschaetzte Fahrzeit"
-                  value={formatDurationDE(ride.duration_seconds)}
-                />
+                <>
+                  <DetailItem
+                    label="Geschaetzte Fahrzeit"
+                    value={formatDurationDE(ride.duration_seconds)}
+                  />
+                  <DetailItem
+                    label="Ankunft (ETA)"
+                    value={calculateETA(ride.pickup_time, ride.duration_seconds)}
+                  />
+                </>
               )}
               {ride.calculated_price != null && (
                 <DetailItem
@@ -298,8 +315,21 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
 
       {/* Patient */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-lg">Patient</CardTitle>
+          {patient && (
+            <Button variant="outline" size="sm" asChild>
+              <a 
+                href={getGoogleMapsNavUrl({ lat: patient.lat ?? 0, lng: patient.lng ?? 0 }, formatAddress(patient as any))} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2"
+              >
+                <Navigation className="h-3.5 w-3.5" />
+                Navigieren
+              </a>
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {patient ? (
@@ -318,6 +348,9 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
               {patient.phone && (
                 <DetailItem label="Telefon" value={patient.phone} />
               )}
+              <div className="sm:col-span-2">
+                <DetailItem label="Adresse" value={formatAddress(patient as any)} />
+              </div>
             </dl>
           ) : (
             <p className="text-sm text-muted-foreground">
@@ -329,8 +362,21 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
 
       {/* Destination */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-lg">Ziel</CardTitle>
+          {destination && (
+            <Button variant="outline" size="sm" asChild>
+              <a 
+                href={getGoogleMapsNavUrl({ lat: destination.lat ?? 0, lng: destination.lng ?? 0 }, formatAddress(destination))} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2"
+              >
+                <Navigation className="h-3.5 w-3.5" />
+                Navigieren
+              </a>
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {destination ? (
@@ -346,11 +392,16 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
                   </Link>
                 </dd>
               </div>
+              {destination.contact_phone && (
+                <DetailItem label="Telefon" value={destination.contact_phone} />
+              )}
               {(destination.street || destination.city) && (
-                <DetailItem
-                  label="Adresse"
-                  value={formatAddress(destination)}
-                />
+                <div className="sm:col-span-2">
+                  <DetailItem
+                    label="Adresse"
+                    value={formatAddress(destination)}
+                  />
+                </div>
               )}
             </dl>
           ) : (

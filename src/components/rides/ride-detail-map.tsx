@@ -7,9 +7,11 @@ interface RideDetailMapProps {
   originLng: number | null
   destLat: number | null
   destLng: number | null
+  polyline?: string | null
 }
 
 async function fetchRoutePolyline(
+// ... rest of fetchRoutePolyline
   originLat: number,
   originLng: number,
   destLat: number,
@@ -35,6 +37,7 @@ export async function RideDetailMap({
   originLng,
   destLat,
   destLng,
+  polyline: initialPolyline,
 }: RideDetailMapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
@@ -48,7 +51,7 @@ export async function RideDetailMap({
     return null
   }
 
-  const polyline = await fetchRoutePolyline(originLat, originLng, destLat, destLng, apiKey)
+  const polyline = initialPolyline ?? await fetchRoutePolyline(originLat, originLng, destLat, destLng, apiKey)
 
   const params = new URLSearchParams({
     size: "640x300",

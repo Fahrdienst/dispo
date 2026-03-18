@@ -92,9 +92,9 @@ export async function createRide(
 
   // Calculate price before insert (inline, not fire-and-forget)
   let priceFields: {
-    distance_meters?: number
-    duration_seconds?: number
-    calculated_price?: number
+    distance_meters?: number | null
+    duration_seconds?: number | null
+    calculated_price?: number | null
     fare_rule_id?: string | null
     price_override?: number | null
     price_override_reason?: string | null
@@ -104,6 +104,7 @@ export async function createRide(
     duration_category?: string
     is_tagesheim_imwil?: boolean
     has_escort?: boolean
+    polyline?: string | null
   } = {
     duration_category,
     is_tagesheim_imwil,
@@ -330,9 +331,9 @@ async function createRideWithSeries(
 
   // 4. Calculate price fields for the initial ride (best-effort)
   let priceFields: {
-    distance_meters?: number
-    duration_seconds?: number
-    calculated_price?: number
+    distance_meters?: number | null
+    duration_seconds?: number | null
+    calculated_price?: number | null
     fare_rule_id?: string | null
     price_override?: number | null
     price_override_reason?: string | null
@@ -342,6 +343,7 @@ async function createRideWithSeries(
     duration_category?: string
     is_tagesheim_imwil?: boolean
     has_escort?: boolean
+    polyline?: string | null
   } = {
     duration_category,
     is_tagesheim_imwil,
@@ -902,6 +904,7 @@ export async function calculateRouteForRide(
     origin_lng: number
     dest_lat: number
     dest_lng: number
+    polyline: string
   }>
 > {
   uuidSchema.parse(patientId)
@@ -969,6 +972,7 @@ export async function calculateRouteForRide(
         origin_lng: patient.lng,
         dest_lat: dest.lat,
         dest_lng: dest.lng,
+        polyline: route.polyline ?? "",
       },
     }
   } catch (err: unknown) {

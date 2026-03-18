@@ -14,7 +14,7 @@ export function ForgotPasswordForm() {
     <form action={formAction} className="space-y-4">
       {state && state.success && (
         <p className="text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-100">
-          {state.data as string}
+          {state.data}
         </p>
       )}
       
@@ -33,7 +33,7 @@ export function ForgotPasswordForm() {
           placeholder="Ihre registrierte E-Mail-Adresse"
           disabled={state?.success}
         />
-        {state?.fieldErrors?.email && (
+        {state && !state.success && state.fieldErrors?.email && (
           <p className="text-xs text-destructive">{state.fieldErrors.email[0]}</p>
         )}
       </div>

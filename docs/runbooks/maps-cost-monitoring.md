@@ -1,65 +1,56 @@
 # Maps & Verrechnung — Betriebsrunbook
 
-## Google Maps API Kosten
+## Google Maps API Kostenmanagement
 
-### Erwartete Kosten
-- ~$29/Monat bei 100 Fahrten/Tag
-- Vollstaendig durch $200 Free Tier abgedeckt
+### Wirtschaftlichkeit (Cost Governance)
+- **Erwartete Kosten:** ~$25/Monat bei Normalbetrieb (ca. 50-100 Fahrten/Tag).
+- **Free Tier:** Vollständig durch das Google Maps $200 Monthly Credit abgedeckt.
+- **Budget-Sperre:** Ein Hard-Limit von **$20/Tag** ist in der Google Cloud Console hinterlegt.
+- **Monitoring:** Das **Maps Health Dashboard** unter `/settings/geocoding` zeigt den Live-Status der Daten-Integrität.
 
-### Kostenschutz
-1. Budget-Limit: $20/Tag im Google Cloud Project
-2. Alert bei 80% Tages-Budget
-3. Einrichtung: Google Cloud Console → Billing → Budgets & Alerts
+### Technische Kostenkontrolle (Engineering Controls)
+Um das Budget zu schonen, nutzt die App folgende Mechanismen:
 
-### Setup-Anleitung
-1. Google Cloud Project erstellen
-2. APIs aktivieren: Geocoding, Directions, Places (New)
-3. Server-Key erstellen (IP-Restricted): fuer `GOOGLE_MAPS_API_KEY`
-4. Client-Key erstellen (HTTP-Referrer-Restricted): fuer `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
-5. Budget erstellen: $20/Tag, Alert bei $16/Tag (80%)
-6. DPA akzeptieren: Admin Console → Security → Data Processing
+1.  **Places Session Tokens (Prio: Hoch):**
+    *   **Mechanismus:** Bei der Adresssuche (Autocomplete) wird eine Session-ID generiert. Alle Tipp-Ereignisse bis zur Auswahl der Adresse werden als eine einzige "Session" abgerechnet ($17/1000 Sessions statt pro Tastendruck).
+    *   **Wartung:** Sicherstellen, dass die `PlacesAutocomplete`-Komponente das Token bei jeder neuen Suche zurücksetzt.
 
-## Ausfaelle und Fehlerbehandlung
+2.  **Polyline Caching & Persistenz:**
+    *   **Mechanismus:** Berechnete Routen (Polylines) werden in der Spalte `rides.polyline` gespeichert.
+    *   **Vorteil:** Verhindert redundante `Directions API` Aufrufe ($5/1000) beim erneuten Laden von Ride-Details oder Dashboard-Karten.
+    *   **Aktion:** Bei manuellen Adressänderungen muss die Polyline neu berechnet werden (Trigger: `calculateRouteForRide`).
+
+3.  **Static Maps Layering:**
+    *   **Mechanismus:** Wir bevorzugen `Maps Static API` ($2/1000) gegenüber der `Maps JavaScript API` ($7/1000) für rein informative Anzeigen.
+    *   **Caching:** Static Maps URLs sind deterministisch. Der Browser-Cache sollte auf 24h+ eingestellt sein.
+
+### Sicherheit & API-Key Schutz
+1.  **Zwei-Key-Strategie:**
+    *   `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`: Client-seitig, eingeschränkt auf **HTTP-Referrer** (deine-domain.ch). Erlaubt nur Static Maps und Places.
+    *   `GOOGLE_MAPS_API_KEY`: Server-seitig (Server Actions), eingeschränkt auf **IP-Adresse** des Webservers. Erlaubt Geocoding und Directions.
+2.  **Signed URLs:** Für Karten in E-Mails/PDFs (Order Sheets) werden **Digital Signatures (URL Signing)** verwendet, um Missbrauch des API-Keys durch Dritte zu verhindern.
+
+## Ausfälle und Fehlerbehandlung
 
 ### Google Maps API nicht erreichbar
-- **Symptom**: Geocoding schlaegt fehl, geocode_status = 'failed'
-- **Impact**: Neue Adressen werden nicht geocodet. Bestehende Koordinaten bleiben.
-- **Massnahme**: Pruefe https://status.cloud.google.com/. Retry erfolgt automatisch (2x).
-- **Workaround**: Manuelles Geocoding oder Koordinaten-Eingabe.
+- **Symptom:** `geocode_status = 'failed'`, Fehlermeldungen im Dashboard.
+- **Impact:** Neue Adressen werden nicht verortet; Routenberechnung (Preis) schlägt fehl.
+- **Maßnahme:** Prüfe [Google Maps Platform Status](https://status.cloud.google.com/).
+- **Health Check:** Prüfe Ampel-System unter `/settings/geocoding`.
 
-### Quota ueberschritten
-- **Symptom**: OVER_QUERY_LIMIT Fehler in Logs
-- **Impact**: Geocoding und Routenberechnung blockiert.
-- **Massnahme**: Budget erhoehen oder Volumen reduzieren.
-- **Praevention**: Budget-Alert, Rate < 50 QPS (weit unter unserem Volumen).
+### Quota überschritten (OVER_QUERY_LIMIT)
+- **Symptom:** Karte lädt nicht oder "Quota Exceeded" Fehlermeldung.
+- **Maßnahme:** Prüfe Cloud Console auf ungewöhnliche Spikes (Loop-Gefahr bei Batch-Retries).
+- **Prävention:** Hard-Limit von 100 Geocoding Calls/Tag pro API in der Google Console setzen.
 
-### Falsche Geocoding-Ergebnisse
-- **Symptom**: formatted_address weicht stark von Eingabe ab
-- **Massnahme**: geocode_status auf 'manual' setzen, Koordinaten manuell korrigieren.
-- **Tool**: Google Maps Search → Rechtsklick → Koordinaten kopieren.
+## Verrechnung & Tarife
 
-## Verrechnung
+### Manuelle Korrektur
+- Falls Geocoding fehlschlägt, kann der Disponent unter `/billing` Preise manuell überschreiben.
+- Markiere Adressen als `geocode_status = 'manual'`, um automatische Überschreibungen zu verhindern.
 
-### Fahrt ohne Preis
-- **Ursache**: PLZ nicht in Zonenmatrix ODER Geocoding fehlgeschlagen
-- **Pruefen**: /billing → Fahrten ohne Preis (rot markiert)
-- **Loesung**: Zone/PLZ anlegen unter /settings/zones ODER Preis manuell ueberschreiben
+### Datensparsamkeit (GDPR)
+- An Google werden **keine Patientennamen** gesendet.
+- Übertragen werden ausschließlich: Adressen, Koordinaten und Trip-Dauern.
 
-### Tarifaenderung
-1. Neue Tarifversion erstellen unter /settings/fares
-2. valid_from = Datum ab dem neuer Tarif gilt
-3. Bestehende Version: valid_to setzen
-4. Bereits geplante Fahrten behalten ihren Preis-Snapshot
-
-## Datenschutz
-
-### Was wird an Google gesendet?
-- Adressen (Strasse, PLZ, Ort) — KEINE Patientennamen
-- Koordinaten fuer Routenberechnung
-- Patientenadressen nur server-seitig (nie im Browser)
-- Zieladressen auch client-seitig (Places Autocomplete)
-
-### Logging
-- Maps-API-Aufrufe loggen: Status, Latenz, Fehlercode
-- NICHT geloggt: vollstaendige Adressen, Patientennamen
-- geocode_status und formatted_address werden in DB gespeichert (nicht in Logfiles)
+*Stand: März 2026 — Senior Maps Engineering Team*

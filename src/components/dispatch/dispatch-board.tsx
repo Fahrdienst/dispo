@@ -103,6 +103,20 @@ function formatTime(time: string): string {
   return time.substring(0, 5)
 }
 
+/**
+ * Calculate estimated arrival time from pickup time + route duration.
+ * Returns "HH:MM" string or null if duration is not available.
+ */
+function calculateETA(pickupTime: string, durationSeconds: number | null): string | null {
+  if (durationSeconds == null || durationSeconds <= 0) return null
+  const [hours, minutes] = pickupTime.split(":").map(Number)
+  if (hours == null || minutes == null) return null
+  const totalMinutes = hours * 60 + minutes + Math.round(durationSeconds / 60)
+  const etaH = Math.floor(totalMinutes / 60) % 24
+  const etaM = totalMinutes % 60
+  return `${String(etaH).padStart(2, "0")}:${String(etaM).padStart(2, "0")}`
+}
+
 // ---------------------------------------------------------------------------
 // Status Filter Constants
 // ---------------------------------------------------------------------------
@@ -525,6 +539,14 @@ export function DispatchBoard({
                             Termin: {formatTime(ride.appointment_time)}
                           </span>
                         )}
+                        {(() => {
+                          const eta = calculateETA(ride.pickup_time, ride.duration_seconds)
+                          return eta ? (
+                            <span className="text-xs text-muted-foreground">
+                              ETA: {eta} Uhr
+                            </span>
+                          ) : null
+                        })()}
                       </div>
                     </div>
 

@@ -58,6 +58,13 @@ export interface OrderSheetData {
   // Organization
   organizationName: string
 
+  // Maps
+  polyline: string | null
+  patientLat: number | null
+  patientLng: number | null
+  destinationLat: number | null
+  destinationLng: number | null
+
   // Actions (token URLs)
   confirmUrl: string
   rejectUrl: string
@@ -87,6 +94,8 @@ interface RideWithJoins {
     comment: string | null
     emergency_contact_name: string | null
     emergency_contact_phone: string | null
+    lat: number | null
+    lng: number | null
   }
   destinations: {
     display_name: string
@@ -100,10 +109,13 @@ interface RideWithJoins {
     contact_last_name: string | null
     department: string | null
     comment: string | null
+    lat: number | null
+    lng: number | null
   }
 }
 
 interface DriverRow {
+// ... (rest of file)
   first_name: string
   last_name: string
   street: string | null
@@ -140,13 +152,15 @@ export async function loadOrderSheetData(
       patients!inner(
         first_name, last_name, street, house_number,
         postal_code, city, phone, comment,
-        emergency_contact_name, emergency_contact_phone
+        emergency_contact_name, emergency_contact_phone,
+        lat, lng
       ),
       destinations!inner(
         display_name, facility_type, street, house_number,
         postal_code, city, contact_phone,
         contact_first_name, contact_last_name,
-        department, comment
+        department, comment,
+        lat, lng
       )
     `)
     .eq("id", rideId)
@@ -256,6 +270,13 @@ export async function loadOrderSheetData(
 
     // Organization
     organizationName,
+
+    // Maps
+    polyline: null,
+    patientLat: patient.lat ?? null,
+    patientLng: patient.lng ?? null,
+    destinationLat: destination.lat ?? null,
+    destinationLng: destination.lng ?? null,
 
     // Actions
     confirmUrl,

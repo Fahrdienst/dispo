@@ -68,6 +68,13 @@ function createTestData(overrides?: Partial<OrderSheetData>): OrderSheetData {
     // Organization
     organizationName: "Patienten-Fahrdienst Dübendorf",
 
+    // Maps
+    polyline: null,
+    patientLat: 47.397,
+    patientLng: 8.618,
+    destinationLat: 47.376,
+    destinationLng: 8.551,
+
     // Actions
     confirmUrl: "https://fahrdienst.vercel.app/api/rides/respond?token=abc123&action=confirm",
     rejectUrl: "https://fahrdienst.vercel.app/api/rides/respond?token=abc123&action=reject",

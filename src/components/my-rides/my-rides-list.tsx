@@ -87,7 +87,8 @@ interface MyRide {
   patient_first_name: string
   patient_last_name: string
   destination_name: string
-  destination_address: string | null
+  pickup_nav_url: string
+  destination_nav_url: string
 }
 
 interface MyRidesListProps {
@@ -100,79 +101,67 @@ export function MyRidesList({ rides }: MyRidesListProps) {
 
   // Confirmation dialog state (for "completed" transition)
   const [confirmRideId, setConfirmRideId] = useState<string | null>(null)
-  const [confirmStatus, setConfirmStatus] =
-    useState<Enums<"ride_status"> | null>(null)
 
   // Problem report dialog state
   const [problemRideId, setProblemRideId] = useState<string | null>(null)
   const [problemText, setProblemText] = useState("")
   const [problemError, setProblemError] = useState<string | null>(null)
 
-  function handleStatusChange(
-    rideId: string,
-    newStatus: Enums<"ride_status">
-  ): void {
-    // Require confirmation for "completed"
-    if (newStatus === "completed") {
+  function handleStatusChange(rideId: string, targetStatus: Enums<"ride_status">) {
+    if (targetStatus === "completed") {
       setConfirmRideId(rideId)
-      setConfirmStatus(newStatus)
       return
     }
-
-    executeStatusChange(rideId, newStatus)
-  }
-
-  function executeStatusChange(
-    rideId: string,
-    newStatus: Enums<"ride_status">
-  ): void {
     startTransition(async () => {
-      const result = await updateRideStatus(rideId, newStatus)
+      const result = await updateRideStatus(rideId, targetStatus)
       if (!result.success) {
-        // Show error as alert for touch-device drivers
-        alert(result.error ?? "Statusaenderung fehlgeschlagen")
-      } else {
-        router.refresh()
+        console.error("Status update failed:", result.error)
       }
+      router.refresh()
     })
   }
 
-  function handleConfirmComplete(): void {
-    if (confirmRideId && confirmStatus) {
-      executeStatusChange(confirmRideId, confirmStatus)
-    }
+  function handleConfirmComplete() {
+    if (!confirmRideId) return
+    const rideId = confirmRideId
     setConfirmRideId(null)
-    setConfirmStatus(null)
+    startTransition(async () => {
+      const result = await updateRideStatus(rideId, "completed")
+      if (!result.success) {
+        console.error("Complete failed:", result.error)
+      }
+      router.refresh()
+    })
   }
 
-  function handleCancelComplete(): void {
+  function handleCancelComplete() {
     setConfirmRideId(null)
-    setConfirmStatus(null)
   }
 
-  function handleReportProblem(rideId: string): void {
+  function handleReportProblem(rideId: string) {
     setProblemRideId(rideId)
     setProblemText("")
     setProblemError(null)
   }
 
-  function handleSubmitProblem(): void {
+  function handleSubmitProblem() {
     if (!problemRideId) return
-    const text = problemText.trim()
-    if (text.length === 0) {
+    if (!problemText.trim()) {
       setProblemError("Bitte beschreiben Sie das Problem.")
       return
     }
-
+    const rideId = problemRideId
+    const text = problemText.trim()
     startTransition(async () => {
-      const result = await reportRideProblem(problemRideId!, text)
+      const result = await reportRideProblem(rideId, text)
       if (!result.success) {
-        setProblemError(result.error ?? "Senden fehlgeschlagen")
-      } else {
-        setProblemRideId(null)
-        setProblemText("")
-        setProblemError(null)
+        setProblemError(result.error ?? "Fehler beim Senden.")
+        return
       }
+      setProblemRideId(null)
+      setProblemText("")
+      setProblemError(null)
+      router.refresh()
     })
   }
 
@@ -185,6 +174,14 @@ export function MyRidesList({ rides }: MyRidesListProps) {
       <div className="space-y-4">
         {rides.map((ride) => {
           const transitions = getValidTransitionsForRole(ride.status, "driver")
+          
+          // Logic for dynamic navigation button
+          const isBeforePickup = ["planned", "confirmed", "in_progress"].includes(ride.status)
+          const isAfterPickup = ["picked_up", "arrived"].includes(ride.status)
+          
+          const navUrl = isAfterPickup ? ride.destination_nav_url : ride.pickup_nav_url
+          const navLabel = isAfterPickup ? "Ziel ansteuern" : "Abholung ansteuern"
+
           // Separate primary actions from destructive ones
           const primaryTransitions = transitions.filter(
             (t) => t !== "no_show" && t !== "rejected"
@@ -226,16 +223,16 @@ export function MyRidesList({ rides }: MyRidesListProps) {
                 {/* Progress indicator */}
                 <RideProgressBar status={ride.status} />
 
-                {/* Google Maps navigation link */}
-                {ride.destination_address && (
+                {/* DYNAMIC navigation link */}
+                {(isBeforePickup || isAfterPickup) && (
                   <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(ride.destination_address)}`}
+                    href={navUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-3 flex h-11 items-center justify-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-4 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
                   >
                     <Navigation className="h-4 w-4" />
-                    Navigation starten
+                    {navLabel}
                   </a>
                 )}
 

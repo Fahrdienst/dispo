@@ -17,7 +17,7 @@ export interface RouteResult {
   distance_meters: number
   duration_seconds: number
   /** Encoded polyline for later map display */
-  polyline?: string
+  polyline: string
 }
 
 /** Address input for geocoding (Swiss format) */
