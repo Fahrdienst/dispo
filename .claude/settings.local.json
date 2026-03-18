@@ -28,7 +28,13 @@
       "Bash(git status:*)",
       "Bash(for i:*)",
       "Bash(cat:*)",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(pip install:*)",
+      "Bash(where dbeaver:*)",
+      "Bash(where dbeaver-cli:*)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Bash(python:*)"
     ]
   }
 }

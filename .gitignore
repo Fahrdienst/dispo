@@ -23,6 +23,12 @@ coverage/
 .env.production.local
 .env*.local
 
+# Local database folder
+db/
+
+# Import scripts (may contain credentials or local paths)
+scripts/
+
 # Supabase
 supabase/.temp/
 supabase/.branches/

@@ -86,5 +86,15 @@ export const updateUserSchema = z
     }
   )
 
+export const adminUpdatePasswordSchema = z.object({
+  password: z
+    .string()
+    .min(12, "Passwort muss mindestens 12 Zeichen lang sein")
+    .max(72, "Passwort darf maximal 72 Zeichen lang sein")
+    .regex(/[A-Z]/, "Mindestens ein Grossbuchstabe")
+    .regex(/[a-z]/, "Mindestens ein Kleinbuchstabe")
+    .regex(/[0-9]/, "Mindestens eine Zahl"),
+})
+
 export type CreateUserFormValues = z.infer<typeof createUserSchema>
 export type UpdateUserFormValues = z.infer<typeof updateUserSchema>

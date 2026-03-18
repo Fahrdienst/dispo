@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { rateLimitLogin } from "@/lib/security/rate-limit"
 import { trackEvent } from "@/lib/telemetry"
+import { forgotPasswordSchema, resetPasswordSchema } from "@/lib/validations/auth"
 import type { ActionResult } from "@/actions/shared"
 
 interface LoginData {
@@ -87,4 +88,89 @@ export async function logout(): Promise<void> {
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect("/login")
+}
+
+export async function requestPasswordReset(
+  _prevState: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const email = formData.get("email") as string
+  const result = forgotPasswordSchema.safeParse({ email })
+
+  if (!result.success) {
+    return {
+      success: false,
+      fieldErrors: result.error.flatten().fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  const supabase = await createClient()
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+
+  const { error } = await supabase.auth.resetPasswordForEmail(result.data.email, {
+    redirectTo: `${appUrl}/auth/callback?next=/login/reset-password`,
+  })
+
+  if (error) {
+    console.error("Password reset request failed:", error)
+  }
+
+  return {
+    success: true,
+    data: "Wenn ein Konto mit dieser E-Mail-Adresse existiert, wurde eine E-Mail zum Zurücksetzen des Passworts gesendet.",
+  }
+}
+
+export async function resetPassword(
+  _prevState: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const raw = Object.fromEntries(formData)
+  const result = resetPasswordSchema.safeParse(raw)
+
+  if (!result.success) {
+    return {
+      success: false,
+      fieldErrors: result.error.flatten().fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.updateUser({
+    password: result.data.password,
+  })
+
+  if (error) {
+    console.error("Password reset failed:", error)
+    return { success: false, error: "Passwort konnte nicht zurückgesetzt werden" }
+  }
+
+  redirect("/login?message=Passwort wurde erfolgreich zurückgesetzt")
+}
+
+export async function changePassword(
+  _prevState: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const raw = Object.fromEntries(formData)
+  const result = resetPasswordSchema.safeParse(raw)
+
+  if (!result.success) {
+    return {
+      success: false,
+      fieldErrors: result.error.flatten().fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.updateUser({
+    password: result.data.password,
+  })
+
+  if (error) {
+    console.error("Password change failed:", error)
+    return { success: false, error: "Passwort konnte nicht geändert werden" }
+  }
+
+  return { success: true, data: "Passwort wurde erfolgreich geändert" }
 }

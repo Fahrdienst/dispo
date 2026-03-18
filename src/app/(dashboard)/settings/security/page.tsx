@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { getMFAStatus } from "@/actions/mfa"
 import { MfaSettings } from "@/components/settings/mfa-settings"
+import { ChangePasswordForm } from "@/components/settings/change-password-form"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { SettingsNav } from "@/components/settings/settings-nav"
 import { Breadcrumb } from "@/components/shared/breadcrumb"
@@ -29,7 +30,10 @@ export default async function SecuritySettingsPage() {
         description="Sicherheitseinstellungen und Zwei-Faktor-Authentifizierung"
       />
       <SettingsNav />
-      <MfaSettings initialEnabled={mfaEnabled} initialFactorId={mfaFactorId} />
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <ChangePasswordForm />
+        <MfaSettings initialEnabled={mfaEnabled} initialFactorId={mfaFactorId} />
+      </div>
     </div>
   )
 }

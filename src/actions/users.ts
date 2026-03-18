@@ -5,11 +5,58 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/require-admin"
-import { createUserSchema, updateUserSchema } from "@/lib/validations/users"
+import { createUserSchema, updateUserSchema, adminUpdatePasswordSchema } from "@/lib/validations/users"
 import { logAudit } from "@/lib/audit/logger"
 import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables } from "@/lib/types/database"
+
+export async function updateUserPassword(
+  id: string,
+  _prevState: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  uuidSchema.parse(id)
+
+  const auth = await requireAdmin()
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
+  }
+
+  const raw = Object.fromEntries(formData)
+  const result = adminUpdatePasswordSchema.safeParse(raw)
+
+  if (!result.success) {
+    return {
+      success: false,
+      fieldErrors: result.error.flatten().fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  const { password } = result.data
+
+  const adminClient = createAdminClient()
+  const { error } = await adminClient.auth.admin.updateUserById(id, {
+    password,
+  })
+
+  if (error) {
+    console.error("Failed to update user password:", error)
+    return { success: false, error: "Passwort konnte nicht geändert werden" }
+  }
+
+  // Fire-and-forget audit log
+  logAudit({
+    userId: auth.userId,
+    userRole: "admin",
+    action: "update",
+    entityType: "user",
+    entityId: id,
+    metadata: { fields: ["password"] },
+  }).catch(() => {})
+
+  return { success: true, data: "Passwort wurde erfolgreich aktualisiert" }
+}
 
 export async function createUser(
   _prevState: ActionResult<Tables<"profiles">> | null,

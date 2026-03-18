@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useFormState } from "react-dom"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { SubmitButton } from "@/components/shared/submit-button"
@@ -50,7 +51,15 @@ export function LoginForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Passwort</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">Passwort</Label>
+          <Link
+            href="/login/forgot-password"
+            className="text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            Passwort vergessen?
+          </Link>
+        </div>
         <Input
           id="password"
           name="password"

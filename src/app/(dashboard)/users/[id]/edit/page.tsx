@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { UserForm } from "@/components/users/user-form"
+import { UserPasswordForm } from "@/components/users/user-password-form"
 
 export const metadata: Metadata = {
   title: "Benutzer bearbeiten - Fahrdienst",
@@ -47,8 +48,9 @@ export default async function EditUserPage({ params }: EditUserPageProps) {
   )
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl space-y-6">
       <UserForm user={user} drivers={availableDrivers} />
+      <UserPasswordForm userId={id} />
     </div>
   )
 }
