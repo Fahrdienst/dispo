@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/require-auth"
+import { z } from "zod"
 import { zoneSchema, zonePostalCodeSchema } from "@/lib/validations/zones"
 import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
@@ -189,5 +190,60 @@ export async function removePostalCodeFromZone(
   }
 
   revalidatePath("/settings/zones")
+  return { success: true, data: undefined }
+}
+
+const updatePostalCodeZoneSchema = z.object({
+  postalCode: z.string().regex(/^\d{4}$/, "PLZ muss 4-stellig sein"),
+  zoneId: z.string().uuid("Ungueltige Zone-ID").nullable(),
+})
+
+/**
+ * Move a postal code to a different zone, or remove it from all zones.
+ * If zoneId is null, the postal code row is deleted (unassigned).
+ * If the postal code already belongs to another zone, it is moved.
+ */
+export async function updatePostalCodeZone(
+  postalCode: string,
+  zoneId: string | null
+): Promise<ActionResult> {
+  const auth = await requireAuth(["admin"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
+  }
+
+  const parsed = updatePostalCodeZoneSchema.safeParse({ postalCode, zoneId })
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.errors[0]?.message ?? "Ungueltige Eingabe" }
+  }
+
+  const supabase = await createClient()
+
+  // Remove existing assignment for this postal code
+  const { error: deleteError } = await supabase
+    .from("zone_postal_codes")
+    .delete()
+    .eq("postal_code", parsed.data.postalCode)
+
+  if (deleteError) {
+    return { success: false, error: deleteError.message }
+  }
+
+  // If a new zone is specified, create the assignment
+  if (parsed.data.zoneId) {
+    const { error: insertError } = await supabase
+      .from("zone_postal_codes")
+      .insert({
+        zone_id: parsed.data.zoneId,
+        postal_code: parsed.data.postalCode,
+      })
+
+    if (insertError) {
+      return { success: false, error: insertError.message }
+    }
+  }
+
+  revalidatePath("/settings/zones")
+  revalidatePath("/settings/zones/map")
   return { success: true, data: undefined }
 }

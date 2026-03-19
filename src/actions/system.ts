@@ -92,8 +92,8 @@ export async function getSystemHealth(): Promise<SystemServiceHealth[]> {
 
   services.push({
     name: "Google Maps (Server)",
-    status: process.env.GOOGLE_MAPS_SERVER_API_KEY ? "healthy" : "not_configured",
-    message: process.env.GOOGLE_MAPS_SERVER_API_KEY ? "API-Key konfiguriert" : "Nicht konfiguriert",
+    status: process.env.GOOGLE_MAPS_API_KEY ? "healthy" : "not_configured",
+    message: process.env.GOOGLE_MAPS_API_KEY ? "API-Key konfiguriert" : "Nicht konfiguriert",
   })
 
   // SMTP / Nodemailer
@@ -168,7 +168,7 @@ export async function getEnvVarStatus(): Promise<EnvVarStatus[]> {
     { name: "NEXT_PUBLIC_SUPABASE_ANON_KEY", configured: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, category: "required" },
     { name: "SUPABASE_SERVICE_ROLE_KEY", configured: !!process.env.SUPABASE_SERVICE_ROLE_KEY, category: "required" },
     { name: "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY", configured: !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY, category: "maps" },
-    { name: "GOOGLE_MAPS_SERVER_API_KEY", configured: !!process.env.GOOGLE_MAPS_SERVER_API_KEY, category: "maps" },
+    { name: "GOOGLE_MAPS_API_KEY", configured: !!process.env.GOOGLE_MAPS_API_KEY, category: "maps" },
     { name: "SMTP_HOST", configured: !!process.env.SMTP_HOST, category: "email" },
     { name: "SMTP_PORT", configured: !!process.env.SMTP_PORT, category: "email" },
     { name: "SMTP_USER", configured: !!process.env.SMTP_USER, category: "email" },

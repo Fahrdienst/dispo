@@ -83,6 +83,7 @@ interface RideWithJoins {
   distance_meters: number | null
   calculated_price: number | null
   price_override: number | null
+  polyline: string | null
   patients: {
     first_name: string
     last_name: string
@@ -148,7 +149,7 @@ export async function loadOrderSheetData(
     .select(`
       id, date, pickup_time, appointment_time, return_pickup_time,
       direction, status, notes, distance_meters,
-      calculated_price, price_override, patient_id,
+      calculated_price, price_override, patient_id, polyline,
       patients!inner(
         first_name, last_name, street, house_number,
         postal_code, city, phone, comment,
@@ -272,7 +273,7 @@ export async function loadOrderSheetData(
     organizationName,
 
     // Maps
-    polyline: null,
+    polyline: ride.polyline ?? null,
     patientLat: patient.lat ?? null,
     patientLng: patient.lng ?? null,
     destinationLat: destination.lat ?? null,

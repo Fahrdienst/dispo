@@ -824,6 +824,7 @@ export type Database = {
           status: Database["public"]["Enums"]["ride_status"]
           surcharge_amount: number
           surcharge_details: Json | null
+          polyline: string | null
           tariff_zone: string | null
           updated_at: string
           waiting_minutes: number
@@ -856,6 +857,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["ride_status"]
           surcharge_amount?: number
           surcharge_details?: Json | null
+          polyline?: string | null
           tariff_zone?: string | null
           updated_at?: string
           waiting_minutes?: number
@@ -888,6 +890,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["ride_status"]
           surcharge_amount?: number
           surcharge_details?: Json | null
+          polyline?: string | null
           tariff_zone?: string | null
           updated_at?: string
           waiting_minutes?: number

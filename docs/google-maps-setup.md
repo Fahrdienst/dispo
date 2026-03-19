@@ -28,7 +28,7 @@ The application uses two separate API keys:
 
 ### 2. Server Key
 
-- **Env variable**: `GOOGLE_MAPS_SERVER_API_KEY`
+- **Env variable**: `GOOGLE_MAPS_API_KEY`
 - **Used in**: Server-side geocoding (`src/lib/maps/geocode.ts`), server components
 - **Restriction type**: IP address
 - **Important**: This key must NEVER be exposed to the client. It is only used in Server Components and Server Actions.
@@ -72,7 +72,7 @@ http://localhost:3000/*
 
 ```env
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIza...   # Client key (HTTP referrer restricted)
-GOOGLE_MAPS_SERVER_API_KEY=AIza...         # Server key (IP restricted)
+GOOGLE_MAPS_API_KEY=AIza...         # Server key (IP restricted)
 ```
 
 ### Vercel Deployment
@@ -80,7 +80,7 @@ GOOGLE_MAPS_SERVER_API_KEY=AIza...         # Server key (IP restricted)
 Set both variables in the Vercel dashboard under **Settings > Environment Variables**:
 
 - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` — available in all environments
-- `GOOGLE_MAPS_SERVER_API_KEY` — available in all environments, NOT prefixed with `NEXT_PUBLIC_`
+- `GOOGLE_MAPS_API_KEY` — available in all environments, NOT prefixed with `NEXT_PUBLIC_`
 
 ## Setting Up Budget Alerts
 

@@ -2,7 +2,7 @@
 
 import { useTransition, useMemo, useState, useCallback } from "react"
 import Link from "next/link"
-import { Check, AlertTriangle } from "lucide-react"
+import { Check, AlertTriangle, MapPin } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -398,6 +398,12 @@ export function DispatchBoard({
         <Button variant="ghost" size="sm" asChild>
           <Link href={`/dispatch?week=${getMondayOf(selectedDate)}`}>
             Wochenansicht
+          </Link>
+        </Button>
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={`/dispatch/map?date=${selectedDate}`}>
+            <MapPin className="mr-1.5 h-4 w-4" />
+            Karte
           </Link>
         </Button>
       </div>

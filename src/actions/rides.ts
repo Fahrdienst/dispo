@@ -170,6 +170,7 @@ export async function createRide(
           surcharge_details: priceResult.breakdown.length > 0
             ? ({ items: priceResult.breakdown } as unknown as Json)
             : null,
+          polyline: priceResult.polyline || null,
         }
       }
     }
@@ -407,6 +408,7 @@ async function createRideWithSeries(
           surcharge_details: priceResult.breakdown.length > 0
             ? ({ items: priceResult.breakdown } as unknown as Json)
             : null,
+          polyline: priceResult.polyline || null,
         }
       }
     }
@@ -620,6 +622,7 @@ export async function updateRide(
     duration_category?: string
     is_tagesheim_imwil?: boolean
     has_escort?: boolean
+    polyline?: string | null
   } = {
     duration_category,
     is_tagesheim_imwil,
@@ -683,6 +686,7 @@ export async function updateRide(
           surcharge_details: priceResult.breakdown.length > 0
             ? ({ items: priceResult.breakdown } as unknown as Json)
             : null,
+          polyline: priceResult.polyline || null,
         }
       }
     }

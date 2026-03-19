@@ -287,6 +287,7 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
         originLng={patient?.lng ?? null}
         destLat={destination?.lat ?? null}
         destLng={destination?.lng ?? null}
+        polyline={ride.polyline ?? null}
       />
 
       {/* Linked rides */}
