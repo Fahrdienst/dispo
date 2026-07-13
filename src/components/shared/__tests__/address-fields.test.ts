@@ -46,13 +46,14 @@ describe("AddressFields", () => {
 
     for (const name of FIELDS) {
       const props = inputs[name]
+      expect(props).toBeDefined()
       // Must NOT be a controlled input, otherwise the field freezes (issue #89).
       expect(props).not.toHaveProperty("value")
       expect(props).not.toHaveProperty("onChange")
       expect(props).toHaveProperty("defaultValue")
     }
-    expect(inputs.street.defaultValue).toBe("Bahnhofstrasse")
-    expect(inputs.city.defaultValue).toBe("Dübendorf")
+    expect(inputs.street?.defaultValue).toBe("Bahnhofstrasse")
+    expect(inputs.city?.defaultValue).toBe("Dübendorf")
   })
 
   it("stays controlled (value + onChange) when an onChange handler is provided", () => {
@@ -65,10 +66,11 @@ describe("AddressFields", () => {
     const inputs = collectInputs(tree)
     for (const name of FIELDS) {
       const props = inputs[name]
+      expect(props).toBeDefined()
       expect(props).toHaveProperty("value")
-      expect(typeof props.onChange).toBe("function")
+      expect(typeof props?.onChange).toBe("function")
       expect(props).not.toHaveProperty("defaultValue")
     }
-    expect(inputs.street.value).toBe("Seestrasse")
+    expect(inputs.street?.value).toBe("Seestrasse")
   })
 })
