@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -31,9 +32,22 @@ export function AddressFields({
 }: AddressFieldsProps) {
   const prefix = idPrefix ? `${idPrefix}_` : ""
 
-  const getValue = (field: keyof NonNullable<AddressFieldsProps["values"]>) => {
-    if (values && values[field] !== undefined) return values[field]
-    return defaultValues?.[field] ?? ""
+  // Controlled mode requires an onChange handler. Without it, a `value` prop
+  // would freeze the input (no state update on keystroke). In that case we
+  // fall back to `defaultValue` so native, uncontrolled editing works.
+  const controlled = typeof onChange === "function"
+
+  const fieldProps = (
+    field: keyof NonNullable<AddressFieldsProps["values"]>
+  ) => {
+    if (controlled) {
+      return {
+        value: values?.[field] ?? defaultValues?.[field] ?? "",
+        onChange: (e: ChangeEvent<HTMLInputElement>) =>
+          onChange?.(field, e.target.value),
+      }
+    }
+    return { defaultValue: defaultValues?.[field] ?? "" }
   }
 
   return (
@@ -48,8 +62,7 @@ export function AddressFields({
             id={`${prefix}street`}
             name="street"
             required={required}
-            value={getValue("street")}
-            onChange={(e) => onChange?.("street", e.target.value)}
+            {...fieldProps("street")}
           />
           {errors?.street && (
             <p className="text-sm text-destructive">{errors.street[0]}</p>
@@ -63,8 +76,7 @@ export function AddressFields({
             id={`${prefix}house_number`}
             name="house_number"
             required={required}
-            value={getValue("house_number")}
-            onChange={(e) => onChange?.("house_number", e.target.value)}
+            {...fieldProps("house_number")}
           />
           {errors?.house_number && (
             <p className="text-sm text-destructive">
@@ -82,8 +94,7 @@ export function AddressFields({
             id={`${prefix}postal_code`}
             name="postal_code"
             required={required}
-            value={getValue("postal_code")}
-            onChange={(e) => onChange?.("postal_code", e.target.value)}
+            {...fieldProps("postal_code")}
           />
           {errors?.postal_code && (
             <p className="text-sm text-destructive">{errors.postal_code[0]}</p>
@@ -97,8 +108,7 @@ export function AddressFields({
             id={`${prefix}city`}
             name="city"
             required={required}
-            value={getValue("city")}
-            onChange={(e) => onChange?.("city", e.target.value)}
+            {...fieldProps("city")}
           />
           {errors?.city && (
             <p className="text-sm text-destructive">{errors.city[0]}</p>
