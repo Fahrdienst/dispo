@@ -8,6 +8,7 @@ import {
   Compass,
   CreditCard,
   Gauge,
+  HelpCircle,
   Hospital,
   LogOut,
   MapPin,
@@ -67,6 +68,12 @@ const navGroups: NavGroup[] = [
       { href: "/my/availability", label: "Verfügbarkeit", icon: <CalendarClock className="h-5 w-5 flex-shrink-0" />, roles: ["driver"] },
     ],
   },
+  {
+    // Help is available to every role (no `roles` restriction).
+    items: [
+      { href: "/hilfe", label: "Hilfe", icon: <HelpCircle className="h-5 w-5 flex-shrink-0" /> },
+    ],
+  },
 ]
 
 function Logo() {
@@ -114,7 +121,7 @@ export function DashboardSidebar({ role, logoutAction }: DashboardSidebarProps) 
 
   return (
     <Sidebar open={open} setOpen={setOpen}>
-      <SidebarBody className="justify-between gap-6 border-r border-white/10">
+      <SidebarBody className="justify-between gap-6 border-r border-white/10 print:hidden">
         <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
           <Logo />
           <div className="mt-6 flex flex-col">

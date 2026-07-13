@@ -105,7 +105,24 @@ export async function requestPasswordReset(
   }
 
   const supabase = await createClient()
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+
+  // Resolve the app URL robustly: strip any trailing slash, and in production
+  // fail loudly instead of silently falling back to localhost (which would send
+  // unusable reset links).
+  const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "")
+  if (!rawAppUrl) {
+    if (process.env.NODE_ENV === "production") {
+      console.error(
+        "Password reset aborted: NEXT_PUBLIC_APP_URL is not configured in production."
+      )
+      return {
+        success: false,
+        error:
+          "Der Dienst ist derzeit nicht korrekt konfiguriert. Bitte kontaktieren Sie den Administrator.",
+      }
+    }
+  }
+  const appUrl = rawAppUrl || "http://localhost:3000"
 
   const { error } = await supabase.auth.resetPasswordForEmail(result.data.email, {
     redirectTo: `${appUrl}/auth/callback?next=/login/reset-password`,

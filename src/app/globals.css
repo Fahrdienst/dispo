@@ -146,6 +146,13 @@
   .glass-panel {
     @apply border border-white/70 bg-white/95 shadow-xl shadow-slate-900/5;
   }
+
+  /* Comfortable, large-text reading container for the help / documentation
+     pages. Base 18px with generous line-height for readers aged 60+. */
+  .help-prose {
+    font-size: 1.125rem;
+    line-height: 1.75;
+  }
 }
 
 @layer utilities {
@@ -181,5 +188,32 @@
   }
   .ride-row-border-urgent {
     @apply border-l-4 border-l-red-600;
+  }
+}
+
+/* Print styles — primarily for the help / documentation pages so users can
+   print a clean copy of an article. Navigation, table of contents and any
+   element flagged `print:hidden` are removed; content flows on white. */
+@media print {
+  body {
+    background: #fff !important;
+    background-image: none !important;
+    color: #000;
+  }
+
+  .help-prose {
+    font-size: 12pt;
+    line-height: 1.6;
+  }
+
+  /* Keep sections and figures from being split across pages. */
+  .help-prose section,
+  figure {
+    break-inside: avoid;
+  }
+
+  /* Do not append URLs after links when printing. */
+  a[href]::after {
+    content: "";
   }
 }

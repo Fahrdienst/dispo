@@ -40,7 +40,9 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Allow public paths without authentication check.
-  const PUBLIC_PATHS = ["/auth/callback", "/api/rides/respond", "/rides/respond"];
+  // "/help" is the public help area (open to signed-out visitors). The
+  // protected, role-specific help lives under "/hilfe" and stays behind auth.
+  const PUBLIC_PATHS = ["/auth/callback", "/api/rides/respond", "/rides/respond", "/help"];
   if (PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p))) {
     return supabaseResponse;
   }

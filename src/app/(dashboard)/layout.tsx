@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
+import { AppOverlays } from "@/components/shared/app-overlays";
 import { logout } from "@/actions/auth";
 import { requireAuth } from "@/lib/auth/require-auth";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardLayout({
   children,
@@ -14,6 +16,13 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("email")
+    .eq("id", auth.userId)
+    .single();
+
   return (
     <div className="flex h-screen w-full overflow-hidden">
       <DashboardSidebar role={auth.role} logoutAction={logout} />
@@ -22,6 +31,7 @@ export default async function DashboardLayout({
           {children}
         </div>
       </main>
+      <AppOverlays userEmail={profile?.email ?? undefined} />
     </div>
   );
 }

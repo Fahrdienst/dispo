@@ -31,7 +31,7 @@ interface RateLimitConfig {
   windowMs: number
 }
 
-interface RateLimitResult {
+export interface RateLimitResult {
   /** Whether the request is allowed */
   success: boolean
   /** Remaining requests in the current window */
@@ -104,4 +104,92 @@ export function rateLimitBillingExport(userId: string): RateLimitResult {
     maxRequests: 10,
     windowMs: ONE_MINUTE_MS,
   })
+}
+
+// ---------------------------------------------------------------------------
+// Distributed rate limiting via Upstash Redis (with in-memory fallback)
+// ---------------------------------------------------------------------------
+
+const ONE_HOUR_MS = 60 * 60 * 1000
+const FEEDBACK_MAX_REQUESTS = 5
+
+/** Shape of a single command result in an Upstash REST pipeline response. */
+interface UpstashPipelineEntry {
+  result?: number
+  error?: string
+}
+
+/**
+ * Rate limit for in-app feedback: 5 submissions per hour, keyed by userId.
+ *
+ * Uses a distributed fixed-window counter in Upstash Redis via the REST API
+ * (native `fetch`, no extra npm dependency). Falls back to the in-memory
+ * limiter when Upstash env vars are missing or the request fails, so a
+ * misconfigured or unreachable Redis never blocks feedback entirely.
+ */
+export async function rateLimitFeedback(
+  userId: string
+): Promise<RateLimitResult> {
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  const key = `feedback:${userId}`
+
+  const fallback = (): RateLimitResult =>
+    rateLimit(key, {
+      maxRequests: FEEDBACK_MAX_REQUESTS,
+      windowMs: ONE_HOUR_MS,
+    })
+
+  // No Upstash configured — use the in-memory limiter.
+  if (!url || !token) {
+    return fallback()
+  }
+
+  const windowSeconds = ONE_HOUR_MS / 1000
+
+  try {
+    // Pipeline: INCR the counter, then set the TTL only on first hit (EXPIRE NX)
+    // so the window is anchored to the first request in it.
+    const response = await fetch(`${url.replace(/\/+$/, "")}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+      body: JSON.stringify([
+        ["INCR", key],
+        ["EXPIRE", key, windowSeconds, "NX"],
+      ]),
+    })
+
+    if (!response.ok) {
+      console.error(
+        `[rate-limit] Upstash responded HTTP ${response.status}; falling back`
+      )
+      return fallback()
+    }
+
+    const data = (await response.json()) as UpstashPipelineEntry[]
+    const count = data[0]?.result
+
+    if (typeof count !== "number") {
+      console.error("[rate-limit] Unexpected Upstash response; falling back")
+      return fallback()
+    }
+
+    const resetAt = Date.now() + ONE_HOUR_MS
+    if (count > FEEDBACK_MAX_REQUESTS) {
+      return { success: false, remaining: 0, resetAt }
+    }
+
+    return {
+      success: true,
+      remaining: Math.max(0, FEEDBACK_MAX_REQUESTS - count),
+      resetAt,
+    }
+  } catch (error) {
+    console.error("[rate-limit] Upstash request failed; falling back:", error)
+    return fallback()
+  }
 }
