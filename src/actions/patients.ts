@@ -68,8 +68,9 @@ export async function createPatient(
     entityId: patient.id,
   }).catch(() => {})
 
-  // Fire-and-forget geocoding (don't block the response)
-  if (patientData.street && patientData.house_number && patientData.postal_code && patientData.city) {
+  // Fire-and-forget geocoding (don't block the response). House number is
+  // optional (KM-14) — facility addresses often have none.
+  if (patientData.street && patientData.postal_code && patientData.city) {
     geocodeAndUpdateRecord("patients", patient.id, {
       street: patientData.street,
       house_number: patientData.house_number,
@@ -108,9 +109,29 @@ export async function updatePatient(
   const { impairments: validatedImpairments, ...patientData } = result.data
 
   const supabase = await createClient()
+
+  // KM-07: only re-geocode when the address actually changed (or was never
+  // successfully geocoded). Fetch the current address + status first.
+  const { data: existing } = await supabase
+    .from("patients")
+    .select("street, house_number, postal_code, city, geocode_status")
+    .eq("id", id)
+    .single()
+
+  const addressChanged =
+    !existing ||
+    existing.street !== patientData.street ||
+    existing.house_number !== patientData.house_number ||
+    existing.postal_code !== patientData.postal_code ||
+    existing.city !== patientData.city
+
   const { error } = await supabase
     .from("patients")
-    .update(patientData)
+    .update(
+      // Mark pending on address change so the backfill/cron can recover if the
+      // fire-and-forget geocode below fails.
+      addressChanged ? { ...patientData, geocode_status: "pending" as const } : patientData
+    )
     .eq("id", id)
     .select()
     .single()
@@ -154,8 +175,10 @@ export async function updatePatient(
     metadata: { fields: Object.keys(patientData) },
   }).catch(() => {})
 
-  // Fire-and-forget geocoding (don't block the response)
-  if (patientData.street && patientData.house_number && patientData.postal_code && patientData.city) {
+  // Fire-and-forget geocoding — only when the address changed or was never
+  // geocoded (KM-07). House number is optional (KM-14).
+  const needsGeocode = addressChanged || existing?.geocode_status !== "success"
+  if (needsGeocode && patientData.street && patientData.postal_code && patientData.city) {
     geocodeAndUpdateRecord("patients", id, {
       street: patientData.street,
       house_number: patientData.house_number,

@@ -64,11 +64,11 @@ export async function createDestination(
     return { success: false, error: error.message }
   }
 
-  // Fire-and-forget geocoding only when no coordinates came from Places
+  // Fire-and-forget geocoding only when no coordinates came from Places.
+  // House number is optional (KM-14) — facility addresses often have none.
   if (
     !hasGeoData &&
     destinationData.street &&
-    destinationData.house_number &&
     destinationData.postal_code &&
     destinationData.city
   ) {
@@ -130,9 +130,31 @@ export async function updateDestination(
     : destinationData
 
   const supabase = await createClient()
+
+  // KM-07: fetch current address + status to decide whether to re-geocode.
+  const { data: existing } = await supabase
+    .from("destinations")
+    .select("street, house_number, postal_code, city, geocode_status")
+    .eq("id", id)
+    .single()
+
+  const addressChanged =
+    !existing ||
+    existing.street !== destinationData.street ||
+    existing.house_number !== destinationData.house_number ||
+    existing.postal_code !== destinationData.postal_code ||
+    existing.city !== destinationData.city
+
+  // Mark pending when the address changed and no Places coords were supplied,
+  // so the backfill/cron recovers if the fire-and-forget geocode below fails.
+  const finalUpdate =
+    !hasGeoData && addressChanged
+      ? { ...updateData, geocode_status: "pending" as const }
+      : updateData
+
   const { error } = await supabase
     .from("destinations")
-    .update(updateData)
+    .update(finalUpdate)
     .eq("id", id)
     .select()
     .single()
@@ -141,11 +163,13 @@ export async function updateDestination(
     return { success: false, error: error.message }
   }
 
-  // Fire-and-forget geocoding only when no coordinates came from Places
+  // Fire-and-forget geocoding — only when no Places coords, and the address
+  // changed or was never geocoded (KM-07). House number optional (KM-14).
+  const needsGeocode = addressChanged || existing?.geocode_status !== "success"
   if (
     !hasGeoData &&
+    needsGeocode &&
     destinationData.street &&
-    destinationData.house_number &&
     destinationData.postal_code &&
     destinationData.city
   ) {
