@@ -10,6 +10,7 @@ Dispatch application for a Swiss medical transport service (*Fahrdienst*). Opera
 - [Prerequisites](#prerequisites)
 - [Setup](#setup)
 - [Architecture Overview](#architecture-overview)
+- [Fahrer-Self-Service](#fahrer-self-service)
 - [Project Structure](#project-structure)
 - [Development Workflow](#development-workflow)
 - [Database](#database)
@@ -180,6 +181,120 @@ unplanned -> planned -> confirmed -> in_progress -> picked_up -> arrived -> comp
 ```
 
 Terminal statuses: `completed`, `cancelled`, `no_show`.
+
+---
+
+## Fahrer-Self-Service
+
+Milestone **M12** introduces a mobile-first self-service area for drivers (route prefix `/fahrer/*`) plus a staff review queue for absence requests (`/abwesenheiten`). The architectural foundation was laid in [ADR 006](docs/adrs/006-driver-self-service.md); M12 extends it with an invitation flow, driver self-editing of contact data, weekly availability with date exceptions, and an absence workflow.
+
+> The rides list a driver sees for a given day still lives at `/my/rides` (in the `(dashboard)` route group). The new `/fahrer/*` shell is the driver's home, availability, absences and profile.
+
+### Roles and permissions
+
+Three roles exist; a driver's capabilities are intentionally narrow.
+
+| Role | Can do |
+|---|---|
+| `admin` | Full access to all tables, manage users, **invite drivers** |
+| `operator` | Read/write patients, drivers, destinations, rides, ride series; **approve/reject absences** |
+| `driver` | See own assigned rides, update own ride status, edit own **contact/address data**, manage own **availability**, request/cancel own **absences** |
+
+A driver **may**:
+
+- edit their own **contact and address** (phone, email, street, house number, postal code, city) via `/fahrer/profil`
+- maintain their **availability** (weekly grid + date exceptions) via `/fahrer/verfuegbarkeit`
+- **request** and **cancel** their own **absences** via `/fahrer/abwesenheiten`
+
+A driver **may not**:
+
+- **accept or decline rides** — ride acceptance is a separate milestone, not part of M12
+- edit their **master data** (first/last name, vehicle, driving licence, emergency contact) — those remain staff-only. The self-service RPC (`update_own_driver_contact`) whitelists exactly six contact/address columns and ignores anything else.
+
+The driver navigation is only a UI filter. The real access boundary is RLS plus `requireAuth(["driver"])` in every server action. A driver who manually opens a staff URL sees an empty list (RLS blocks the `SELECT`).
+
+### Invitation flow
+
+Drivers do not self-register. An **admin** invites a driver from the driver detail sheet (`inviteDriver` in `src/actions/driver-invite.ts`). The flow is deliberately ordered so that an invite link never goes out while the account still has operator privileges:
+
+```
+Admin invites driver (email)
+  1. createUser(email_confirm: true)   — no mail yet
+        └─ handle_new_user() trigger defaults the new profile to role='operator'  [SEC-001]
+  2. Correct the profile: UPDATE role='driver', driver_id=<driverId>  (both set together, verified: exactly 1 row)
+        └─ on failure → deleteUser() rollback (never leave an orphaned operator account)
+  3. resetPasswordForEmail(redirectTo: <APP_URL>/auth/callback?next=/passwort-setzen)
+```
+
+The driver receives a set-password mail, lands on `/auth/callback` (PKCE exchange establishes a session), is forwarded to `/passwort-setzen`, chooses a password, and is then routed to their driver home. The same `/passwort-setzen` target is reused by the normal password-reset flow.
+
+**Operational prerequisites** for the invitation flow to work:
+
+| Requirement | Why |
+|---|---|
+| **Supabase SMTP** configured (Auth > SMTP Settings) | The set-password mail is sent by Supabase Auth. Without a real SMTP provider the invite mail is not delivered (the default sandbox sender is rate-limited and unsuitable for production). |
+| **Redirect allowlist** contains `<APP_URL>/auth/callback` (Auth > URL Configuration) | Supabase only redirects to allow-listed URLs; a missing entry breaks the callback and thus the whole invite. |
+| `NEXT_PUBLIC_APP_URL` set to the real origin | Used to build the absolute redirect URL. In production the invite is **aborted** if this is unset, to avoid sending unusable `localhost` links. |
+| `SUPABASE_SERVICE_ROLE_KEY` (server-only) | `createUser`, the role correction and the rollback all run through the admin client, which bypasses RLS. |
+
+Invitation state is derived on demand (`getDriverInviteStatus`), not stored in a column: `none` (no linked profile), `invited` (linked account that never signed in), `active` (has signed in at least once).
+
+### Availability and the precedence rule
+
+Driver availability lives in the `driver_availability` table and mixes two kinds of entries:
+
+- **Weekly grid** — recurring fixed **2-hour slots**, Monday–Friday (`day_of_week` set, `specific_date` NULL).
+- **Date exception** — availability for one concrete calendar date (`specific_date` set, `day_of_week` NULL).
+
+`resolveAvailability(date, entries)` in `src/lib/availability/resolve.ts` is the **single source of truth** for the question *"which time windows is this driver available on date X?"* — the same function backs both the driver's own editor and the dispatch side. Its precedence rule:
+
+> **A date exception fully overrides the weekly grid for that date.** If a date has *any* date-specific entry, the weekly grid is ignored for that day. Otherwise the weekly grid for that weekday applies.
+
+An "empty exception" (a date entry with no time window) is an explicit *"not available that day"* marker: it triggers the override but contributes no window, so the resolved result is empty. (The current fixed-slot UI always stores a time with a slot, so it cannot persist an empty exception itself; the resolver still supports it so dispatch and tests can express "unavailable that day" cleanly.) Resolved windows are always normalized: sorted, zero-length dropped, and touching/overlapping windows merged into contiguous ranges.
+
+The module is intentionally free of DB/React/Next dependencies so it can be unit-tested in isolation.
+
+### Absences and the status state machine
+
+Drivers request time off (`vacation` / `sick` / `training` / `other`); staff decide. The lifecycle is modelled in `src/lib/absences/status-machine.ts`:
+
+```
+requested ──▶ approved   (staff only, via decide_absence RPC)
+          ├─▶ rejected   (staff only, via decide_absence RPC)
+          └─▶ cancelled  (driver, via cancel_own_absence RPC)
+approved  ──▶ cancelled  (staff / dispatch)
+rejected  ── (terminal)
+cancelled ── (terminal)
+```
+
+Key rules — the DB (RLS + RPCs) is always the enforcing authority; the status machine only shapes what the UI renders:
+
+- **Staff decide** requested → approved | rejected via the `decide_absence` RPC (stamps `decided_by = auth.uid()` server-side). The server action additionally checks `canTransition` before calling the RPC (defence in depth).
+- **A driver may cancel only while `requested`.** Once staff have `approved` an absence, the driver can no longer withdraw it themselves — cancellation is then a dispatch decision. This is enforced in the UI via `canDriverCancel()` (returns true only for `requested`). The `cancel_own_absence` RPC is a little more permissive at the DB layer (it also allows cancelling an `approved` row, e.g. when staff revoke), but the driver UI narrows this to `requested`.
+- **Overlap protection is a database constraint**, not application logic: `driver_absences_no_overlap`, a GiST exclusion constraint, rejects a new `requested`/`approved` period that overlaps an existing active one for the same driver. Only `requested` and `approved` rows participate — a `cancelled` or `rejected` period never blocks a fresh request for the same dates. The server action translates the raw SQLSTATE (`23P01`) into a friendly German message.
+- **No hard deletes.** Cancellation is a soft status change; there is no `DELETE` policy on `driver_absences`.
+
+The self-service write paths that a driver cannot perform via direct table access are provided as narrow `SECURITY DEFINER` RPCs (`request_absence`, `cancel_own_absence`, `update_own_driver_contact`), each deriving the driver identity from the session via `get_user_driver_id()` — never from a client argument.
+
+### Driver routes
+
+| Route | Purpose | Guard |
+|---|---|---|
+| `/fahrer` | Driver home: greeting, next rides, open absences, quick tiles | `requireAuth(["driver"])` |
+| `/fahrer/verfuegbarkeit` | Weekly availability grid + date exceptions | `requireAuth(["driver"])` |
+| `/fahrer/abwesenheiten` | Request absences, cancel own `requested` requests, see history | `requireAuth(["driver"])` |
+| `/fahrer/profil` | Edit own contact/address data | `requireAuth(["driver"])` |
+| `/my/rides` | Own assigned rides for a day (status updates) | `requireAuth(["driver"])` |
+| `/abwesenheiten` | Staff queue: approve/reject absence requests | `requireAuth(["admin","operator"])` |
+
+### In-app help
+
+The help system (Epic #83) has two entry points backed by the same article set:
+
+- **`/help`** — public, unauthenticated help home (public-only articles).
+- **`/hilfe`** — authenticated, **role-aware** help hub inside the dashboard: greets the user by name and shows articles matching their role (public content plus role-specific content).
+
+Point drivers at **`/hilfe`** for step-by-step, role-appropriate guidance.
 
 ---
 
@@ -424,6 +539,20 @@ VALUES ('<auth-user-uuid>', 'Name', 'operator');
 - User creation requires the `SUPABASE_SERVICE_ROLE_KEY` environment variable (server-side only).
 - Only users with role `admin` can access the user management UI. Check the profile role.
 - The service role key bypasses RLS -- if it is missing or wrong, user creation via `supabase.auth.admin.createUser()` will fail.
+
+**Invited driver has operator permissions (sees the staff dashboard, not `/fahrer`)**
+
+- Root cause: the `handle_new_user()` trigger hardcodes every new profile to role `operator` (SEC-001). The invitation flow (`inviteDriver`) is responsible for **explicitly correcting** the freshly created profile to role `driver` and linking its `driver_id`. If that correction did not take effect, the account is stuck as an operator.
+- The invite flow is designed to roll back (delete the auth user) if the correction fails, so a leftover operator account should not normally exist. If you see one, the rollback itself failed — check the server logs for a `CRITICAL: rollback deleteUser failed` message; the account needs manual cleanup.
+- Verify the profile state:
+
+```sql
+SELECT id, role, driver_id FROM public.profiles WHERE email = '<fahrer-email>';
+```
+
+Expected: `role = 'driver'` **and** a non-NULL `driver_id`. If you see `role = 'operator'`, the invitation correction did not complete. Delete the account (Supabase Dashboard > Authentication > Users) and invite the driver again.
+
+- Note: `role` and `driver_id` must always be set **together** (enforced by the `profile_driver_link_check` constraint). A profile with `role = 'driver'` but a NULL `driver_id` (or vice versa) indicates a broken invite.
 
 ### Session Issues
 

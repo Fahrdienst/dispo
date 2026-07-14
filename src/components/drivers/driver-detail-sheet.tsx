@@ -24,6 +24,7 @@ import { Separator } from "@/components/ui/separator"
 import { ActiveBadge } from "@/components/shared/active-badge"
 import { DeactivateDialog } from "@/components/shared/deactivate-dialog"
 import { AnonymizeDialog } from "@/components/shared/anonymize-dialog"
+import { DriverInviteCard } from "@/components/drivers/driver-invite-card"
 import { anonymizeDriver } from "@/actions/gdpr"
 import { cn } from "@/lib/utils"
 import type { Tables, Enums } from "@/lib/types/database"
@@ -183,6 +184,11 @@ export function DriverDetailSheet({
                 </div>
               </div>
             </>
+          )}
+
+          {/* Driver self-service invitation (admin only, M12 / #95) */}
+          {userRole === "admin" && driver.first_name !== "ANONYMISIERT" && (
+            <DriverInviteCard driverId={driver.id} driverEmail={driver.email} />
           )}
         </div>
 

@@ -9,8 +9,8 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:types": "supabase gen types typescript --project-id dfeegcebvalolsfniwmc > src/lib/types/database.ts",
-    "db:types:check": "supabase gen types typescript --project-id dfeegcebvalolsfniwmc | diff src/lib/types/database.ts - || (echo 'Types are out of sync. Run: npm run db:types' && exit 1)",
+    "db:types": "npx supabase gen types typescript --project-id dfeegcebvalolsfniwmc > src/lib/types/database.ts",
+    "db:types:check": "npx supabase gen types typescript --project-id dfeegcebvalolsfniwmc | diff src/lib/types/database.ts - || (echo 'Types are out of sync. Run: npm run db:types' && exit 1)",
     "prepare": "husky"
   },
   "dependencies": {

@@ -14,42 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      audit_log: {
-        Row: {
-          id: string
-          user_id: string | null
-          user_role: string | null
-          action: string
-          entity_type: string
-          entity_id: string | null
-          changes: Json | null
-          metadata: Json | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id?: string | null
-          user_role?: string | null
-          action: string
-          entity_type: string
-          entity_id?: string | null
-          changes?: Json | null
-          metadata?: Json | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string | null
-          user_role?: string | null
-          action?: string
-          entity_type?: string
-          entity_id?: string | null
-          changes?: Json | null
-          metadata?: Json | null
-          created_at?: string
-        }
-        Relationships: []
-      }
       acceptance_tracking: {
         Row: {
           created_at: string
@@ -173,6 +137,42 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          action: string
+          changes: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          metadata: Json | null
+          user_id: string | null
+          user_role: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Relationships: []
+      }
       communication_log: {
         Row: {
           author_id: string
@@ -222,6 +222,7 @@ export type Database = {
           created_at: string
           department: string | null
           display_name: string
+          external_id: string | null
           facility_type: Database["public"]["Enums"]["facility_type"]
           formatted_address: string | null
           geocode_status: string
@@ -245,6 +246,7 @@ export type Database = {
           created_at?: string
           department?: string | null
           display_name: string
+          external_id?: string | null
           facility_type?: Database["public"]["Enums"]["facility_type"]
           formatted_address?: string | null
           geocode_status?: string
@@ -268,6 +270,7 @@ export type Database = {
           created_at?: string
           department?: string | null
           display_name?: string
+          external_id?: string | null
           facility_type?: Database["public"]["Enums"]["facility_type"]
           formatted_address?: string | null
           geocode_status?: string
@@ -283,6 +286,66 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      driver_absences: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          driver_id: string
+          end_date: string
+          id: string
+          reason: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["absence_status"]
+          type: Database["public"]["Enums"]["absence_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          driver_id: string
+          end_date: string
+          id?: string
+          reason?: string | null
+          start_date: string
+          status?: Database["public"]["Enums"]["absence_status"]
+          type: Database["public"]["Enums"]["absence_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          driver_id?: string
+          end_date?: string
+          id?: string
+          reason?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["absence_status"]
+          type?: Database["public"]["Enums"]["absence_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_absences_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_absences_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       driver_availability: {
         Row: {
@@ -326,6 +389,7 @@ export type Database = {
         Row: {
           city: string | null
           created_at: string
+          driver_code: string | null
           driving_license: string | null
           email: string | null
           emergency_contact_name: string | null
@@ -346,6 +410,7 @@ export type Database = {
         Insert: {
           city?: string | null
           created_at?: string
+          driver_code?: string | null
           driving_license?: string | null
           email?: string | null
           emergency_contact_name?: string | null
@@ -366,6 +431,7 @@ export type Database = {
         Update: {
           city?: string | null
           created_at?: string
+          driver_code?: string | null
           driving_license?: string | null
           email?: string | null
           emergency_contact_name?: string | null
@@ -628,6 +694,7 @@ export type Database = {
           lat: number | null
           lng: number | null
           notes: string | null
+          patient_number: string | null
           phone: string | null
           place_id: string | null
           postal_code: string | null
@@ -651,6 +718,7 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           notes?: string | null
+          patient_number?: string | null
           phone?: string | null
           place_id?: string | null
           postal_code?: string | null
@@ -674,6 +742,7 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           notes?: string | null
+          patient_number?: string | null
           phone?: string | null
           place_id?: string | null
           postal_code?: string | null
@@ -806,28 +875,29 @@ export type Database = {
           direction: Database["public"]["Enums"]["ride_direction"]
           distance_meters: number | null
           driver_id: string | null
-          duration_category: string
+          duration_category: string | null
           duration_seconds: number | null
+          external_id: string | null
           fare_rule_id: string | null
-          has_escort: boolean
+          has_escort: boolean | null
           id: string
           is_active: boolean
-          is_tagesheim_imwil: boolean
+          is_tagesheim_imwil: boolean | null
           notes: string | null
           parent_ride_id: string | null
           patient_id: string
           pickup_time: string
+          polyline: string | null
           price_override: number | null
           price_override_reason: string | null
           return_pickup_time: string | null
           ride_series_id: string | null
           status: Database["public"]["Enums"]["ride_status"]
-          surcharge_amount: number
+          surcharge_amount: number | null
           surcharge_details: Json | null
-          polyline: string | null
           tariff_zone: string | null
           updated_at: string
-          waiting_minutes: number
+          waiting_minutes: number | null
         }
         Insert: {
           appointment_end_time?: string | null
@@ -839,28 +909,29 @@ export type Database = {
           direction?: Database["public"]["Enums"]["ride_direction"]
           distance_meters?: number | null
           driver_id?: string | null
-          duration_category?: string
+          duration_category?: string | null
           duration_seconds?: number | null
+          external_id?: string | null
           fare_rule_id?: string | null
-          has_escort?: boolean
+          has_escort?: boolean | null
           id?: string
           is_active?: boolean
-          is_tagesheim_imwil?: boolean
+          is_tagesheim_imwil?: boolean | null
           notes?: string | null
           parent_ride_id?: string | null
           patient_id: string
           pickup_time: string
+          polyline?: string | null
           price_override?: number | null
           price_override_reason?: string | null
           return_pickup_time?: string | null
           ride_series_id?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
-          surcharge_amount?: number
+          surcharge_amount?: number | null
           surcharge_details?: Json | null
-          polyline?: string | null
           tariff_zone?: string | null
           updated_at?: string
-          waiting_minutes?: number
+          waiting_minutes?: number | null
         }
         Update: {
           appointment_end_time?: string | null
@@ -872,28 +943,29 @@ export type Database = {
           direction?: Database["public"]["Enums"]["ride_direction"]
           distance_meters?: number | null
           driver_id?: string | null
-          duration_category?: string
+          duration_category?: string | null
           duration_seconds?: number | null
+          external_id?: string | null
           fare_rule_id?: string | null
-          has_escort?: boolean
+          has_escort?: boolean | null
           id?: string
           is_active?: boolean
-          is_tagesheim_imwil?: boolean
+          is_tagesheim_imwil?: boolean | null
           notes?: string | null
           parent_ride_id?: string | null
           patient_id?: string
           pickup_time?: string
+          polyline?: string | null
           price_override?: number | null
           price_override_reason?: string | null
           return_pickup_time?: string | null
           ride_series_id?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
-          surcharge_amount?: number
+          surcharge_amount?: number | null
           surcharge_details?: Json | null
-          polyline?: string | null
           tariff_zone?: string | null
           updated_at?: string
-          waiting_minutes?: number
+          waiting_minutes?: number | null
         }
         Relationships: [
           {
@@ -998,14 +1070,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      anonymize_driver: {
-        Args: { p_driver_id: string }
-        Returns: undefined
-      }
-      anonymize_patient: {
-        Args: { p_patient_id: string }
-        Returns: undefined
-      }
+      anonymize_driver: { Args: { p_driver_id: string }; Returns: undefined }
+      anonymize_patient: { Args: { p_patient_id: string }; Returns: undefined }
       archive_old_rides: {
         Args: { months_old?: number }
         Returns: {
@@ -1013,13 +1079,44 @@ export type Database = {
           deleted_logs_count: number
         }[]
       }
+      cancel_own_absence: { Args: { p_absence_id: string }; Returns: undefined }
+      decide_absence: {
+        Args: {
+          p_absence_id: string
+          p_decision: Database["public"]["Enums"]["absence_status"]
+          p_note: string
+        }
+        Returns: undefined
+      }
       get_user_driver_id: { Args: never; Returns: string }
       get_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      request_absence: {
+        Args: {
+          p_end_date: string
+          p_reason: string
+          p_start_date: string
+          p_type: Database["public"]["Enums"]["absence_type"]
+        }
+        Returns: string
+      }
+      update_own_driver_contact: {
+        Args: {
+          p_city: string
+          p_email: string
+          p_house_number: string
+          p_phone: string
+          p_postal_code: string
+          p_street: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
+      absence_status: "requested" | "approved" | "rejected" | "cancelled"
+      absence_type: "vacation" | "sick" | "training" | "other"
       acceptance_stage:
         | "notified"
         | "reminder_1"
@@ -1196,6 +1293,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      absence_status: ["requested", "approved", "rejected", "cancelled"],
+      absence_type: ["vacation", "sick", "training", "other"],
       acceptance_stage: [
         "notified",
         "reminder_1",

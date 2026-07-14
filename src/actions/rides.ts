@@ -23,10 +23,19 @@ import {
   expandDirections,
 } from "@/lib/ride-series/generate"
 import { logAudit } from "@/lib/audit/logger"
+import {
+  getDriverDayStatus,
+  logOutsideAvailabilityAssignment,
+} from "@/lib/availability/assignment"
+import type { DriverDayStatus } from "@/lib/availability/driver-status"
 import { trackEvent } from "@/lib/telemetry"
 import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
 import type { Tables, Enums, Json } from "@/lib/types/database"
+
+/** Shown when a driver is assigned while on an approved absence (Issue #104). */
+const DRIVER_ABSENT_ERROR =
+  "Der gewaehlte Fahrer ist an diesem Datum abwesend (Ferien/Abwesenheit). Bitte einen anderen Fahrer waehlen."
 
 /** Inline Zod schema for series fields extracted from the ride form. */
 const seriesFieldsSchema = z.object({
@@ -59,7 +68,7 @@ export async function createRide(
 
   // Delegate to series creation if the series toggle is enabled
   if (formData.get("enable_series") === "true") {
-    return createRideWithSeries(formData)
+    return createRideWithSeries(formData, auth.userId)
   }
 
   const raw = Object.fromEntries(formData)
@@ -89,6 +98,22 @@ export async function createRide(
     : "unplanned"
 
   const supabase = await createClient()
+
+  // Availability / absence guard (Issue #104): block absent drivers, remember
+  // whether the assignment lands outside the driver's availability window so we
+  // can note it in the communication_log after a successful insert.
+  let driverStatus: DriverDayStatus | null = null
+  if (rideData.driver_id) {
+    driverStatus = await getDriverDayStatus(
+      supabase,
+      rideData.driver_id,
+      rideData.date,
+      rideData.pickup_time
+    )
+    if (driverStatus.isAbsent) {
+      return { success: false, error: DRIVER_ABSENT_ERROR }
+    }
+  }
 
   // Calculate price before insert (inline, not fire-and-forget)
   let priceFields: {
@@ -212,6 +237,16 @@ export async function createRide(
     metadata: { status, direction: rideData.direction },
   }).catch(() => {})
 
+  // Note out-of-availability assignment in the communication_log (Issue #104)
+  if (rideData.driver_id && driverStatus && !driverStatus.isWithinAvailability) {
+    await logOutsideAvailabilityAssignment(supabase, {
+      rideId: outboundRide.id,
+      authorId: auth.userId,
+      pickupTime: rideData.pickup_time,
+      hasAvailability: driverStatus.hasAvailability,
+    })
+  }
+
   // 2. Optionally create return ride
   if (create_return_ride && rideData.direction === "outbound") {
     const returnPickupTime =
@@ -252,7 +287,8 @@ export async function createRide(
  * Creates a ride_series record, the initial ride, and generates additional rides.
  */
 async function createRideWithSeries(
-  formData: FormData
+  formData: FormData,
+  authorId: string
 ): Promise<ActionResult<Tables<"rides">>> {
   // 1. Validate ride data
   const raw = Object.fromEntries(formData)
@@ -299,6 +335,20 @@ async function createRideWithSeries(
     : "unplanned"
 
   const supabase = await createClient()
+
+  // Availability / absence guard for the initial ride's driver (Issue #104).
+  let driverStatus: DriverDayStatus | null = null
+  if (rideData.driver_id) {
+    driverStatus = await getDriverDayStatus(
+      supabase,
+      rideData.driver_id,
+      rideData.date,
+      rideData.pickup_time
+    )
+    if (driverStatus.isAbsent) {
+      return { success: false, error: DRIVER_ABSENT_ERROR }
+    }
+  }
 
   // 3. Create the ride_series record
   const { data: series, error: seriesError } = await supabase
@@ -433,6 +483,16 @@ async function createRideWithSeries(
 
   if (rideError) {
     return { success: false, error: rideError.message }
+  }
+
+  // Note out-of-availability assignment for the initial ride (Issue #104)
+  if (rideData.driver_id && driverStatus && !driverStatus.isWithinAvailability) {
+    await logOutsideAvailabilityAssignment(supabase, {
+      rideId: initialRide.id,
+      authorId,
+      pickupTime: rideData.pickup_time,
+      hasAvailability: driverStatus.hasAvailability,
+    })
   }
 
   // 6. Optionally create return ride for the initial date
@@ -600,12 +660,34 @@ export async function updateRide(
   // Fetch current ride to check for auto-transition
   const { data: currentRide } = await supabase
     .from("rides")
-    .select("status, driver_id")
+    .select("status, driver_id, date, pickup_time")
     .eq("id", id)
     .single()
 
   if (!currentRide) {
     return { success: false, error: "Fahrt nicht gefunden" }
+  }
+
+  // Availability / absence guard (Issue #104). Only (re)check when the driver
+  // is set and something relevant changed -- a new driver, or the ride moved
+  // to another date/time -- so unrelated edits of existing rides never break.
+  let driverStatus: DriverDayStatus | null = null
+  if (rideData.driver_id) {
+    const driverChanged = rideData.driver_id !== currentRide.driver_id
+    const scheduleChanged =
+      rideData.date !== currentRide.date ||
+      rideData.pickup_time !== currentRide.pickup_time
+    if (driverChanged || scheduleChanged) {
+      driverStatus = await getDriverDayStatus(
+        supabase,
+        rideData.driver_id,
+        rideData.date,
+        rideData.pickup_time
+      )
+      if (driverStatus.isAbsent) {
+        return { success: false, error: DRIVER_ABSENT_ERROR }
+      }
+    }
   }
 
   // Calculate price fields for update
@@ -729,6 +811,16 @@ export async function updateRide(
     metadata: { fields: Object.keys(rideData) },
   }).catch(() => {})
 
+  // Note out-of-availability assignment in the communication_log (Issue #104)
+  if (rideData.driver_id && driverStatus && !driverStatus.isWithinAvailability) {
+    await logOutsideAvailabilityAssignment(supabase, {
+      rideId: id,
+      authorId: auth.userId,
+      pickupTime: rideData.pickup_time,
+      hasAvailability: driverStatus.hasAvailability,
+    })
+  }
+
   revalidatePath("/rides")
   revalidatePath("/dispatch")
   redirect(`/rides?date=${rideData.date}`)
@@ -808,12 +900,28 @@ export async function assignDriver(
   // Fetch current ride to check for auto-transition
   const { data: currentRide } = await supabase
     .from("rides")
-    .select("status, driver_id")
+    .select("status, driver_id, date, pickup_time")
     .eq("id", rideId)
     .single()
 
   if (!currentRide) {
     return { success: false, error: "Fahrt nicht gefunden" }
+  }
+
+  // Availability / absence guard (Issue #104): only when a *new* driver is
+  // being assigned. Block absent drivers; remember out-of-availability so we
+  // can note it in the communication_log after a successful update.
+  let driverStatus: DriverDayStatus | null = null
+  if (driverId && driverId !== currentRide.driver_id) {
+    driverStatus = await getDriverDayStatus(
+      supabase,
+      driverId,
+      currentRide.date,
+      currentRide.pickup_time
+    )
+    if (driverStatus.isAbsent) {
+      return { success: false, error: DRIVER_ABSENT_ERROR }
+    }
   }
 
   // Build update payload
@@ -849,6 +957,16 @@ export async function assignDriver(
 
   if (error) {
     return { success: false, error: error.message }
+  }
+
+  // Note out-of-availability assignment in the communication_log (Issue #104)
+  if (driverId && driverStatus && !driverStatus.isWithinAvailability) {
+    await logOutsideAvailabilityAssignment(supabase, {
+      rideId,
+      authorId: auth.userId,
+      pickupTime: currentRide.pickup_time,
+      hasAvailability: driverStatus.hasAvailability,
+    })
   }
 
   // SEC-M9-013: Await token invalidation (not fire-and-forget)
