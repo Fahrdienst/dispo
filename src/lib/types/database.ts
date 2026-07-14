@@ -587,6 +587,8 @@ export type Database = {
       organization_settings: {
         Row: {
           created_at: string
+          driver_comp_per_km_chf: number | null
+          driver_comp_per_ride_chf: number | null
           email_enabled: boolean
           email_from_address: string | null
           email_from_name: string | null
@@ -607,6 +609,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          driver_comp_per_km_chf?: number | null
+          driver_comp_per_ride_chf?: number | null
           email_enabled?: boolean
           email_from_address?: string | null
           email_from_name?: string | null
@@ -627,6 +631,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          driver_comp_per_km_chf?: number | null
+          driver_comp_per_ride_chf?: number | null
           email_enabled?: boolean
           email_from_address?: string | null
           email_from_name?: string | null
@@ -695,6 +701,9 @@ export type Database = {
           lng: number | null
           notes: string | null
           patient_number: string | null
+          billing_recipient_address: string | null
+          billing_recipient_name: string | null
+          email: string | null
           phone: string | null
           place_id: string | null
           postal_code: string | null
@@ -719,6 +728,9 @@ export type Database = {
           lng?: number | null
           notes?: string | null
           patient_number?: string | null
+          billing_recipient_address?: string | null
+          billing_recipient_name?: string | null
+          email?: string | null
           phone?: string | null
           place_id?: string | null
           postal_code?: string | null
@@ -743,6 +755,9 @@ export type Database = {
           lng?: number | null
           notes?: string | null
           patient_number?: string | null
+          billing_recipient_address?: string | null
+          billing_recipient_name?: string | null
+          email?: string | null
           phone?: string | null
           place_id?: string | null
           postal_code?: string | null
@@ -1006,6 +1021,7 @@ export type Database = {
           destination_id: string
           direction: Database["public"]["Enums"]["ride_direction"]
           distance_meters: number | null
+          distance_source: string
           driver_id: string | null
           duration_category: string | null
           duration_seconds: number | null
@@ -1040,6 +1056,7 @@ export type Database = {
           destination_id: string
           direction?: Database["public"]["Enums"]["ride_direction"]
           distance_meters?: number | null
+          distance_source?: string
           driver_id?: string | null
           duration_category?: string | null
           duration_seconds?: number | null
@@ -1074,6 +1091,7 @@ export type Database = {
           destination_id?: string
           direction?: Database["public"]["Enums"]["ride_direction"]
           distance_meters?: number | null
+          distance_source?: string
           driver_id?: string | null
           duration_category?: string | null
           duration_seconds?: number | null

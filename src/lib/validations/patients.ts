@@ -18,6 +18,29 @@ export const patientSchema = z.object({
     .min(1, "PLZ ist erforderlich")
     .regex(/^\d{4}$/, "PLZ muss 4-stellig sein (CH)"),
   city: z.string().min(1, "Ort ist erforderlich").max(100),
+  // --- Finanzmodul (M14, #144): optionale Zustell-/Empfaengerfelder ---
+  email: z
+    .string()
+    .max(255)
+    .refine(
+      (v) => v === "" || z.string().email().safeParse(v).success,
+      "Ungueltige E-Mail-Adresse"
+    )
+    .transform(emptyToNull)
+    .nullable()
+    .optional(),
+  billing_recipient_name: z
+    .string()
+    .max(200)
+    .transform(emptyToNull)
+    .nullable()
+    .optional(),
+  billing_recipient_address: z
+    .string()
+    .max(500)
+    .transform(emptyToNull)
+    .nullable()
+    .optional(),
   emergency_contact_name: z
     .string()
     .max(200)
