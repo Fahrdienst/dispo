@@ -1,6 +1,7 @@
 import { MapPin } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { retroStyleUrlParams } from "@/lib/maps/styles"
+import { getPaddedVisibleParam } from "@/lib/maps/utils"
 
 interface RideDetailMapProps {
   originLat: number | null
@@ -41,6 +42,10 @@ export function RideDetailMap({
   let url = `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`
   url += retroStyleUrlParams()
 
+  // Force a padded bounding box around the endpoints so both pins stay fully
+  // visible with margin instead of being clipped at the image edge.
+  url += getPaddedVisibleParam([`${originLat},${originLng}`, `${destLat},${destLng}`])
+
   if (polyline) {
     url += `&path=${encodeURIComponent(`color:0x4285F4FF|weight:5|enc:${polyline}`)}`
   }
@@ -76,7 +81,7 @@ export function RideDetailMap({
           width={640}
           height={300}
           loading="lazy"
-          className="h-[200px] w-full rounded-b-lg object-cover sm:h-[300px]"
+          className="aspect-[32/15] w-full rounded-b-lg bg-muted object-contain"
         />
       </CardContent>
     </Card>

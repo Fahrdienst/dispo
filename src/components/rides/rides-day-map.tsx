@@ -2,6 +2,7 @@ import { MapPin } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { retroStyleUrlParams } from "@/lib/maps/styles"
+import { getPaddedVisibleParam } from "@/lib/maps/utils"
 
 interface RidesDayMapProps {
   date: string
@@ -67,6 +68,10 @@ export async function RidesDayMap({ date }: RidesDayMapProps) {
   let url = `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`
   url += retroStyleUrlParams()
 
+  // Force a padded bounding box so every marker stays fully visible with some
+  // margin — the API's auto-fit otherwise clips pins at the image edge.
+  url += getPaddedVisibleParam([...patientCoords, ...destCoords])
+
   if (patientCoords.length > 0) {
     url += `&markers=${encodeURIComponent(`color:red|label:H|${patientCoords.join("|")}`)}`
   }
@@ -102,7 +107,7 @@ export async function RidesDayMap({ date }: RidesDayMapProps) {
           width={640}
           height={400}
           loading="lazy"
-          className="h-[280px] w-full rounded-b-lg object-cover sm:h-[400px]"
+          className="aspect-[8/5] w-full rounded-b-lg bg-muted object-contain"
         />
       </CardContent>
     </Card>
