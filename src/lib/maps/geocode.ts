@@ -32,7 +32,12 @@ interface GeocodeApiResponse {
 export async function geocodeAddress(
   address: AddressInput
 ): Promise<GeocodeResult | null> {
-  const addressString = `${address.street} ${address.house_number}, ${address.postal_code} ${address.city}, Schweiz`
+  // House number is optional (e.g. facility addresses like "Alterszentrum
+  // Imwil"). Omit it when absent so we don't emit a stray "null" in the query.
+  const streetPart = address.house_number
+    ? `${address.street} ${address.house_number}`
+    : address.street
+  const addressString = `${streetPart}, ${address.postal_code} ${address.city}, Schweiz`
 
   const data = await callMapsApi<GeocodeApiResponse>(GEOCODING_API_URL, {
     address: addressString,

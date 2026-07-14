@@ -100,6 +100,21 @@ describe("geocodeAddress", () => {
     expect(fetchUrl).toContain("components=country%3ACH")
   })
 
+  it("omits the house number when it is missing (no stray 'null')", async () => {
+    mockFetchResponse(successApiResponse)
+
+    await geocodeAddress({
+      street: "Alterszentrum Imwil",
+      house_number: null,
+      postal_code: "8600",
+      city: "Duebendorf",
+    })
+
+    const fetchUrl = mockFetch.mock.calls[0]?.[0] as string
+    expect(fetchUrl).toContain("Alterszentrum+Imwil%2C+8600+Duebendorf%2C+Schweiz")
+    expect(fetchUrl).not.toContain("null")
+  })
+
   it("returns null for ZERO_RESULTS", async () => {
     mockFetchResponse({ status: "ZERO_RESULTS", results: [] })
 
