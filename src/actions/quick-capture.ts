@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { logAudit } from "@/lib/audit/logger"
 import { trackEvent } from "@/lib/telemetry"
+import { rideRequirementsSchema } from "@/lib/validations/rides"
 import type { ActionResult } from "@/actions/shared"
 import type { Enums, Json } from "@/lib/types/database"
 
@@ -16,9 +17,13 @@ const quickCaptureSchema = z.object({
   pickup_time: z.string().min(1, "Abholzeit ist erforderlich"),
   direction: z.enum(["outbound", "return", "both"]),
   duration_category: z.enum(["under_2h", "over_2h"]).default("under_2h"),
+  // Transport requirements (Issue #126/#130) -- optional in quick capture.
+  requirements: rideRequirementsSchema,
 })
 
-export type QuickCaptureInput = z.infer<typeof quickCaptureSchema>
+// Use the *input* type so fields with defaults (duration_category,
+// requirements) stay optional for callers; parsed output fills the defaults.
+export type QuickCaptureInput = z.input<typeof quickCaptureSchema>
 
 /**
  * Quick-capture ride creation: minimal fields, no redirect.
@@ -41,8 +46,17 @@ export async function quickCreateRide(
     return { success: false, error: firstError }
   }
 
-  const { patient_id, destination_id, date, pickup_time, direction, duration_category } =
-    parsed.data
+  const {
+    patient_id,
+    destination_id,
+    date,
+    pickup_time,
+    direction,
+    duration_category,
+    requirements,
+  } = parsed.data
+  // A `companion` requirement always implies an escort (Issue #130).
+  const hasEscort = requirements.includes("companion")
   const supabase = await createClient()
 
   // Price calculation is best-effort for quick capture
@@ -55,8 +69,10 @@ export async function quickCreateRide(
     surcharge_amount?: number
     surcharge_details?: Json | null
     duration_category?: string
+    has_escort?: boolean
   } = {
     duration_category,
+    has_escort: hasEscort,
   }
 
   try {
@@ -95,7 +111,7 @@ export async function quickCreateRide(
         direction,
         durationCategory: duration_category,
         destinationName: dest.display_name,
-        hasEscort: false,
+        hasEscort,
         isTagesheimImwilOverride: false,
       })
 
@@ -129,6 +145,7 @@ export async function quickCreateRide(
         pickup_time,
         direction: "outbound" as Enums<"ride_direction">,
         status: "unplanned" as Enums<"ride_status">,
+        requirements,
         ...priceFields,
       })
       .select("id")
@@ -147,6 +164,8 @@ export async function quickCreateRide(
       direction: "return" as Enums<"ride_direction">,
       status: "unplanned" as Enums<"ride_status">,
       parent_ride_id: outboundRide.id,
+      requirements,
+      has_escort: hasEscort,
     })
 
     if (retError) {
@@ -178,6 +197,7 @@ export async function quickCreateRide(
         pickup_time,
         direction: direction as Enums<"ride_direction">,
         status: "unplanned" as Enums<"ride_status">,
+        requirements,
         ...priceFields,
       })
       .select("id")

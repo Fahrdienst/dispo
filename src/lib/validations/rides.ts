@@ -1,6 +1,24 @@
 import { z } from "zod"
+import { RIDE_REQUIREMENTS } from "@/lib/rides/requirements"
 
 const emptyToNull = (v: string) => (v === "" || v === "__none__" ? null : v)
+
+/**
+ * Runtime whitelist for a single ride requirement (Issue #126). Enum-based, so
+ * any value outside the `ride_requirement` set is rejected at the boundary.
+ */
+export const rideRequirementSchema = z.enum(RIDE_REQUIREMENTS)
+
+/**
+ * Set of requirements for a ride. Defaults to an empty array so rides created
+ * without the (#135) capture UI stay well-defined -- matching the NOT NULL
+ * DEFAULT '{}' column. Order/duplicates are irrelevant downstream
+ * (see requirementsToVehicleType).
+ */
+export const rideRequirementsSchema = z
+  .array(rideRequirementSchema)
+  .optional()
+  .default([])
 
 /**
  * Default buffer (minutes) between appointment_end_time and return_pickup_time.
@@ -94,6 +112,8 @@ export const rideSchema = z
       .transform(emptyToNull)
       .nullable()
       .optional(),
+    // --- Transport requirements (ride level, Issue #126) ---
+    requirements: rideRequirementsSchema,
     // --- Duebendorf tariff fields ---
     duration_category: z
       .enum(["under_2h", "over_2h"])

@@ -21,33 +21,23 @@
  * This module has no DB/React/Next dependencies so it can be unit-tested in
  * isolation, mirroring the style of `src/lib/availability/resolve.ts`.
  *
- * Type note: the generated Supabase types do not know the `ride_requirement`
- * enum yet (they are regenerated centrally after the M13 merge). Until then this
- * module owns the canonical `RideRequirement` union; it MUST stay in sync with
- * the enum defined in `supabase/migrations/20260328_000001_ride_requirements.sql`.
- * `VehicleType` is taken from the generated types, which already know it.
+ * Type note: `RIDE_REQUIREMENTS` is the canonical, ordered source of truth for
+ * the `RideRequirement` union and drives the Zod enum in
+ * `src/lib/validations/rides.ts`. It MUST stay in lockstep with the
+ * `public.ride_requirement` Postgres enum
+ * (`supabase/migrations/20260716_000001_ride_requirements.sql`). The generated
+ * Supabase types now know that enum; `_RequirementsMatchEnum` below asserts at
+ * compile time that this list and the DB enum are identical.
+ * `VehicleType` is taken from the generated types.
  */
 
 import type { Enums } from "@/lib/types/database"
 
 /**
- * The set of transport requirements a ride can carry. Kept in lockstep with the
- * `public.ride_requirement` Postgres enum. Once the generated types include the
- * enum, this can be replaced by `Enums<"ride_requirement">`.
+ * Ordered list of all requirement values -- the single source of truth for both
+ * the `RideRequirement` union and the runtime Zod whitelist (#126, #135).
  */
-export type RideRequirement =
-  | "wheelchair"
-  | "rollator"
-  | "companion"
-  | "oxygen"
-  | "carry_chair"
-  | "stretcher"
-
-/** Vehicle type as defined by the DB enum (not extended in M13). */
-export type VehicleType = Enums<"vehicle_type">
-
-/** Ordered list of all requirement values, useful for UI/iteration (#135). */
-export const RIDE_REQUIREMENTS: readonly RideRequirement[] = [
+export const RIDE_REQUIREMENTS = [
   "wheelchair",
   "rollator",
   "companion",
@@ -55,6 +45,32 @@ export const RIDE_REQUIREMENTS: readonly RideRequirement[] = [
   "carry_chair",
   "stretcher",
 ] as const
+
+/**
+ * The set of transport requirements a ride can carry. Derived from
+ * {@link RIDE_REQUIREMENTS} and kept in lockstep with the
+ * `public.ride_requirement` Postgres enum.
+ */
+export type RideRequirement = (typeof RIDE_REQUIREMENTS)[number]
+
+/** Vehicle type as defined by the DB enum (not extended in M13). */
+export type VehicleType = Enums<"vehicle_type">
+
+/**
+ * Compile-time guarantee that the local list matches the DB enum exactly (both
+ * directions). `Assert<T extends true>` fails to typecheck if the condition is
+ * `false`, so any divergence between this list and the migration is a build
+ * error. Purely a type-level assertion -- no runtime footprint.
+ */
+type Assert<T extends true> = T
+export type _RequirementsMatchEnum = Assert<
+  [RideRequirement] extends [Enums<"ride_requirement">]
+    ? [Enums<"ride_requirement">] extends [RideRequirement]
+      ? true
+      : false
+    : false
+>
+
 
 /**
  * Derive the required `vehicle_type` from a set of ride requirements.

@@ -30,12 +30,40 @@ import {
 import type { DriverDayStatus } from "@/lib/availability/driver-status"
 import { trackEvent } from "@/lib/telemetry"
 import { uuidSchema } from "@/lib/validations/shared"
-import type { ActionResult } from "@/actions/shared"
+import { collectRideWarnings } from "@/lib/rides/warnings"
+import type { ActionResult, ActionWarning } from "@/actions/shared"
 import type { Tables, Enums, Json } from "@/lib/types/database"
+import type { RideRequirement } from "@/lib/rides/requirements"
 
 /** Shown when a driver is assigned while on an approved absence (Issue #104). */
 const DRIVER_ABSENT_ERROR =
   "Der gewaehlte Fahrer ist an diesem Datum abwesend (Ferien/Abwesenheit). Bitte einen anderen Fahrer waehlen."
+
+/**
+ * Parse ride form data through `rideSchema`.
+ *
+ * `requirements` is a multi-value field: `Object.fromEntries(formData)` keeps
+ * only the last value for repeated keys, so it is pulled out explicitly via
+ * `getAll` and merged back in before validation (Issue #126/#130).
+ */
+function parseRideForm(formData: FormData) {
+  const raw = Object.fromEntries(formData)
+  const requirements = formData.getAll("requirements").map(String)
+  return rideSchema.safeParse({ ...raw, requirements })
+}
+
+/**
+ * Ensure tariff/requirement consistency (Issue #130): a `companion` transport
+ * requirement always implies a hospital escort, so `has_escort` is forced true
+ * in that case. The mirror is intentionally one-directional to avoid double
+ * bookkeeping -- an escort surcharge does not add a `companion` requirement.
+ */
+function resolveHasEscort(
+  hasEscort: boolean,
+  requirements: readonly RideRequirement[]
+): boolean {
+  return hasEscort || requirements.includes("companion")
+}
 
 /** Inline Zod schema for series fields extracted from the ride form. */
 const seriesFieldsSchema = z.object({
@@ -68,11 +96,10 @@ export async function createRide(
 
   // Delegate to series creation if the series toggle is enabled
   if (formData.get("enable_series") === "true") {
-    return createRideWithSeries(formData, auth.userId)
+    return createRideWithSeries(formData, auth.userId, auth.role)
   }
 
-  const raw = Object.fromEntries(formData)
-  const result = rideSchema.safeParse(raw)
+  const result = parseRideForm(formData)
 
   if (!result.success) {
     return {
@@ -91,13 +118,23 @@ export async function createRide(
     duration_category,
     is_tagesheim_imwil,
     has_escort,
+    requirements,
     ...rideData
   } = result.data
+  // A `companion` requirement always implies an escort (Issue #130).
+  const effectiveHasEscort = resolveHasEscort(has_escort, requirements)
   const status: Enums<"ride_status"> = rideData.driver_id
     ? "planned"
     : "unplanned"
 
   const supabase = await createClient()
+
+  // Non-blocking warning trackers (Issue #130): default to "not resolved" so a
+  // thrown price/route calculation still yields correct warnings without ever
+  // blocking the save. A manual override already counts as a resolved price.
+  let patientGeocoded = false
+  let destinationGeocoded = false
+  let priceResolved = price_override != null
 
   // Availability / absence guard (Issue #104): block absent drivers, remember
   // whether the assignment lands outside the driver's availability window so we
@@ -133,7 +170,7 @@ export async function createRide(
   } = {
     duration_category,
     is_tagesheim_imwil,
-    has_escort,
+    has_escort: effectiveHasEscort,
   }
 
   // Include manual override if provided
@@ -160,6 +197,9 @@ export async function createRide(
     const patient = patientRes.data
     const dest = destRes.data
 
+    patientGeocoded = patient?.lat != null && patient?.lng != null
+    destinationGeocoded = dest?.lat != null && dest?.lng != null
+
     if (
       patient?.postal_code &&
       dest?.postal_code &&
@@ -179,11 +219,12 @@ export async function createRide(
         direction: rideData.direction,
         durationCategory: duration_category,
         destinationName: dest.display_name,
-        hasEscort: has_escort,
+        hasEscort: effectiveHasEscort,
         isTagesheimImwilOverride: is_tagesheim_imwil,
       })
 
       if (priceResult) {
+        priceResolved = priceResolved || priceResult.calculated_price != null
         priceFields = {
           ...priceFields,
           distance_meters: priceResult.distance_meters,
@@ -207,13 +248,23 @@ export async function createRide(
   // 1. Create the outbound ride
   const { data: outboundRide, error } = await supabase
     .from("rides")
-    .insert({ ...rideData, ...priceFields, status })
+    .insert({ ...rideData, ...priceFields, requirements, status })
     .select()
     .single()
 
   if (error) {
     return { success: false, error: error.message }
   }
+
+  // Collect non-blocking persistence warnings (Issue #130). Missing geo/route/
+  // price/appointment never blocks -- it is surfaced for the dispatcher instead.
+  const warnings = collectRideWarnings({
+    patientGeocoded,
+    destinationGeocoded,
+    priceResolved,
+    appointmentTimeSet:
+      rideData.direction === "return" || Boolean(rideData.appointment_time),
+  })
 
   // Telemetry: track ride creation
   trackEvent({
@@ -224,6 +275,9 @@ export async function createRide(
       direction: rideData.direction,
       has_driver: Boolean(rideData.driver_id),
       has_price: Boolean(priceFields.calculated_price),
+      requirements_count: requirements.length,
+      has_escort: effectiveHasEscort,
+      warning_codes: warnings.map((w) => w.code),
     },
   })
 
@@ -234,7 +288,13 @@ export async function createRide(
     action: "create",
     entityType: "ride",
     entityId: outboundRide.id,
-    metadata: { status, direction: rideData.direction },
+    metadata: {
+      status,
+      direction: rideData.direction,
+      requirements,
+      has_escort: effectiveHasEscort,
+      warning_codes: warnings.map((w) => w.code),
+    },
   }).catch(() => {})
 
   // Note out-of-availability assignment in the communication_log (Issue #104)
@@ -280,6 +340,12 @@ export async function createRide(
 
   revalidatePath("/rides")
   revalidatePath("/dispatch")
+
+  // Never-block: on warnings, return success + warnings so the form can surface
+  // them (#139) instead of navigating away. The clean path redirects as before.
+  if (warnings.length > 0) {
+    return { success: true, data: outboundRide, warnings }
+  }
   redirect(`/rides?date=${rideData.date}`)
 }
 
@@ -289,11 +355,11 @@ export async function createRide(
  */
 async function createRideWithSeries(
   formData: FormData,
-  authorId: string
+  authorId: string,
+  authorRole: string
 ): Promise<ActionResult<Tables<"rides">>> {
   // 1. Validate ride data
-  const raw = Object.fromEntries(formData)
-  const rideResult = rideSchema.safeParse(raw)
+  const rideResult = parseRideForm(formData)
 
   if (!rideResult.success) {
     return {
@@ -328,14 +394,21 @@ async function createRideWithSeries(
     duration_category,
     is_tagesheim_imwil,
     has_escort,
+    requirements,
     ...rideData
   } = rideResult.data
+  const effectiveHasEscort = resolveHasEscort(has_escort, requirements)
   const seriesData = seriesResult.data
   const status: Enums<"ride_status"> = rideData.driver_id
     ? "planned"
     : "unplanned"
 
   const supabase = await createClient()
+
+  // Non-blocking warning trackers for the initial ride (Issue #130).
+  let patientGeocoded = false
+  let destinationGeocoded = false
+  let priceResolved = price_override != null
 
   // Availability / absence guard for the initial ride's driver (Issue #104).
   let driverStatus: DriverDayStatus | null = null
@@ -399,7 +472,7 @@ async function createRideWithSeries(
   } = {
     duration_category,
     is_tagesheim_imwil,
-    has_escort,
+    has_escort: effectiveHasEscort,
   }
 
   if (price_override != null) {
@@ -424,6 +497,9 @@ async function createRideWithSeries(
     const patient = patientRes.data
     const dest = destRes.data
 
+    patientGeocoded = patient?.lat != null && patient?.lng != null
+    destinationGeocoded = dest?.lat != null && dest?.lng != null
+
     if (
       patient?.postal_code &&
       dest?.postal_code &&
@@ -443,11 +519,12 @@ async function createRideWithSeries(
         direction: rideData.direction,
         durationCategory: duration_category,
         destinationName: dest.display_name,
-        hasEscort: has_escort,
+        hasEscort: effectiveHasEscort,
         isTagesheimImwilOverride: is_tagesheim_imwil,
       })
 
       if (priceResult) {
+        priceResolved = priceResolved || priceResult.calculated_price != null
         priceFields = {
           ...priceFields,
           distance_meters: priceResult.distance_meters,
@@ -476,6 +553,7 @@ async function createRideWithSeries(
     .insert({
       ...rideData,
       ...priceFields,
+      requirements,
       status,
       ride_series_id: series.id,
     })
@@ -485,6 +563,46 @@ async function createRideWithSeries(
   if (rideError) {
     return { success: false, error: rideError.message }
   }
+
+  // Fire-and-forget audit + telemetry for the series' initial ride (Issue #130)
+  const warnings = collectRideWarnings({
+    patientGeocoded,
+    destinationGeocoded,
+    priceResolved,
+    appointmentTimeSet:
+      rideData.direction === "return" || Boolean(rideData.appointment_time),
+  })
+
+  trackEvent({
+    event: "ride_created",
+    userId: authorId,
+    properties: {
+      status,
+      direction: rideData.direction,
+      has_driver: Boolean(rideData.driver_id),
+      has_price: Boolean(priceFields.calculated_price),
+      requirements_count: requirements.length,
+      has_escort: effectiveHasEscort,
+      is_series: true,
+      warning_codes: warnings.map((w) => w.code),
+    },
+  })
+
+  logAudit({
+    userId: authorId,
+    userRole: authorRole,
+    action: "create",
+    entityType: "ride",
+    entityId: initialRide.id,
+    metadata: {
+      status,
+      direction: rideData.direction,
+      requirements,
+      has_escort: effectiveHasEscort,
+      ride_series_id: series.id,
+      warning_codes: warnings.map((w) => w.code),
+    },
+  }).catch(() => {})
 
   // Note out-of-availability assignment for the initial ride (Issue #104)
   if (rideData.driver_id && driverStatus && !driverStatus.isWithinAvailability) {
@@ -518,6 +636,7 @@ async function createRideWithSeries(
         status: "unplanned" as const,
         parent_ride_id: initialRide.id,
         ride_series_id: series.id,
+        requirements,
       })
 
       if (returnError) {
@@ -568,6 +687,7 @@ async function createRideWithSeries(
           status: "unplanned",
           appointment_time: rideData.appointment_time ?? null,
           appointment_end_time: rideData.appointment_end_time ?? null,
+          requirements,
         })
         .select("id")
         .single()
@@ -585,6 +705,7 @@ async function createRideWithSeries(
           status: "unplanned",
           parent_ride_id: outbound.id,
           return_pickup_time: rideData.return_pickup_time ?? null,
+          requirements,
         })
       }
     } else {
@@ -610,6 +731,7 @@ async function createRideWithSeries(
             dir === "outbound"
               ? (rideData.appointment_end_time ?? null)
               : null,
+          requirements,
         })
       }
     }
@@ -618,6 +740,11 @@ async function createRideWithSeries(
   revalidatePath("/rides")
   revalidatePath("/ride-series")
   revalidatePath("/dispatch")
+
+  // Never-block: surface warnings from the initial ride instead of redirecting.
+  if (warnings.length > 0) {
+    return { success: true, data: initialRide, warnings }
+  }
   redirect(`/rides?date=${rideData.date}`)
 }
 
@@ -633,8 +760,7 @@ export async function updateRide(
     return { success: false, error: auth.error }
   }
 
-  const raw = Object.fromEntries(formData)
-  const result = rideSchema.safeParse(raw)
+  const result = parseRideForm(formData)
 
   if (!result.success) {
     return {
@@ -654,10 +780,17 @@ export async function updateRide(
     duration_category,
     is_tagesheim_imwil,
     has_escort,
+    requirements,
     ...rideData
   } = result.data
+  const effectiveHasEscort = resolveHasEscort(has_escort, requirements)
 
   const supabase = await createClient()
+
+  // Non-blocking warning trackers (Issue #130).
+  let patientGeocoded = false
+  let destinationGeocoded = false
+  let priceResolved = price_override != null
 
   // Fetch current ride to check for auto-transition
   const { data: currentRide } = await supabase
@@ -710,7 +843,7 @@ export async function updateRide(
   } = {
     duration_category,
     is_tagesheim_imwil,
-    has_escort,
+    has_escort: effectiveHasEscort,
   }
 
   // Include manual override (or clear it if not provided)
@@ -735,6 +868,9 @@ export async function updateRide(
     const patient = patientRes.data
     const dest = destRes.data
 
+    patientGeocoded = patient?.lat != null && patient?.lng != null
+    destinationGeocoded = dest?.lat != null && dest?.lng != null
+
     if (
       patient?.postal_code &&
       dest?.postal_code &&
@@ -754,11 +890,12 @@ export async function updateRide(
         direction: rideData.direction,
         durationCategory: duration_category,
         destinationName: dest.display_name,
-        hasEscort: has_escort,
+        hasEscort: effectiveHasEscort,
         isTagesheimImwilOverride: is_tagesheim_imwil,
       })
 
       if (priceResult) {
+        priceResolved = priceResolved || priceResult.calculated_price != null
         priceFields = {
           ...priceFields,
           distance_meters: priceResult.distance_meters,
@@ -783,6 +920,7 @@ export async function updateRide(
   const updateData: Record<string, unknown> = {
     ...rideData,
     ...priceFields,
+    requirements,
   }
   if (
     currentRide.status === "unplanned" &&
@@ -803,6 +941,15 @@ export async function updateRide(
     return { success: false, error: error.message }
   }
 
+  // Collect non-blocking persistence warnings (Issue #130).
+  const warnings = collectRideWarnings({
+    patientGeocoded,
+    destinationGeocoded,
+    priceResolved,
+    appointmentTimeSet:
+      rideData.direction === "return" || Boolean(rideData.appointment_time),
+  })
+
   // Fire-and-forget audit log
   logAudit({
     userId: auth.userId,
@@ -810,8 +957,25 @@ export async function updateRide(
     action: "update",
     entityType: "ride",
     entityId: id,
-    metadata: { fields: Object.keys(rideData) },
+    metadata: {
+      fields: [...Object.keys(rideData), "requirements"],
+      requirements,
+      has_escort: effectiveHasEscort,
+      warning_codes: warnings.map((w) => w.code),
+    },
   }).catch(() => {})
+
+  // Telemetry: track ride update (Issue #130)
+  trackEvent({
+    event: "ride_updated",
+    userId: auth.userId,
+    properties: {
+      has_price: Boolean(priceFields.calculated_price),
+      requirements_count: requirements.length,
+      has_escort: effectiveHasEscort,
+      warning_codes: warnings.map((w) => w.code),
+    },
+  })
 
   // Note out-of-availability assignment in the communication_log (Issue #104)
   if (rideData.driver_id && driverStatus && !driverStatus.isWithinAvailability) {
@@ -825,6 +989,11 @@ export async function updateRide(
 
   revalidatePath("/rides")
   revalidatePath("/dispatch")
+
+  // Never-block: surface warnings instead of redirecting when present.
+  if (warnings.length > 0) {
+    return { success: true, data, warnings }
+  }
   redirect(`/rides?date=${rideData.date}`)
 }
 
