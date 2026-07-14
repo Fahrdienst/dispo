@@ -9,6 +9,23 @@ import type { PriceCalculation } from "./types"
 import type { DurationCategory, TariffZone } from "./duebendorf-tariff"
 
 /**
+ * Returned instead of a price when the route required for the tariff cannot be
+ * determined. Only `ausserkantonal` needs the driving distance, so this is the
+ * one case a price cannot be produced. Callers should surface it rather than
+ * silently treating it as "no price".
+ */
+export type PriceCalculationFailure = { error: "route_unavailable" }
+
+export type PriceCalculationOutcome = PriceCalculation | PriceCalculationFailure
+
+/** Type guard: did price calculation fail (route unavailable)? */
+export function isPriceCalculationFailure(
+  outcome: PriceCalculationOutcome
+): outcome is PriceCalculationFailure {
+  return "error" in outcome
+}
+
+/**
  * Input parameters for ride price calculation.
  */
 interface CalculateRidePriceInput {
@@ -32,11 +49,12 @@ interface CalculateRidePriceInput {
  * 3. Calculate route distance via Google Directions API (needed for ausserkantonal)
  * 4. Apply Duebendorf tariff calculation
  *
- * Returns null if the route calculation fails (e.g., missing coordinates).
+ * Returns { error: "route_unavailable" } when an ausserkantonal ride's route
+ * (and thus its distance-based price) cannot be determined.
  */
 export async function calculateRidePrice(
   input: CalculateRidePriceInput
-): Promise<PriceCalculation | null> {
+): Promise<PriceCalculationOutcome> {
   const {
     patientPostalCode,
     destinationPostalCode,
@@ -70,9 +88,9 @@ export async function calculateRidePrice(
     routePolyline = route.polyline
   } catch (err: unknown) {
     console.error("Route calculation failed for price:", err)
-    // For ausserkantonal, we need the distance — return null
+    // For ausserkantonal, we need the distance — can't produce a price
     if (tariffZone === "ausserkantonal") {
-      return null
+      return { error: "route_unavailable" }
     }
     // For other zones, distance is informational; continue with 0
   }
@@ -112,7 +130,7 @@ export async function calculateRidePriceLegacy(
   patientCoords: GeoPoint,
   destinationCoords: GeoPoint,
   _rideDate: string
-): Promise<PriceCalculation | null> {
+): Promise<PriceCalculationOutcome> {
   return calculateRidePrice({
     patientPostalCode,
     destinationPostalCode,
