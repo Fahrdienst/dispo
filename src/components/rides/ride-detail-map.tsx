@@ -10,29 +10,7 @@ interface RideDetailMapProps {
   polyline?: string | null
 }
 
-async function fetchRoutePolyline(
-// ... rest of fetchRoutePolyline
-  originLat: number,
-  originLng: number,
-  destLat: number,
-  destLng: number,
-  apiKey: string
-): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&mode=driving&key=${apiKey}`,
-      { next: { revalidate: 86400 } }
-    )
-    if (!res.ok) return null
-    const data = await res.json()
-    const polyline = data.routes?.[0]?.overview_polyline?.points as string | undefined
-    return polyline ?? null
-  } catch {
-    return null
-  }
-}
-
-export async function RideDetailMap({
+export function RideDetailMap({
   originLat,
   originLng,
   destLat,
@@ -51,7 +29,7 @@ export async function RideDetailMap({
     return null
   }
 
-  const polyline = initialPolyline ?? await fetchRoutePolyline(originLat, originLng, destLat, destLng, apiKey)
+  const polyline = initialPolyline ?? null
 
   const params = new URLSearchParams({
     size: "640x300",
