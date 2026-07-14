@@ -1,12 +1,6 @@
-export default function BillingLoading() {
+export default function FinanceExportLoading() {
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <div className="h-8 w-40 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-64 animate-pulse rounded bg-muted" />
-      </div>
-
       {/* Date navigation */}
       <div className="flex items-center gap-3">
         <div className="h-9 w-40 animate-pulse rounded bg-muted" />

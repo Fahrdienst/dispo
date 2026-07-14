@@ -37,7 +37,7 @@ const navItems: NavItem[] = [
   { href: "/drivers", label: "Fahrer", icon: UserRound, roles: ["admin", "operator"] },
   { href: "/destinations", label: "Ziele", icon: MapPin, roles: ["admin", "operator"] },
   { href: "/patients", label: "Patienten", icon: Hospital, roles: ["admin", "operator"], dividerAfter: true },
-  { href: "/billing", label: "Verrechnung", icon: CreditCard, roles: ["admin", "operator"] },
+  { href: "/finance", label: "Finanzen", icon: CreditCard, roles: ["admin", "operator"] },
   { href: "/users", label: "Benutzer", icon: Shield, roles: ["admin"] },
   { href: "/settings/zones", label: "Einstellungen", icon: Settings, roles: ["admin"] },
   { href: "/my/rides", label: "Meine Fahrten", icon: CarFront, roles: ["driver"] },
