@@ -81,7 +81,33 @@ export async function login(
   // Suppress unused variable warning — data is checked by the MFA flow above
   void data
 
-  redirect("/")
+  // Role-based landing (#98): drivers go to their self-service area, everyone
+  // else to the dispatch dashboard. Role is read from the DB (never the JWT).
+  redirect(await resolveLandingPath(supabase))
+}
+
+/**
+ * Resolves the post-authentication landing path for the current session based
+ * on the user's role. Drivers land on "/fahrer", everyone else on "/".
+ * Falls back to "/" if the profile cannot be read (the middleware guard will
+ * re-route a driver correctly on the next request either way).
+ */
+async function resolveLandingPath(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<string> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) return "/"
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+
+  return profile?.role === "driver" ? "/fahrer" : "/"
 }
 
 export async function logout(): Promise<void> {
@@ -124,8 +150,11 @@ export async function requestPasswordReset(
   }
   const appUrl = rawAppUrl || "http://localhost:3000"
 
+  // Reset links land on the canonical "/passwort-setzen" page (same target as
+  // the invite flow). The link goes through "/auth/callback" so the PKCE code
+  // is exchanged into a session before the user sets a new password.
   const { error } = await supabase.auth.resetPasswordForEmail(result.data.email, {
-    redirectTo: `${appUrl}/auth/callback?next=/login/reset-password`,
+    redirectTo: `${appUrl}/auth/callback?next=/passwort-setzen`,
   })
 
   if (error) {
@@ -160,6 +189,54 @@ export async function resetPassword(
   }
 
   redirect("/login?message=Passwort wurde erfolgreich zurückgesetzt")
+}
+
+/**
+ * Sets a new password for the currently authenticated session and then routes
+ * the user to their role-based landing page. This is the shared target for both
+ * the driver invitation link and the password-reset link ("/passwort-setzen").
+ *
+ * Requires an active session, which is established by "/auth/callback" (PKCE
+ * code exchange) before the user reaches the page.
+ */
+export async function setPassword(
+  _prevState: ActionResult | null,
+  formData: FormData
+): Promise<ActionResult> {
+  const raw = Object.fromEntries(formData)
+  const result = resetPasswordSchema.safeParse(raw)
+
+  if (!result.success) {
+    return {
+      success: false,
+      fieldErrors: result.error.flatten().fieldErrors as Record<string, string[]>,
+    }
+  }
+
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return {
+      success: false,
+      error:
+        "Ihre Sitzung ist abgelaufen. Bitte fordern Sie einen neuen Link an.",
+    }
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: result.data.password,
+  })
+
+  if (error) {
+    console.error("Set password failed:", error)
+    return { success: false, error: "Passwort konnte nicht gesetzt werden" }
+  }
+
+  redirect(await resolveLandingPath(supabase))
 }
 
 export async function changePassword(

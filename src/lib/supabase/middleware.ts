@@ -39,31 +39,91 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const pathname = request.nextUrl.pathname;
+
   // Allow public paths without authentication check.
   // "/help" is the public help area (open to signed-out visitors). The
   // protected, role-specific help lives under "/hilfe" and stays behind auth.
-  const PUBLIC_PATHS = ["/auth/callback", "/api/rides/respond", "/rides/respond", "/help"];
-  if (PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p))) {
+  // "/passwort-setzen" / "/passwort-vergessen" are reached via invite/reset
+  // links; the session may still be establishing, so they must stay public.
+  const PUBLIC_PATHS = [
+    "/auth/callback",
+    "/api/rides/respond",
+    "/rides/respond",
+    "/help",
+    "/passwort-setzen",
+    "/passwort-vergessen",
+  ];
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return supabaseResponse;
   }
 
   // Redirect unauthenticated users to login page.
   // Allow access to the root page and auth routes without authentication.
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    request.nextUrl.pathname !== "/"
-  ) {
+  if (!user && !pathname.startsWith("/login") && pathname !== "/") {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
   // Redirect authenticated users away from login page.
-  if (user && request.nextUrl.pathname.startsWith("/login")) {
+  if (user && pathname.startsWith("/login")) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
+  }
+
+  // Role-based area guard (M12 / #98).
+  //
+  // The driver self-service area lives under "/fahrer/**" (the new M12 target).
+  // The existing driver pages still live under "/my/**" (Meine Fahrten /
+  // Verfügbarkeit) until the "/fahrer" shell phase migrates them, so BOTH
+  // prefixes count as the driver area to avoid locking drivers out at runtime.
+  // Every operator/admin feature lives under "(dashboard)" route-group paths
+  // (which resolve to real URLs like "/patients", "/rides", "/drivers", ... and
+  // the root "/").
+  //
+  // Rules:
+  //   - driver   -> may ONLY enter the driver area. Any other authenticated path
+  //                 is redirected to "/fahrer" (never a 500 / empty list).
+  //   - operator -> blocked from the driver area, redirected to "/".
+  //   - admin    -> may read the driver area too (support/debugging). Deliberate
+  //                 decision: admins are trusted and occasionally need to see
+  //                 the driver view; they keep full dashboard access as well.
+  //
+  // We only hit the DB for the role when the user is authenticated and NOT on a
+  // path we already cleared above. RLS lets a user read their own profile row.
+  // NOTE: this runs AFTER getUser() and does not create a new NextResponse, so
+  // the session-refresh invariant documented below stays intact.
+  if (user) {
+    const isDriverArea =
+      pathname === "/fahrer" ||
+      pathname.startsWith("/fahrer/") ||
+      pathname === "/my" ||
+      pathname.startsWith("/my/");
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    const role = profile?.role;
+
+    if (role === "driver" && !isDriverArea) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/fahrer";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+
+    if (role !== "driver" && role !== "admin" && isDriverArea) {
+      // operator (or any non-driver, non-admin role) has no business in /fahrer
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
   }
 
   // IMPORTANT: Return the supabaseResponse object as is.
