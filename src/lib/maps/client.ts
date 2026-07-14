@@ -16,14 +16,42 @@ const NON_RETRYABLE_STATUSES = new Set([
   "NOT_FOUND",
 ])
 
+/**
+ * Returns the API key for Google Maps *Web Service* calls (Geocoding,
+ * Directions, Places Web Service).
+ *
+ * These are server-to-server requests that send no HTTP `Referer` header, so a
+ * referer-restricted key (as used by the browser Maps JS / Static Maps API)
+ * is rejected by Google with "API keys with referer restrictions cannot be
+ * used with this API". We therefore require a dedicated, non-referer-restricted
+ * server key:
+ *
+ *   1. GOOGLE_MAPS_SERVER_API_KEY  — preferred (unrestricted / IP-restricted)
+ *   2. GOOGLE_MAPS_API_KEY         — legacy fallback (deprecated), warns
+ *
+ * NEXT_PUBLIC_GOOGLE_MAPS_API_KEY must never be used here — it is the
+ * referer-restricted browser key.
+ */
 function getApiKey(): string {
-  const key = process.env.GOOGLE_MAPS_API_KEY
-  if (!key) {
-    throw new MapsApiError(
-      "GOOGLE_MAPS_API_KEY environment variable is not set"
-    )
+  const serverKey = process.env.GOOGLE_MAPS_SERVER_API_KEY
+  if (serverKey) {
+    return serverKey
   }
-  return key
+
+  const legacyKey = process.env.GOOGLE_MAPS_API_KEY
+  if (legacyKey) {
+    console.warn(
+      "[maps] GOOGLE_MAPS_SERVER_API_KEY is not set — falling back to the " +
+        "deprecated GOOGLE_MAPS_API_KEY. Configure an unrestricted server key " +
+        "to avoid referer-restriction errors on Geocoding/Directions/Places."
+    )
+    return legacyKey
+  }
+
+  throw new MapsApiError(
+    "No server Maps API key configured. Set GOOGLE_MAPS_SERVER_API_KEY " +
+      "(preferred) or GOOGLE_MAPS_API_KEY."
+  )
 }
 
 function isRetryableError(error: unknown): boolean {

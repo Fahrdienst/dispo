@@ -74,7 +74,7 @@ function mockFetchResponse(body: unknown, ok = true, status = 200): void {
 describe("geocodeAddress", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GOOGLE_MAPS_API_KEY = "test-api-key"
+    process.env.GOOGLE_MAPS_SERVER_API_KEY = "test-api-key"
   })
 
   it("returns geocode result on success", async () => {
@@ -137,7 +137,8 @@ describe("geocodeAddress", () => {
     await expect(geocodeAddress(testAddress)).rejects.toThrow(MapsApiError)
   })
 
-  it("throws MapsApiError when GOOGLE_MAPS_API_KEY is not set", async () => {
+  it("throws MapsApiError when no server key is set", async () => {
+    delete process.env.GOOGLE_MAPS_SERVER_API_KEY
     delete process.env.GOOGLE_MAPS_API_KEY
 
     await expect(geocodeAddress(testAddress)).rejects.toThrow(MapsApiError)
@@ -151,7 +152,7 @@ describe("geocodeAddress", () => {
 describe("geocodeAndUpdateRecord", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GOOGLE_MAPS_API_KEY = "test-api-key"
+    process.env.GOOGLE_MAPS_SERVER_API_KEY = "test-api-key"
   })
 
   it("updates record with geocode result on success", async () => {

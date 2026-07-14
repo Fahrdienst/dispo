@@ -55,7 +55,7 @@ function mockFetchResponse(body: unknown, ok = true): void {
 describe("getPlaceDetails", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GOOGLE_MAPS_API_KEY = "test-api-key"
+    process.env.GOOGLE_MAPS_SERVER_API_KEY = "test-api-key"
   })
 
   it("returns place details on success", async () => {
