@@ -90,10 +90,18 @@ export async function getSystemHealth(): Promise<SystemServiceHealth[]> {
     message: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? "API-Key konfiguriert" : "Nicht konfiguriert",
   })
 
+  // Web-Service-Key (Geocoding/Directions/Places): prefer the dedicated server
+  // key, fall back to the legacy key (see lib/maps/client.ts getApiKey()).
+  const serverMapsKey =
+    process.env.GOOGLE_MAPS_SERVER_API_KEY ?? process.env.GOOGLE_MAPS_API_KEY
   services.push({
     name: "Google Maps (Server)",
-    status: process.env.GOOGLE_MAPS_API_KEY ? "healthy" : "not_configured",
-    message: process.env.GOOGLE_MAPS_API_KEY ? "API-Key konfiguriert" : "Nicht konfiguriert",
+    status: serverMapsKey ? "healthy" : "not_configured",
+    message: process.env.GOOGLE_MAPS_SERVER_API_KEY
+      ? "Server-Key konfiguriert"
+      : process.env.GOOGLE_MAPS_API_KEY
+        ? "Nur veralteter GOOGLE_MAPS_API_KEY (bitte GOOGLE_MAPS_SERVER_API_KEY setzen)"
+        : "Nicht konfiguriert",
   })
 
   // SMTP / Nodemailer
@@ -168,6 +176,7 @@ export async function getEnvVarStatus(): Promise<EnvVarStatus[]> {
     { name: "NEXT_PUBLIC_SUPABASE_ANON_KEY", configured: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, category: "required" },
     { name: "SUPABASE_SERVICE_ROLE_KEY", configured: !!process.env.SUPABASE_SERVICE_ROLE_KEY, category: "required" },
     { name: "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY", configured: !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY, category: "maps" },
+    { name: "GOOGLE_MAPS_SERVER_API_KEY", configured: !!process.env.GOOGLE_MAPS_SERVER_API_KEY, category: "maps" },
     { name: "GOOGLE_MAPS_API_KEY", configured: !!process.env.GOOGLE_MAPS_API_KEY, category: "maps" },
     { name: "SMTP_HOST", configured: !!process.env.SMTP_HOST, category: "email" },
     { name: "SMTP_PORT", configured: !!process.env.SMTP_PORT, category: "email" },

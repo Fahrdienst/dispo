@@ -61,7 +61,7 @@ function mockFetchResponse(body: unknown, ok = true, status = 200): void {
 describe("getRoute", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.GOOGLE_MAPS_API_KEY = "test-api-key"
+    process.env.GOOGLE_MAPS_SERVER_API_KEY = "test-api-key"
   })
 
   it("returns route result on success", async () => {
@@ -133,7 +133,8 @@ describe("getRoute", () => {
     await expect(getRoute(origin, destination)).rejects.toThrow(MapsApiError)
   })
 
-  it("throws MapsApiError when GOOGLE_MAPS_API_KEY is missing", async () => {
+  it("throws MapsApiError when no server key is set", async () => {
+    delete process.env.GOOGLE_MAPS_SERVER_API_KEY
     delete process.env.GOOGLE_MAPS_API_KEY
 
     await expect(getRoute(origin, destination)).rejects.toThrow(MapsApiError)
