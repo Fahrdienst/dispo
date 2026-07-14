@@ -1,14 +1,16 @@
 "use client"
 
-// SLOT (#134): Patient-Such-/Auswahlfeld + Inline-"＋ neu"-Anlage.
-// This functional stub already reuses the shared EntityCombobox so the capture
-// page is usable today. Issue #134 owns the inline create flow (wire the
-// `onCreateNew` dialog + append the created patient to the list) and any richer
-// result rendering (address preview, geocode status). Keep the props contract
-// and the `name="patient_id"` hidden input stable so the core keeps submitting.
+// Patient search/select field + inline "＋ neu anlegen" flow (#134).
+// Reuses the shared EntityCombobox for search and the existing
+// PatientInlineDialog (which since #125 also captures cost_bearer) for the
+// quick-create. The dialog is owned here; on creation we hand the new patient
+// up via `onCreateNew` so the core appends it to its list AND selects it, which
+// in turn triggers the route/price recalculation. Keep the `name="patient_id"`
+// hidden input (inside EntityCombobox) stable so the core keeps submitting.
 
-import { useMemo } from "react"
+import { useMemo, useState, useCallback } from "react"
 import { EntityCombobox } from "@/components/shared/entity-combobox"
+import { PatientInlineDialog } from "@/components/patients/patient-inline-dialog"
 import type { CapturePatient } from "./types"
 
 export interface CapturePatientFieldProps {
@@ -18,8 +20,11 @@ export interface CapturePatientFieldProps {
   value: string | null
   /** Selection change handler. */
   onChange: (id: string | null) => void
-  /** SLOT (#134): open the inline "neuer Patient" dialog. */
-  onCreateNew?: () => void
+  /**
+   * Called with the inline-created patient. The core appends it to its patient
+   * list and selects it. When omitted, the "＋ Neu anlegen" action is hidden.
+   */
+  onCreateNew?: (patient: CapturePatient) => void
   /** Field-level validation error from the server action. */
   error?: string
   /** Auto-focus on mount (first field in the phone-call flow). */
@@ -34,6 +39,8 @@ export function CapturePatientField({
   error,
   autoFocus = false,
 }: CapturePatientFieldProps) {
+  const [dialogOpen, setDialogOpen] = useState(false)
+
   const items = useMemo(
     () =>
       patients.map((p) => ({
@@ -41,6 +48,21 @@ export function CapturePatientField({
         label: `${p.last_name}, ${p.first_name}`,
       })),
     [patients]
+  )
+
+  const handleCreated = useCallback(
+    (patient: { id: string; first_name: string; last_name: string }) => {
+      // The inline dialog forwards only id + name; cost_bearer is not part of
+      // its callback contract, so it defaults to null here. The value is
+      // re-hydrated on the next reload (createPatientInline revalidates).
+      onCreateNew?.({
+        id: patient.id,
+        first_name: patient.first_name,
+        last_name: patient.last_name,
+        cost_bearer: null,
+      })
+    },
+    [onCreateNew]
   )
 
   return (
@@ -54,9 +76,16 @@ export function CapturePatientField({
         emptyMessage="Kein Patient gefunden"
         autoFocus={autoFocus}
         aria-label="Patient auswählen"
-        onCreateNew={onCreateNew}
+        onCreateNew={onCreateNew ? () => setDialogOpen(true) : undefined}
       />
       {error && <p className="text-sm text-destructive">{error}</p>}
+      {onCreateNew && (
+        <PatientInlineDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onPatientCreated={handleCreated}
+        />
+      )}
     </div>
   )
 }

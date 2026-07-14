@@ -104,8 +104,8 @@ export function RideCaptureForm({
   const fieldErrors = state && !state.success ? state.fieldErrors : undefined
 
   // --- Lists (stateful so #134 can append inline-created entities) ---
-  const [patientList] = useState(patients)
-  const [destinationList] = useState(destinations)
+  const [patientList, setPatientList] = useState(patients)
+  const [destinationList, setDestinationList] = useState(destinations)
 
   // --- WER ---
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(
@@ -149,6 +149,32 @@ export function RideCaptureForm({
   const selectedDestination = useMemo(
     () => destinationList.find((d) => d.id === selectedDestinationId) ?? null,
     [destinationList, selectedDestinationId]
+  )
+
+  // --- Inline-created entities (#134): append to the list + select immediately.
+  // Selecting triggers the route/price recalc via the effect below. ---
+  const handlePatientCreated = useCallback(
+    (patient: CapturePatient) => {
+      setPatientList((prev) =>
+        [...prev, patient].sort((a, b) =>
+          a.last_name.localeCompare(b.last_name)
+        )
+      )
+      setSelectedPatientId(patient.id)
+    },
+    []
+  )
+
+  const handleDestinationCreated = useCallback(
+    (destination: CaptureDestination) => {
+      setDestinationList((prev) =>
+        [...prev, destination].sort((a, b) =>
+          a.display_name.localeCompare(b.display_name)
+        )
+      )
+      setSelectedDestinationId(destination.id)
+    },
+    []
   )
 
   const durationMinutes = useMemo(() => {
@@ -278,6 +304,7 @@ export function RideCaptureForm({
                 patients={patientList}
                 value={selectedPatientId}
                 onChange={setSelectedPatientId}
+                onCreateNew={handlePatientCreated}
                 error={fieldErrors?.patient_id?.[0]}
                 autoFocus
               />
@@ -298,6 +325,7 @@ export function RideCaptureForm({
                 destinations={destinationList}
                 value={selectedDestinationId}
                 onChange={setSelectedDestinationId}
+                onCreateNew={handleDestinationCreated}
                 error={fieldErrors?.destination_id?.[0]}
               />
             </div>

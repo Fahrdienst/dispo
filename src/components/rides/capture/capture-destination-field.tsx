@@ -1,13 +1,15 @@
 "use client"
 
-// SLOT (#134): Ziel-Such-/Auswahlfeld + Inline-"＋ neu"-Anlage.
-// Functional stub reusing EntityCombobox (see capture-patient-field for the same
-// pattern). Issue #134 owns the inline create dialog and richer result rendering
-// (facility type, geocode status). Keep the props contract and the
-// `name="destination_id"` hidden input stable.
+// Destination search/select field + inline "＋ neu anlegen" flow (#134).
+// Same pattern as capture-patient-field: reuses the shared EntityCombobox and
+// the existing DestinationInlineDialog (with fire-and-forget geocoding). The
+// dialog is owned here; on creation we hand the new destination up via
+// `onCreateNew` so the core appends it + selects it, triggering the route/price
+// recalculation. Keep the `name="destination_id"` hidden input stable.
 
-import { useMemo } from "react"
+import { useMemo, useState, useCallback } from "react"
 import { EntityCombobox } from "@/components/shared/entity-combobox"
+import { DestinationInlineDialog } from "@/components/destinations/destination-inline-dialog"
 import type { CaptureDestination } from "./types"
 
 export interface CaptureDestinationFieldProps {
@@ -17,8 +19,12 @@ export interface CaptureDestinationFieldProps {
   value: string | null
   /** Selection change handler. */
   onChange: (id: string | null) => void
-  /** SLOT (#134): open the inline "neues Ziel" dialog. */
-  onCreateNew?: () => void
+  /**
+   * Called with the inline-created destination. The core appends it to its
+   * destination list and selects it. When omitted, the "＋ Neu anlegen" action
+   * is hidden.
+   */
+  onCreateNew?: (destination: CaptureDestination) => void
   /** Field-level validation error from the server action. */
   error?: string
 }
@@ -30,6 +36,8 @@ export function CaptureDestinationField({
   onCreateNew,
   error,
 }: CaptureDestinationFieldProps) {
+  const [dialogOpen, setDialogOpen] = useState(false)
+
   const items = useMemo(
     () =>
       destinations.map((d) => ({
@@ -38,6 +46,21 @@ export function CaptureDestinationField({
         sublabel: d.postal_code ?? undefined,
       })),
     [destinations]
+  )
+
+  const handleCreated = useCallback(
+    (destination: { id: string; display_name: string }) => {
+      // The inline dialog forwards only id + display_name; postal_code is not
+      // part of its callback contract, so it defaults to null here (matches the
+      // edit-flow ride-form). Zone/price re-hydrate on the next reload; missing
+      // coordinates never block (best-effort geocoding, warned in D1).
+      onCreateNew?.({
+        id: destination.id,
+        display_name: destination.display_name,
+        postal_code: null,
+      })
+    },
+    [onCreateNew]
   )
 
   return (
@@ -50,9 +73,16 @@ export function CaptureDestinationField({
         placeholder="Ziel suchen…"
         emptyMessage="Kein Ziel gefunden"
         aria-label="Ziel auswählen"
-        onCreateNew={onCreateNew}
+        onCreateNew={onCreateNew ? () => setDialogOpen(true) : undefined}
       />
       {error && <p className="text-sm text-destructive">{error}</p>}
+      {onCreateNew && (
+        <DestinationInlineDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onDestinationCreated={handleCreated}
+        />
+      )}
     </div>
   )
 }
