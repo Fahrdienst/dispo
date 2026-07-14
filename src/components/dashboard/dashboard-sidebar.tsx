@@ -59,7 +59,7 @@ const navGroups: NavGroup[] = [
   },
   {
     items: [
-      { href: "/billing", label: "Verrechnung", icon: <CreditCard className="h-5 w-5 flex-shrink-0" />, roles: ["admin", "operator"] },
+      { href: "/finance", label: "Finanzen", icon: <CreditCard className="h-5 w-5 flex-shrink-0" />, roles: ["admin", "operator"] },
       { href: "/users", label: "Benutzer", icon: <Shield className="h-5 w-5 flex-shrink-0" />, roles: ["admin"] },
       { href: "/settings/zones", label: "Einstellungen", icon: <Settings className="h-5 w-5 flex-shrink-0" />, roles: ["admin"] },
     ],

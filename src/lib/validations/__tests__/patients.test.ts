@@ -125,6 +125,55 @@ describe("patientSchema", () => {
     }
   })
 
+  // --- Finance delivery fields (M14 #144) ---
+
+  it("accepts a valid email", () => {
+    const result = patientSchema.safeParse({ ...validPatient, email: "max@example.com" })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.email).toBe("max@example.com")
+    }
+  })
+
+  it("rejects a malformed email", () => {
+    const result = patientSchema.safeParse({ ...validPatient, email: "not-an-email" })
+    expect(result.success).toBe(false)
+  })
+
+  it("transforms empty email to null", () => {
+    const result = patientSchema.safeParse({ ...validPatient, email: "" })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.email).toBeNull()
+    }
+  })
+
+  it("transforms empty billing recipient fields to null", () => {
+    const result = patientSchema.safeParse({
+      ...validPatient,
+      billing_recipient_name: "",
+      billing_recipient_address: "",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.billing_recipient_name).toBeNull()
+      expect(result.data.billing_recipient_address).toBeNull()
+    }
+  })
+
+  it("preserves a differing billing recipient", () => {
+    const result = patientSchema.safeParse({
+      ...validPatient,
+      billing_recipient_name: "Anna Beistand",
+      billing_recipient_address: "Musterweg 3\n8000 Zürich",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.billing_recipient_name).toBe("Anna Beistand")
+      expect(result.data.billing_recipient_address).toBe("Musterweg 3\n8000 Zürich")
+    }
+  })
+
   // --- Impairments enum ---
 
   it("accepts valid impairment values", () => {

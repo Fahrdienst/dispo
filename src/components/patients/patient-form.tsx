@@ -200,6 +200,59 @@ export function PatientForm({ patient }: PatientFormProps) {
           </div>
 
           <div className="rounded-lg border bg-muted/30 p-4">
+            <fieldset className="space-y-4">
+              <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Rechnung &amp; Zustellung
+              </legend>
+              <div className="space-y-2">
+                <Label htmlFor="email">E-Mail (Quittungsversand)</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  defaultValue={patient?.email ?? ""}
+                />
+                {fieldErrors?.email && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.email[0]}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="billing_recipient_name">
+                  Abweichender Rechnungsempfänger (optional)
+                </Label>
+                <Input
+                  id="billing_recipient_name"
+                  name="billing_recipient_name"
+                  defaultValue={patient?.billing_recipient_name ?? ""}
+                />
+                {fieldErrors?.billing_recipient_name && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.billing_recipient_name[0]}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="billing_recipient_address">
+                  Adresse Rechnungsempfänger (optional)
+                </Label>
+                <Textarea
+                  id="billing_recipient_address"
+                  name="billing_recipient_address"
+                  rows={2}
+                  defaultValue={patient?.billing_recipient_address ?? ""}
+                />
+                {fieldErrors?.billing_recipient_address && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.billing_recipient_address[0]}
+                  </p>
+                )}
+              </div>
+            </fieldset>
+          </div>
+
+          <div className="rounded-lg border bg-muted/30 p-4">
             <fieldset className="space-y-3">
               <legend className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Beeinträchtigungen

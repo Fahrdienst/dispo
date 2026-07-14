@@ -1,6 +1,7 @@
 import { MapPin } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { retroStyleUrlParams } from "@/lib/maps/styles"
+import { getPaddedVisibleParam } from "@/lib/maps/utils"
 import { cn } from "@/lib/utils"
 
 interface RouteMapProps {
@@ -55,6 +56,10 @@ export function RouteMap({
     url += retroStyleUrlParams()
   }
 
+  // Force a padded bounding box around the endpoints so both pins stay fully
+  // visible with margin instead of being clipped at the image edge.
+  url += getPaddedVisibleParam([`${originLat},${originLng}`, `${destLat},${destLng}`])
+
   url += `&markers=${encodeURIComponent(`color:red|label:H|${originLat},${originLng}`)}`
   url += `&markers=${encodeURIComponent(`color:blue|label:Z|${destLat},${destLng}`)}`
 
@@ -63,7 +68,9 @@ export function RouteMap({
   }
 
   // Tailwind needs static class strings, so pick from known heights.
-  const smHeightClass = height >= 300 ? "sm:h-[300px]" : "sm:h-[250px]"
+  // Match the static image's aspect ratio (640x300 or 640x250) so
+  // object-contain never crops markers at the edges.
+  const aspectClass = height >= 300 ? "aspect-[32/15]" : "aspect-[64/25]"
 
   return (
     <Card>
@@ -93,7 +100,7 @@ export function RouteMap({
           width={640}
           height={height}
           loading="lazy"
-          className={cn("h-[200px] w-full rounded-b-lg object-cover", smHeightClass)}
+          className={cn("w-full rounded-b-lg bg-muted object-contain", aspectClass)}
         />
       </CardContent>
     </Card>

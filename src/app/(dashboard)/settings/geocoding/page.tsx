@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/dashboard/page-header"
 import { SettingsNav } from "@/components/settings/settings-nav"
 import { Breadcrumb } from "@/components/shared/breadcrumb"
 import { RetryGeocodingCard } from "@/components/settings/retry-geocoding-card"
+import { DistanceBackfillCard } from "@/components/settings/distance-backfill-card"
 import { MapsHealthDashboard } from "@/components/settings/maps-health-dashboard"
 
 export const metadata: Metadata = {
@@ -25,6 +26,7 @@ export default function GeocodingSettingsPage() {
       <SettingsNav />
       <MapsHealthDashboard />
       <RetryGeocodingCard />
+      <DistanceBackfillCard />
     </div>
   )
 }
