@@ -15,6 +15,13 @@ export const DEFAULT_RETURN_BUFFER_MINUTES = 15
 export const DEFAULT_PICKUP_BUFFER_MINUTES = 5
 
 /**
+ * Default boarding time (minutes) for the patient to board/alight at pickup.
+ * Added to the outbound back-calculation so the driver arrives early enough
+ * for boarding before the appointment. 0 preserves the legacy behavior.
+ */
+export const DEFAULT_BOARDING_MINUTES = 0
+
+/**
  * Adds minutes to a time string (HH:MM format).
  * Returns null if the result exceeds 23:59.
  */

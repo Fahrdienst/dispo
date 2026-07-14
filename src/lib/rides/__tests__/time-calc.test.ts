@@ -3,6 +3,8 @@ import {
   calculateRideTimes,
   detectTimeConflicts,
   DEFAULT_PICKUP_BUFFER_MINUTES,
+  DEFAULT_BOARDING_MINUTES,
+  DEFAULT_RETURN_BUFFER_MINUTES,
 } from "../time-calc"
 import type { ConflictRideInput } from "../time-calc"
 
@@ -89,6 +91,51 @@ describe("calculateRideTimes", () => {
       // 10:00 - 0min drive - 5min buffer = 09:55
       expect(result.suggestedPickupTime).toBe("09:55")
     })
+
+    it("defaults boardingMinutes to 0 (no behavior change)", () => {
+      const result = calculateRideTimes({
+        appointment_time: "09:30",
+        appointment_end_time: null,
+        duration_seconds: 1200, // 20 minutes
+      })
+      // 09:30 - 20min drive - 5min buffer - 0min boarding = 09:05
+      expect(result.suggestedPickupTime).toBe("09:05")
+    })
+
+    it("subtracts boardingMinutes from the outbound pickup", () => {
+      const result = calculateRideTimes({
+        appointment_time: "09:30",
+        appointment_end_time: null,
+        duration_seconds: 1200, // 20 minutes
+        boardingMinutes: 10,
+      })
+      // 09:30 - 20min drive - 5min buffer - 10min boarding = 08:55
+      expect(result.suggestedPickupTime).toBe("08:55")
+    })
+
+    it("combines custom pickupBufferMinutes and boardingMinutes (org defaults)", () => {
+      const result = calculateRideTimes({
+        appointment_time: "10:00",
+        appointment_end_time: null,
+        duration_seconds: 600, // 10 minutes
+        pickupBufferMinutes: 10,
+        boardingMinutes: 5,
+      })
+      // 10:00 - 10min drive - 10min buffer - 5min boarding = 09:35
+      expect(result.suggestedPickupTime).toBe("09:35")
+    })
+
+    it("returns null when boardingMinutes pushes the pickup before 00:00", () => {
+      const result = calculateRideTimes({
+        appointment_time: "00:20",
+        appointment_end_time: null,
+        duration_seconds: 300, // 5 minutes
+        pickupBufferMinutes: 5,
+        boardingMinutes: 15,
+      })
+      // 00:20 - 5min drive - 5min buffer - 15min boarding = -5min → null
+      expect(result.suggestedPickupTime).toBeNull()
+    })
   })
 
   // -------------------------------------------------------------------------
@@ -172,6 +219,21 @@ describe("calculateRideTimes", () => {
       expect(result.suggestedPickupTime).toBeNull()
       expect(result.suggestedReturnPickupTime).toBeNull()
     })
+
+    it("applies full org buffer set: pickup, boarding and return", () => {
+      const result = calculateRideTimes({
+        appointment_time: "09:00",
+        appointment_end_time: "10:00",
+        duration_seconds: 900, // 15 minutes
+        pickupBufferMinutes: 10,
+        boardingMinutes: 5,
+        returnBufferMinutes: 20,
+      })
+      // Outbound: 09:00 - 15min drive - 10min buffer - 5min boarding = 08:30
+      expect(result.suggestedPickupTime).toBe("08:30")
+      // Return: 10:00 + 20min buffer = 10:20
+      expect(result.suggestedReturnPickupTime).toBe("10:20")
+    })
   })
 
   // -------------------------------------------------------------------------
@@ -181,6 +243,14 @@ describe("calculateRideTimes", () => {
   describe("constants", () => {
     it("exports DEFAULT_PICKUP_BUFFER_MINUTES as 5", () => {
       expect(DEFAULT_PICKUP_BUFFER_MINUTES).toBe(5)
+    })
+
+    it("exports DEFAULT_BOARDING_MINUTES as 0", () => {
+      expect(DEFAULT_BOARDING_MINUTES).toBe(0)
+    })
+
+    it("exports DEFAULT_RETURN_BUFFER_MINUTES as 15", () => {
+      expect(DEFAULT_RETURN_BUFFER_MINUTES).toBe(15)
     })
   })
 })

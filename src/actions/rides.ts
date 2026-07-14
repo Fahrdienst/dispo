@@ -8,8 +8,8 @@ import { requireAuth } from "@/lib/auth/require-auth"
 import {
   rideSchema,
   addMinutesToTime,
-  DEFAULT_RETURN_BUFFER_MINUTES,
 } from "@/lib/validations/rides"
+import { loadRideTimeBuffers } from "@/lib/rides/time-buffers"
 import { assertTransitionForRole } from "@/lib/rides/status-machine"
 import { invalidateTokensForRide } from "@/lib/mail/tokens"
 import { sendDriverNotification } from "@/lib/mail/send-driver-notification"
@@ -249,12 +249,13 @@ export async function createRide(
 
   // 2. Optionally create return ride
   if (create_return_ride && rideData.direction === "outbound") {
+    const { returnBufferMinutes } = await loadRideTimeBuffers(supabase)
     const returnPickupTime =
       rideData.return_pickup_time ??
       (rideData.appointment_end_time
         ? addMinutesToTime(
             rideData.appointment_end_time,
-            DEFAULT_RETURN_BUFFER_MINUTES
+            returnBufferMinutes
           )
         : null)
 
@@ -497,12 +498,13 @@ async function createRideWithSeries(
 
   // 6. Optionally create return ride for the initial date
   if (create_return_ride && rideData.direction === "outbound") {
+    const { returnBufferMinutes } = await loadRideTimeBuffers(supabase)
     const returnPickupTime =
       rideData.return_pickup_time ??
       (rideData.appointment_end_time
         ? addMinutesToTime(
             rideData.appointment_end_time,
-            DEFAULT_RETURN_BUFFER_MINUTES
+            returnBufferMinutes
           )
         : null)
 
