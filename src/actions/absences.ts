@@ -211,24 +211,16 @@ export async function decideAbsence(
     }
   }
 
-  // The generated types do not yet know decide_absence (regenerated on deploy).
-  // Cast the rpc method through a minimal, fully-typed signature so BOTH the
-  // function name and the args pass — analogous to the arg cast in
-  // src/actions/driver-self.ts, but here the function name is unknown too.
-  const decideRpc = supabase.rpc as unknown as (
-    fn: "decide_absence",
-    args: {
-      p_absence_id: string
-      p_decision: "approved" | "rejected"
-      p_note: string | null
-    }
-  ) => Promise<{ error: { message: string } | null }>
+  // The generated Args type marks p_note as non-null text; we intentionally
+  // pass null, mirroring the request_absence arg cast above.
+  type DecideAbsenceArgs =
+    Database["public"]["Functions"]["decide_absence"]["Args"]
 
-  const { error } = await decideRpc("decide_absence", {
+  const { error } = await supabase.rpc("decide_absence", {
     p_absence_id: parsed.data.absence_id,
     p_decision: parsed.data.decision,
     p_note: parsed.data.note,
-  })
+  } as DecideAbsenceArgs)
 
   if (error) {
     return {

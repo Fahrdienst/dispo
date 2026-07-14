@@ -1080,6 +1080,14 @@ export type Database = {
         }[]
       }
       cancel_own_absence: { Args: { p_absence_id: string }; Returns: undefined }
+      decide_absence: {
+        Args: {
+          p_absence_id: string
+          p_decision: Database["public"]["Enums"]["absence_status"]
+          p_note: string
+        }
+        Returns: undefined
+      }
       get_user_driver_id: { Args: never; Returns: string }
       get_user_role: {
         Args: never
