@@ -9,7 +9,7 @@ import { RideStatusBadge } from "@/components/shared/ride-status-badge"
 import { CommunicationTimeline } from "@/components/rides/communication-timeline"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { RideDetailMap } from "@/components/rides/ride-detail-map"
+import { RouteMap } from "@/components/shared/route-map"
 import { RIDE_DIRECTION_LABELS } from "@/lib/rides/constants"
 import { getGoogleMapsNavUrl } from "@/lib/maps/utils"
 import { ExternalLink, Navigation } from "lucide-react"
@@ -282,12 +282,14 @@ export default async function RideDetailPage({ params }: RideDetailPageProps) {
       )}
 
       {/* Route Map */}
-      <RideDetailMap
+      <RouteMap
         originLat={patient?.lat ?? null}
         originLng={patient?.lng ?? null}
         destLat={destination?.lat ?? null}
         destLng={destination?.lng ?? null}
         polyline={ride.polyline ?? null}
+        height={300}
+        retroStyle
       />
 
       {/* Linked rides */}

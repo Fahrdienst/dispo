@@ -84,7 +84,7 @@ export async function quickCreateRide(
       dest.lat != null &&
       dest.lng != null
     ) {
-      const { calculateRidePrice } = await import(
+      const { calculateRidePrice, isPriceCalculationFailure } = await import(
         "@/lib/billing/calculate-price"
       )
       const priceResult = await calculateRidePrice({
@@ -99,7 +99,11 @@ export async function quickCreateRide(
         isTagesheimImwilOverride: false,
       })
 
-      if (priceResult) {
+      if (isPriceCalculationFailure(priceResult)) {
+        console.warn(
+          "Preisberechnung übersprungen: Route für Ausserkantonal-Tarif nicht verfügbar."
+        )
+      } else {
         priceFields = {
           ...priceFields,
           distance_meters: priceResult.distance_meters,
