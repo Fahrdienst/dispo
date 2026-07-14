@@ -792,6 +792,138 @@ export type Database = {
           },
         ]
       }
+      receipt_counters: {
+        Row: {
+          last_number: number
+          year: number
+        }
+        Insert: {
+          last_number?: number
+          year: number
+        }
+        Update: {
+          last_number?: number
+          year?: number
+        }
+        Relationships: []
+      }
+      receipt_items: {
+        Row: {
+          amount: number
+          description: string
+          distance_km: number | null
+          id: string
+          is_cancelled: boolean
+          receipt_id: string
+          ride_date: string
+          ride_id: string | null
+        }
+        Insert: {
+          amount: number
+          description: string
+          distance_km?: number | null
+          id?: string
+          is_cancelled?: boolean
+          receipt_id: string
+          ride_date: string
+          ride_id?: string | null
+        }
+        Update: {
+          amount?: number
+          description?: string
+          distance_km?: number | null
+          id?: string
+          is_cancelled?: boolean
+          receipt_id?: string
+          ride_date?: string
+          ride_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_items_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_items_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receipts: {
+        Row: {
+          cancelled_at: string | null
+          cancelled_reason: string | null
+          currency: string
+          id: string
+          issued_at: string
+          issued_by: string
+          patient_id: string | null
+          pdf_path: string | null
+          period_from: string
+          period_to: string
+          receipt_number: string
+          recipient_address: string
+          recipient_name: string
+          status: Database["public"]["Enums"]["receipt_status"]
+          total_amount: number
+        }
+        Insert: {
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
+          currency?: string
+          id?: string
+          issued_at?: string
+          issued_by: string
+          patient_id?: string | null
+          pdf_path?: string | null
+          period_from: string
+          period_to: string
+          receipt_number: string
+          recipient_address: string
+          recipient_name: string
+          status?: Database["public"]["Enums"]["receipt_status"]
+          total_amount: number
+        }
+        Update: {
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
+          currency?: string
+          id?: string
+          issued_at?: string
+          issued_by?: string
+          patient_id?: string | null
+          pdf_path?: string | null
+          period_from?: string
+          period_to?: string
+          receipt_number?: string
+          recipient_address?: string
+          recipient_name?: string
+          status?: Database["public"]["Enums"]["receipt_status"]
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipts_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ride_series: {
         Row: {
           appointment_end_time: string | null
@@ -1093,6 +1225,7 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      next_receipt_number: { Args: { p_year: number }; Returns: number }
       request_absence: {
         Args: {
           p_end_date: string
@@ -1140,6 +1273,7 @@ export type Database = {
         | "day_care"
         | "other"
       impairment_type: "rollator" | "wheelchair" | "stretcher" | "companion"
+      receipt_status: "issued" | "cancelled"
       recurrence_type: "daily" | "weekly" | "biweekly" | "monthly"
       rejection_reason:
         | "schedule_conflict"
