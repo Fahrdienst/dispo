@@ -1,3 +1,20 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "Literal[value=/maps\\.googleapis\\.com\\/maps\\/api\\/(geocode|directions|place)/]",
+        "message": "Google-Maps-Web-Service-Calls (Geocoding/Directions/Places) duerfen nicht direkt gefetcht werden. Nutze die zentralen Wrapper in src/lib/maps/* (Server-Key). Ein referer-beschraenkter Browser-Key funktioniert fuer diese Web-Services nicht. Static Maps (staticmap) sind hiervon nicht betroffen."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/lib/maps/**"],
+      "rules": {
+        "no-restricted-syntax": "off"
+      }
+    }
+  ]
 }
