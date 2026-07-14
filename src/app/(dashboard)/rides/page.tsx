@@ -74,6 +74,15 @@ export default async function RidesPage({ searchParams }: RidesPageProps) {
           description="Tagesuebersicht"
           createHref={isStaff ? `/rides/new?date=${selectedDate}` : undefined}
           createLabel="Neue Fahrt"
+          actions={
+            isStaff ? (
+              <Button variant="outline" asChild>
+                <Link href={`/rides/erfassen?date=${selectedDate}`}>
+                  Fahrt erfassen
+                </Link>
+              </Button>
+            ) : undefined
+          }
         />
 
         {driverFilterName && (
@@ -169,6 +178,13 @@ export default async function RidesPage({ searchParams }: RidesPageProps) {
         description="Wochenuebersicht"
         createHref={isStaff ? "/rides/new" : undefined}
         createLabel="Neue Fahrt"
+        actions={
+          isStaff ? (
+            <Button variant="outline" asChild>
+              <Link href="/rides/erfassen">Fahrt erfassen</Link>
+            </Button>
+          ) : undefined
+        }
       />
 
       {driverFilterName && (
