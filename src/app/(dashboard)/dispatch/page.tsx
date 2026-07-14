@@ -145,7 +145,7 @@ async function renderDayView(selectedDate: string, today: string) {
   const supabase = await createClient()
   const acceptanceEnabled = isAcceptanceFlowEnabled()
 
-  const [ridesResult, driversResult, weeklyAvailResult, dateAvailResult, trackingResult] = await Promise.all([
+  const [ridesResult, driversResult, weeklyAvailResult, dateAvailResult, absencesResult, trackingResult] = await Promise.all([
     supabase
       .from("rides")
       .select("id, pickup_time, date, status, direction, notes, driver_id, appointment_time, parent_ride_id, duration_seconds, patients(first_name, last_name), destinations(display_name)")
@@ -171,6 +171,14 @@ async function renderDayView(selectedDate: string, today: string) {
       .from("driver_availability")
       .select("driver_id, start_time")
       .eq("specific_date", selectedDate),
+
+    // Approved absences covering the selected day (Issue #104)
+    supabase
+      .from("driver_absences")
+      .select("driver_id")
+      .eq("status", "approved")
+      .lte("start_date", selectedDate)
+      .gte("end_date", selectedDate),
 
     acceptanceEnabled
       ? supabase
@@ -234,6 +242,11 @@ async function renderDayView(selectedDate: string, today: string) {
     availabilityMap[driverId]!.sort()
   }
 
+  // Drivers on approved leave for the selected day (Issue #104)
+  const absentDriverIds = [
+    ...new Set((absencesResult.data ?? []).map((a) => a.driver_id)),
+  ]
+
   const queueEntries: QueueEntry[] = []
   if (trackingResult.data) {
     for (const tracking of trackingResult.data) {
@@ -291,6 +304,7 @@ async function renderDayView(selectedDate: string, today: string) {
         rides={rides}
         drivers={drivers}
         driverAvailability={availabilityMap}
+        absentDriverIds={absentDriverIds}
         selectedDate={selectedDate}
         today={today}
       />

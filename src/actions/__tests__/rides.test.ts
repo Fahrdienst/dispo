@@ -4,6 +4,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 // Mocks — use vi.hoisted() so variables are available in vi.mock() factories
 // ---------------------------------------------------------------------------
 
+// rides.ts transitively imports a `server-only` module (availability guard).
+vi.mock("server-only", () => ({}))
+
 const { mockSingle, mockUpdateEq } = vi.hoisted(() => ({
   mockSingle: vi.fn(),
   mockUpdateEq: vi.fn(),

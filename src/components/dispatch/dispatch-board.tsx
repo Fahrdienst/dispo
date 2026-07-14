@@ -2,7 +2,7 @@
 
 import { useTransition, useMemo, useState, useCallback } from "react"
 import Link from "next/link"
-import { Check, AlertTriangle, MapPin } from "lucide-react"
+import { Check, AlertTriangle, CalendarOff, Clock, MapPin } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,6 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { RideStatusBadge } from "@/components/shared/ride-status-badge"
 import { RideQuickSheet } from "@/components/rides/ride-quick-sheet"
 import {
@@ -64,8 +74,17 @@ interface DispatchBoardProps {
   rides: DispatchRide[]
   drivers: DispatchDriver[]
   driverAvailability: DriverAvailabilityMap
+  /** Driver IDs on approved leave for the selected day (Issue #104) */
+  absentDriverIds: string[]
   selectedDate: string
   today: string
+}
+
+/** A pending out-of-availability assignment awaiting confirmation. */
+interface PendingAssignment {
+  rideId: string
+  driverId: string
+  driverName: string
 }
 
 // ---------------------------------------------------------------------------
@@ -159,6 +178,7 @@ interface DriverSelectProps {
   availableSlots: Set<string>
   rideSlot: string | null
   conflictDriverIds: Set<string>
+  absentDriverIds: Set<string>
   isPending: boolean
   onAssign: (rideId: string, driverId: string | null) => void
 }
@@ -170,6 +190,7 @@ function DriverSelect({
   availableSlots,
   rideSlot,
   conflictDriverIds,
+  absentDriverIds,
   isPending,
   onAssign,
 }: DriverSelectProps) {
@@ -196,16 +217,24 @@ function DriverSelect({
       <SelectContent>
         <SelectItem value="__none__">— Kein Fahrer —</SelectItem>
         {drivers.map((driver) => {
+          const isAbsent = absentDriverIds.has(driver.id)
           const isAvailable =
             rideSlot !== null &&
             availableSlots.has(rideSlot + ":" + driver.id)
+          const isOutside = !isAbsent && !isAvailable
           const hasConflict = conflictDriverIds.has(driver.id)
 
           return (
-            <SelectItem key={driver.id} value={driver.id}>
+            <SelectItem key={driver.id} value={driver.id} disabled={isAbsent}>
               <span className="flex items-center gap-2">
+                {isAbsent && (
+                  <CalendarOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                )}
                 {isAvailable && (
                   <Check className="h-3.5 w-3.5 shrink-0 text-green-600" aria-hidden="true" />
+                )}
+                {isOutside && (
+                  <Clock className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden="true" />
                 )}
                 {hasConflict && (
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden="true" />
@@ -216,6 +245,11 @@ function DriverSelect({
                 <span className="text-xs text-muted-foreground">
                   {VEHICLE_TYPE_LABELS[driver.vehicle_type]}
                 </span>
+                {isAbsent && (
+                  <span className="text-xs text-muted-foreground">
+                    in den Ferien
+                  </span>
+                )}
               </span>
             </SelectItem>
           )
@@ -233,6 +267,7 @@ export function DispatchBoard({
   rides,
   drivers,
   driverAvailability,
+  absentDriverIds,
   selectedDate,
   today,
 }: DispatchBoardProps) {
@@ -241,8 +276,15 @@ export function DispatchBoard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [selectedRideId, setSelectedRideId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [pendingAssignment, setPendingAssignment] =
+    useState<PendingAssignment | null>(null)
 
   // -- Derived data --
+
+  const absentDriverIdSet = useMemo(
+    () => new Set(absentDriverIds),
+    [absentDriverIds]
+  )
 
   // Build a set of "slot:driverId" for quick availability lookups
   const availableSlotSet = useMemo(() => {
@@ -342,7 +384,7 @@ export function DispatchBoard({
 
   // -- Handlers --
 
-  const handleAssign = useCallback(
+  const doAssign = useCallback(
     (rideId: string, driverId: string | null) => {
       setErrorMessage(null)
       startTransition(async () => {
@@ -354,6 +396,39 @@ export function DispatchBoard({
     },
     []
   )
+
+  // Gate assignments outside the driver's availability behind a confirm dialog.
+  // Absent drivers are disabled in the dropdown, so they never reach here.
+  const handleAssign = useCallback(
+    (rideId: string, driverId: string | null) => {
+      if (driverId !== null) {
+        const ride = rides.find((r) => r.id === rideId)
+        const slot = ride ? getSlotForTime(ride.pickup_time) : null
+        const isOutside =
+          slot === null || !availableSlotSet.has(slot + ":" + driverId)
+        if (isOutside) {
+          const driver = drivers.find((d) => d.id === driverId)
+          setPendingAssignment({
+            rideId,
+            driverId,
+            driverName: driver
+              ? `${driver.last_name}, ${driver.first_name}`
+              : "",
+          })
+          return
+        }
+      }
+      doAssign(rideId, driverId)
+    },
+    [rides, drivers, availableSlotSet, doAssign]
+  )
+
+  const handleConfirmAssignment = useCallback(() => {
+    if (pendingAssignment) {
+      doAssign(pendingAssignment.rideId, pendingAssignment.driverId)
+    }
+    setPendingAssignment(null)
+  }, [pendingAssignment, doAssign])
 
   const handleRideClick = useCallback((rideId: string) => {
     setSelectedRideId(rideId)
@@ -585,6 +660,7 @@ export function DispatchBoard({
                         availableSlots={availableSlotSet}
                         rideSlot={slot}
                         conflictDriverIds={driverConflicts}
+                        absentDriverIds={absentDriverIdSet}
                         isPending={isPending}
                         onAssign={handleAssign}
                       />
@@ -624,7 +700,8 @@ export function DispatchBoard({
               drivers.map((driver) => {
                 const rideCount = driverRideCounts.get(driver.id) ?? 0
                 const availableSlots = driverAvailability[driver.id] ?? []
-                const isAvailableToday = availableSlots.length > 0
+                const isAbsent = absentDriverIdSet.has(driver.id)
+                const isAvailableToday = !isAbsent && availableSlots.length > 0
                 const driverConflictList = conflictsByDriverId.get(driver.id)
                 const hasConflict =
                   driverConflictList !== undefined &&
@@ -659,6 +736,9 @@ export function DispatchBoard({
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {VEHICLE_TYPE_LABELS[driver.vehicle_type]}
+                        {isAbsent && (
+                          <> &middot; <span className="text-amber-700">In den Ferien</span></>
+                        )}
                         {isAvailableToday && (
                           <> &middot; Verfuegbar: {availableSlots.map(formatTime).join(", ")}</>
                         )}
@@ -710,6 +790,31 @@ export function DispatchBoard({
         open={sheetOpen}
         onOpenChange={setSheetOpen}
       />
+
+      {/* Out-of-availability confirmation (Issue #104) */}
+      <AlertDialog
+        open={pendingAssignment !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingAssignment(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ausserhalb der Verfuegbarkeit</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAssignment?.driverName || "Der gewaehlte Fahrer"} ist zur
+              gewaehlten Zeit nicht als verfuegbar eingetragen. Trotzdem
+              zuweisen?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmAssignment}>
+              Trotzdem zuweisen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

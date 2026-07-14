@@ -2,6 +2,8 @@ import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
 import { RideForm } from "@/components/rides/ride-form"
 import { Breadcrumb } from "@/components/shared/breadcrumb"
+import { loadDriverSchedules } from "@/lib/availability/assignment"
+import { getToday } from "@/lib/utils/dates"
 
 export const metadata: Metadata = {
   title: "Neue Fahrt - Dispo",
@@ -37,6 +39,13 @@ export default async function NewRidePage({ searchParams }: NewRidePageProps) {
       .order("last_name"),
   ])
 
+  // Availability + absence data for the driver dropdown (Issue #104)
+  const driverSchedules = await loadDriverSchedules(
+    supabase,
+    (driversRes.data ?? []).map((d) => d.id),
+    getToday()
+  )
+
   return (
     <div className="mx-auto max-w-5xl">
       <Breadcrumb
@@ -52,6 +61,7 @@ export default async function NewRidePage({ searchParams }: NewRidePageProps) {
         patients={patientsRes.data ?? []}
         destinations={destinationsRes.data ?? []}
         drivers={driversRes.data ?? []}
+        driverSchedules={driverSchedules}
       />
     </div>
   )

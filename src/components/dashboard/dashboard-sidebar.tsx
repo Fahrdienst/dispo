@@ -4,6 +4,7 @@ import { useState } from "react"
 import { usePathname } from "next/navigation"
 import {
   CalendarClock,
+  CalendarOff,
   CarFront,
   Compass,
   CreditCard,
@@ -51,6 +52,7 @@ const navGroups: NavGroup[] = [
   {
     items: [
       { href: "/drivers", label: "Fahrer", icon: <UserRound className="h-5 w-5 flex-shrink-0" />, roles: ["admin", "operator"] },
+      { href: "/abwesenheiten", label: "Abwesenheiten", icon: <CalendarOff className="h-5 w-5 flex-shrink-0" />, roles: ["admin", "operator"] },
       { href: "/destinations", label: "Ziele", icon: <MapPin className="h-5 w-5 flex-shrink-0" />, roles: ["admin", "operator"] },
       { href: "/patients", label: "Patienten", icon: <Hospital className="h-5 w-5 flex-shrink-0" />, roles: ["admin", "operator"] },
     ],

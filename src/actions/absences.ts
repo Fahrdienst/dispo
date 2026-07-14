@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/require-auth"
-import { absenceRequestSchema } from "@/lib/validations/absences"
+import {
+  absenceRequestSchema,
+  absenceDecisionSchema,
+} from "@/lib/validations/absences"
+import { canTransition } from "@/lib/absences/status-machine"
+import { sendAbsenceDecisionNotification } from "@/lib/mail/send-absence-decision"
+import { logAudit } from "@/lib/audit/logger"
 import type { ActionResult } from "@/actions/shared"
 import type { Database } from "@/lib/types/database"
 
@@ -145,6 +151,114 @@ export async function cancelOwnAbsence(
   }
 
   revalidatePath("/fahrer/abwesenheiten")
+  return { success: true, data: undefined }
+}
+
+/**
+ * Approve or reject a driver's absence request (Issue #103).
+ *
+ * Called directly from a Client Component (via useTransition), not through
+ * useFormState, because it acts on a single list item's id.
+ *
+ * Security / correctness:
+ *  - `requireAuth(["admin","operator"])` gates the action.
+ *  - The deciding staff identity is NEVER read from the client: the
+ *    `decide_absence` RPC stamps `decided_by = auth.uid()` and enforces the
+ *    `requested -> approved|rejected` transition server-side.
+ *  - We additionally check `canTransition` in application code (defence in
+ *    depth + a friendly message) before invoking the RPC.
+ *  - The email (#105) is fired AFTER the committed decision and can never roll
+ *    it back — the sender swallows and logs its own failures.
+ */
+export async function decideAbsence(
+  absenceId: string,
+  decision: "approved" | "rejected",
+  note: string | null
+): Promise<ActionResult> {
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: "Keine Berechtigung" }
+  }
+
+  const parsed = absenceDecisionSchema.safeParse({
+    absence_id: absenceId,
+    decision,
+    note,
+  })
+  if (!parsed.success) {
+    return { success: false, error: "Ungültige Anfrage." }
+  }
+
+  const supabase = await createClient()
+
+  // Load the current status to validate the transition up front (staff can
+  // read all absences via RLS). The RPC re-checks this atomically.
+  const { data: current, error: loadError } = await supabase
+    .from("driver_absences")
+    .select("status")
+    .eq("id", parsed.data.absence_id)
+    .single()
+
+  if (loadError || !current) {
+    return { success: false, error: "Antrag nicht gefunden." }
+  }
+
+  if (!canTransition(current.status, parsed.data.decision)) {
+    return {
+      success: false,
+      error:
+        "Dieser Antrag wurde bereits entschieden. Bitte laden Sie die Seite neu.",
+    }
+  }
+
+  // The generated types do not yet know decide_absence (regenerated on deploy).
+  // Cast the rpc method through a minimal, fully-typed signature so BOTH the
+  // function name and the args pass — analogous to the arg cast in
+  // src/actions/driver-self.ts, but here the function name is unknown too.
+  const decideRpc = supabase.rpc as unknown as (
+    fn: "decide_absence",
+    args: {
+      p_absence_id: string
+      p_decision: "approved" | "rejected"
+      p_note: string | null
+    }
+  ) => Promise<{ error: { message: string } | null }>
+
+  const { error } = await decideRpc("decide_absence", {
+    p_absence_id: parsed.data.absence_id,
+    p_decision: parsed.data.decision,
+    p_note: parsed.data.note,
+  })
+
+  if (error) {
+    return {
+      success: false,
+      error:
+        "Entscheidung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+    }
+  }
+
+  // [SEC review #103, Art. 15] Record who decided what. entityType "driver"
+  // (audit enum has no "absence"); the decision detail lives in metadata.
+  logAudit({
+    userId: auth.userId,
+    userRole: auth.role,
+    action: "status_change",
+    entityType: "driver",
+    entityId: parsed.data.absence_id,
+    metadata: {
+      kind: "absence_decision",
+      decision: parsed.data.decision,
+      has_note: Boolean(parsed.data.note),
+    },
+  }).catch(() => {})
+
+  // Fire the decision email. A mail failure must NOT surface as a failed
+  // decision, so we never await its result into the error path — the sender
+  // logs and swallows everything internally.
+  void sendAbsenceDecisionNotification(parsed.data.absence_id)
+
+  revalidatePath("/abwesenheiten")
   return { success: true, data: undefined }
 }
 

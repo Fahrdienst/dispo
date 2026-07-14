@@ -156,3 +156,11 @@ export const IMPAIRMENT_TYPE_LABELS: Record<Enums<"impairment_type">, string> = 
   stretcher:  "Liegend",
   companion:  "Begleitperson",
 }
+
+/** Absence type labels in German (driver_absences, Issue #104). */
+export const ABSENCE_TYPE_LABELS: Record<Enums<"absence_type">, string> = {
+  vacation: "Ferien",
+  sick:     "Krank",
+  training: "Weiterbildung",
+  other:    "Abwesend",
+}

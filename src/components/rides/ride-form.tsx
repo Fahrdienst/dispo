@@ -1,8 +1,27 @@
 "use client"
 
-import { useState, useMemo, useTransition, useEffect, useCallback } from "react"
+import {
+  useState,
+  useMemo,
+  useTransition,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react"
 import { useFormState } from "react-dom"
 import Link from "next/link"
+import { CalendarOff, Clock } from "lucide-react"
+import { cn } from "@/lib/utils"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -50,6 +69,12 @@ import {
   determineTariffZone,
   isTagesheimImwil as checkTagesheimImwil,
 } from "@/lib/billing/zone-determination"
+import {
+  resolveDriverDayStatus,
+  type DriverSchedule,
+  type DriverDayStatus,
+} from "@/lib/availability/driver-status"
+import { ABSENCE_TYPE_LABELS } from "@/lib/rides/constants"
 import type { Tables } from "@/lib/types/database"
 
 interface RideFormProps {
@@ -62,6 +87,8 @@ interface RideFormProps {
   patients: Pick<Tables<"patients">, "id" | "first_name" | "last_name">[]
   destinations: Pick<Tables<"destinations">, "id" | "display_name" | "postal_code">[]
   drivers: Pick<Tables<"drivers">, "id" | "first_name" | "last_name">[]
+  /** Per-driver availability + approved absences for the selected date (Issue #104) */
+  driverSchedules?: DriverSchedule[]
   /** Number of child rides linked to this ride (parent_ride_id = this ride) */
   linkedRideCount?: number
   /** Whether this ride has a parent (is itself a return ride) */
@@ -100,6 +127,7 @@ export function RideForm({
   patients,
   destinations,
   drivers,
+  driverSchedules = [],
   linkedRideCount = 0,
   hasParentRide = false,
 }: RideFormProps) {
@@ -126,6 +154,20 @@ export function RideForm({
     ride?.pickup_time?.slice(0, 5) ?? ""
   )
   const [pickupTimeIsManual, setPickupTimeIsManual] = useState(isEdit)
+
+  // --- Ride date (controlled, drives availability resolution) ---
+  const [rideDate, setRideDate] = useState<string>(
+    ride?.date ?? defaultDate ?? ""
+  )
+
+  // --- Driver selection + availability warning (Issue #104) ---
+  const [selectedDriverId, setSelectedDriverId] = useState<string>(
+    ride?.driver_id ?? ""
+  )
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [showAbsentError, setShowAbsentError] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
+  const skipConfirmRef = useRef(false)
 
   // --- Stateful patient/destination lists (for inline create) ---
   const [patientList, setPatientList] = useState(patients)
@@ -387,6 +429,62 @@ export function RideForm({
 
   const hasLinkedRides = linkedRideCount > 0 || hasParentRide
 
+  // --- Driver availability / absence resolution (Issue #104) ---
+  const driverStatusById = useMemo(() => {
+    const map = new Map<string, DriverDayStatus>()
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rideDate)) return map
+    for (const schedule of driverSchedules) {
+      map.set(
+        schedule.driverId,
+        resolveDriverDayStatus(
+          rideDate,
+          pickupTime || null,
+          schedule.availability,
+          schedule.absences
+        )
+      )
+    }
+    return map
+  }, [driverSchedules, rideDate, pickupTime])
+
+  const selectedDriverStatus = selectedDriverId
+    ? driverStatusById.get(selectedDriverId) ?? null
+    : null
+  const selectedIsAbsent = selectedDriverStatus?.isAbsent ?? false
+  const selectedIsOutside =
+    !!selectedDriverStatus &&
+    !selectedDriverStatus.isAbsent &&
+    pickupTime !== "" &&
+    !selectedDriverStatus.isWithinAvailability
+
+  const selectedDriverName = useMemo(() => {
+    const d = drivers.find((x) => x.id === selectedDriverId)
+    return d ? `${d.last_name}, ${d.first_name}` : ""
+  }, [drivers, selectedDriverId])
+
+  function handleFormSubmit(event: React.FormEvent<HTMLFormElement>): void {
+    // A confirmed override re-submits the form; let it through once.
+    if (skipConfirmRef.current) {
+      skipConfirmRef.current = false
+      return
+    }
+    if (selectedIsAbsent) {
+      event.preventDefault()
+      setShowAbsentError(true)
+      return
+    }
+    if (selectedIsOutside) {
+      event.preventDefault()
+      setConfirmOpen(true)
+    }
+  }
+
+  function handleConfirmOutside(): void {
+    setConfirmOpen(false)
+    skipConfirmRef.current = true
+    formRef.current?.requestSubmit()
+  }
+
   // --- Series preview count ---
   const seriesPreviewCount = useMemo(() => {
     if (!enableSeries || !recurrenceType) return null
@@ -431,7 +529,7 @@ export function RideForm({
   return (
     <>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_280px] lg:items-start">
-        <form action={formAction}>
+        <form ref={formRef} action={formAction} onSubmit={handleFormSubmit}>
           <Card>
             <CardHeader>
               <CardTitle>
@@ -573,7 +671,8 @@ export function RideForm({
                       name="date"
                       type="date"
                       required
-                      defaultValue={ride?.date ?? defaultDate ?? ""}
+                      value={rideDate}
+                      onChange={(e) => setRideDate(e.target.value)}
                     />
                     {fieldErrors?.date && (
                       <p className="text-sm text-destructive">
@@ -630,18 +729,63 @@ export function RideForm({
                     <Label htmlFor="driver_id">Fahrer</Label>
                     <Select
                       name="driver_id"
-                      defaultValue={ride?.driver_id ?? ""}
+                      value={selectedDriverId || "__none__"}
+                      onValueChange={(value) => {
+                        setSelectedDriverId(value === "__none__" ? "" : value)
+                        setShowAbsentError(false)
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Kein Fahrer" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">Kein Fahrer</SelectItem>
-                        {drivers.map((d) => (
-                          <SelectItem key={d.id} value={d.id}>
-                            {d.last_name}, {d.first_name}
-                          </SelectItem>
-                        ))}
+                        {drivers.map((d) => {
+                          const status = driverStatusById.get(d.id)
+                          const isAbsent = status?.isAbsent ?? false
+                          const isOutside =
+                            !!status &&
+                            !status.isAbsent &&
+                            pickupTime !== "" &&
+                            !status.isWithinAvailability
+                          return (
+                            <SelectItem
+                              key={d.id}
+                              value={d.id}
+                              disabled={isAbsent}
+                            >
+                              <span className="flex items-center gap-2">
+                                {isAbsent && (
+                                  <CalendarOff
+                                    className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                                    aria-hidden="true"
+                                  />
+                                )}
+                                {isOutside && (
+                                  <Clock
+                                    className="h-3.5 w-3.5 shrink-0 text-amber-500"
+                                    aria-hidden="true"
+                                  />
+                                )}
+                                <span>
+                                  {d.last_name}, {d.first_name}
+                                </span>
+                                {isAbsent && status?.absenceType && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {status.absenceType === "vacation"
+                                      ? "in den Ferien"
+                                      : ABSENCE_TYPE_LABELS[status.absenceType]}
+                                  </span>
+                                )}
+                                {isOutside && (
+                                  <span className="text-xs text-amber-600">
+                                    ausserhalb Verf.
+                                  </span>
+                                )}
+                              </span>
+                            </SelectItem>
+                          )
+                        })}
                       </SelectContent>
                     </Select>
                     {fieldErrors?.driver_id && (
@@ -649,10 +793,33 @@ export function RideForm({
                         {fieldErrors.driver_id[0]}
                       </p>
                     )}
-                    <p className="text-xs text-muted-foreground">
-                      Optional — Fahrer kann spaeter im Disposition-Board
-                      zugewiesen werden.
-                    </p>
+                    {selectedIsAbsent && selectedDriverStatus?.absenceType ? (
+                      <p
+                        className={cn(
+                          "flex items-center gap-1.5 text-xs",
+                          showAbsentError
+                            ? "font-medium text-destructive"
+                            : "text-amber-700"
+                        )}
+                        role={showAbsentError ? "alert" : undefined}
+                      >
+                        <CalendarOff className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        {selectedDriverName} ist an diesem Datum abwesend (
+                        {ABSENCE_TYPE_LABELS[selectedDriverStatus.absenceType]}).
+                        Bitte einen anderen Fahrer waehlen.
+                      </p>
+                    ) : selectedIsOutside ? (
+                      <p className="flex items-center gap-1.5 text-xs text-amber-700">
+                        <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        {selectedDriverName} ist zur gewaehlten Zeit ausserhalb
+                        der eingetragenen Verfuegbarkeit.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Optional — Fahrer kann spaeter im Disposition-Board
+                        zugewiesen werden.
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -1120,6 +1287,26 @@ export function RideForm({
         onOpenChange={setDestinationDialogOpen}
         onDestinationCreated={handleDestinationCreated}
       />
+
+      {/* Out-of-availability confirmation (Issue #104) */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ausserhalb der Verfuegbarkeit</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedDriverName || "Der gewaehlte Fahrer"} ist zur gewaehlten
+              Zeit ({pickupTime} Uhr) nicht als verfuegbar eingetragen. Trotzdem
+              zuweisen?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmOutside}>
+              Trotzdem zuweisen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

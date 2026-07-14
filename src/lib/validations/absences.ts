@@ -46,3 +46,25 @@ export const absenceRequestSchema = z
   })
 
 export type AbsenceRequestValues = z.infer<typeof absenceRequestSchema>
+
+/**
+ * Staff decision validation (Issue #103).
+ *
+ * Only `approved` or `rejected` are accepted here — `cancelled`/`requested`
+ * are never valid decisions (the DB RPC enforces the same). The note is
+ * optional free text (e.g. a rejection reason). The absence id is a UUID; the
+ * deciding staff identity is derived server-side (auth.uid()), never sent by
+ * the client.
+ */
+export const absenceDecisionSchema = z.object({
+  absence_id: z.string().uuid("Ungültige Antrags-ID"),
+  decision: z.enum(["approved", "rejected"], {
+    errorMap: () => ({ message: "Ungültige Entscheidung" }),
+  }),
+  note: z.preprocess(
+    emptyToNull,
+    z.string().max(500, "Anmerkung ist zu lang (max. 500 Zeichen)").nullable()
+  ),
+})
+
+export type AbsenceDecisionValues = z.infer<typeof absenceDecisionSchema>
