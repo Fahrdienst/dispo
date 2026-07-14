@@ -34,6 +34,20 @@ describe("findAbsenceOn", () => {
     expect(findAbsenceOn("2026-07-18", [vacation])).toBeNull()
     expect(findAbsenceOn("2026-7-1", [vacation])).toBeNull()
   })
+
+  it("returns null when there are no absences", () => {
+    expect(findAbsenceOn(MONDAY, [])).toBeNull()
+  })
+
+  it("returns the first matching absence when several ranges cover the date", () => {
+    const training: AbsenceRange = {
+      start_date: "2026-07-13",
+      end_date: "2026-07-13",
+      type: "training",
+    }
+    // vacation is listed first and also covers MONDAY -> it wins.
+    expect(findAbsenceOn(MONDAY, [vacation, training])).toEqual(vacation)
+  })
 })
 
 describe("isTimeWithinWindows", () => {
@@ -82,6 +96,22 @@ describe("resolveDriverDayStatus", () => {
 
   it("does not warn when no pickup time is supplied yet", () => {
     const status = resolveDriverDayStatus(MONDAY, null, [mondayEightToTen], [])
+    expect(status.isWithinAvailability).toBe(true)
+  })
+
+  it("reports no absence type when the driver is not absent", () => {
+    const status = resolveDriverDayStatus(MONDAY, "08:30", [mondayEightToTen], [])
+    expect(status.absenceType).toBeNull()
+  })
+
+  it("yields no windows for a malformed date (guards resolveAvailability)", () => {
+    const status = resolveDriverDayStatus("2026-7-1", "08:30", [mondayEightToTen], [])
+    expect(status.windows).toEqual([])
+    expect(status.hasAvailability).toBe(false)
+  })
+
+  it("treats an empty pickup string like no time (no warning)", () => {
+    const status = resolveDriverDayStatus(MONDAY, "", [mondayEightToTen], [])
     expect(status.isWithinAvailability).toBe(true)
   })
 })
