@@ -21,7 +21,10 @@ function row(label: string, value: string | null | undefined): string {
  * Null fields are omitted.
  */
 export function renderDriverBlock(data: OrderSheetData): string {
-  const fullName = `${data.driverFirstName} ${data.driverLastName}`
+  // Unplanned rides (#139) have no driver yet — render a placeholder instead
+  // of an empty block so the printed order sheet reads clearly.
+  const hasDriver = Boolean(data.driverFirstName || data.driverLastName)
+  const fullName = `${data.driverFirstName} ${data.driverLastName}`.trim()
 
   // Address line
   const addressLine =
@@ -62,12 +65,16 @@ export function renderDriverBlock(data: OrderSheetData): string {
       </tr>
     </table>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:12px 0;">
-      ${row("Name", fullName)}
+      ${
+        hasDriver
+          ? `${row("Name", fullName)}
       ${row("Adresse", addressLine)}
       ${row("PLZ / Ort", plzOrt)}
       ${row("Telefon / Mobile", data.driverPhone)}
       ${row("E-Mail", data.driverEmail)}
-      ${row("Fahrzeugtyp", vehicleLabel)}
+      ${row("Fahrzeugtyp", vehicleLabel)}`
+          : `<tr><td colspan="2" style="color:#92400e;font-size:14px;font-style:italic;padding:4px 0;">Noch kein Fahrer zugewiesen &ndash; bitte in der Disposition zuweisen.</td></tr>`
+      }
     </table>
     ${notesSection}
   </td>

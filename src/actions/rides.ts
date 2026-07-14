@@ -343,7 +343,11 @@ export async function createRide(
 
   // Never-block: on warnings, return success + warnings so the form can surface
   // them (#139) instead of navigating away. The clean path redirects as before.
-  if (warnings.length > 0) {
+  // "+ Auftragsblatt" (#139): save_intent=order_sheet skips the redirect too,
+  // so the capture form can open the M11 order sheet for the newly created ride.
+  const skipRedirect =
+    warnings.length > 0 || formData.get("save_intent") === "order_sheet"
+  if (skipRedirect) {
     return { success: true, data: outboundRide, warnings }
   }
   redirect(`/rides?date=${rideData.date}`)
@@ -742,7 +746,11 @@ async function createRideWithSeries(
   revalidatePath("/dispatch")
 
   // Never-block: surface warnings from the initial ride instead of redirecting.
-  if (warnings.length > 0) {
+  // "+ Auftragsblatt" (#139): skip the redirect on save_intent=order_sheet as in
+  // createRide, so the order sheet can be opened for the series' initial ride.
+  const skipRedirect =
+    warnings.length > 0 || formData.get("save_intent") === "order_sheet"
+  if (skipRedirect) {
     return { success: true, data: initialRide, warnings }
   }
   redirect(`/rides?date=${rideData.date}`)

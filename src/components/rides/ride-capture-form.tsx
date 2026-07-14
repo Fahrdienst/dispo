@@ -14,9 +14,14 @@
  * appointment duration, the trip-type toggle (Hin / Hin+Rück) and the
  * overridable pickup time(s) with a live suggestion via `calculateRideTimes`.
  *
- * Persistence goes through the existing `createRide` server action (#130): on
- * the clean path it redirects to /rides; when non-blocking warnings are present
- * it returns them and we surface a basic banner here (full warning UX is #139).
+ * Persistence goes through the existing `createRide` server action (#130):
+ *   - "Speichern & zur Übersicht" (save_intent=list) redirects to the day view
+ *     on the clean path; if warnings exist it returns them and we show the
+ *     post-save panel instead of navigating away.
+ *   - "+ Auftragsblatt" (save_intent=order_sheet) always skips the redirect so
+ *     we can hand the new ride id to the M11 order sheet (/api/mail/preview).
+ * The full "never block" warning UX (informative, non-alarming, save always
+ * possible) and the order-sheet hand-off are Issue #139.
  */
 
 import {
@@ -28,14 +33,12 @@ import {
   type FormEvent,
 } from "react"
 import { useFormState } from "react-dom"
-import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { SubmitButton } from "@/components/shared/submit-button"
 import { createRide, calculateRouteForRide } from "@/actions/rides"
 import { calculateRideTimes } from "@/lib/rides/time-calc"
 import { addMinutesToTime } from "@/lib/validations/rides"
@@ -51,6 +54,8 @@ import { RequirementChips } from "./capture/requirement-chips"
 import { SeriesToggle } from "./capture/series-toggle"
 import { RideMapPanel } from "./capture/ride-map-panel"
 import { RidePricePanel } from "./capture/ride-price-panel"
+import { CaptureSaveActions } from "./capture/capture-save-actions"
+import { SaveResultPanel } from "./capture/save-result-panel"
 import type {
   CapturePatient,
   CaptureDestination,
@@ -102,6 +107,13 @@ export function RideCaptureForm({
     FormData
   >(createRide, null)
   const fieldErrors = state && !state.success ? state.fieldErrors : undefined
+
+  // Post-save state (#139): createRide returned success without redirecting
+  // (warnings present or "+ Auftragsblatt"). We then show the SaveResultPanel
+  // and hide the save actions so the ride cannot be submitted twice.
+  const saved = state?.success === true
+  const savedRide = state?.success ? state.data : null
+  const saveWarnings = state?.success ? (state.warnings ?? []) : []
 
   // --- Lists (stateful so #134 can append inline-created entities) ---
   const [patientList, setPatientList] = useState(patients)
@@ -504,25 +516,14 @@ export function RideCaptureForm({
 
       {/* ================= RIGHT: live result ================= */}
       <aside className="space-y-4 lg:sticky lg:top-6">
-        {/* Non-blocking save warnings (#130). Full warning UX is #139. */}
-        {state?.success && state.warnings && state.warnings.length > 0 && (
-          <div
-            className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
-            role="status"
-          >
-            <p className="font-medium">Fahrt gespeichert — mit Hinweisen:</p>
-            <ul className="mt-1 list-disc space-y-0.5 pl-5">
-              {state.warnings.map((w) => (
-                <li key={w.code}>{w.message}</li>
-              ))}
-            </ul>
-            <Link
-              href={`/rides?date=${state.data.date}`}
-              className="mt-2 inline-block font-medium underline"
-            >
-              Weiter zu den Fahrten
-            </Link>
-          </div>
+        {/* Post-save panel (#139): confirmation + non-blocking warnings + the
+            "Weiter zur Übersicht" / "Auftragsblatt öffnen" follow-up actions. */}
+        {saved && savedRide && (
+          <SaveResultPanel
+            rideId={savedRide.id}
+            date={savedRide.date}
+            warnings={saveWarnings}
+          />
         )}
 
         <RideMapPanel
@@ -635,12 +636,9 @@ export function RideCaptureForm({
           rideType={rideType}
         />
 
-        <div className="flex gap-3">
-          <SubmitButton>Fahrt speichern</SubmitButton>
-          <Button variant="outline" asChild>
-            <Link href="/rides">Abbrechen</Link>
-          </Button>
-        </div>
+        {/* Save actions are hidden once saved so the ride is not submitted
+            twice; follow-up actions live in the SaveResultPanel above. */}
+        {!saved && <CaptureSaveActions />}
       </aside>
     </form>
   )
