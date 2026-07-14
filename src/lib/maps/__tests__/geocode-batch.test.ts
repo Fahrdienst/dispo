@@ -155,6 +155,27 @@ describe("processGeocodingBatch", () => {
     expect(fake.orFilters.some((f) => f.includes("geocode_status.eq.pending"))).toBe(true)
   })
 
+  it("processes records without a house number (label omits it)", async () => {
+    mockGeocode.mockResolvedValue(null) // ZERO_RESULTS -> error carries the label
+    const noHnr: Row = {
+      id: "9",
+      street: "Alterszentrum Imwil",
+      house_number: null as unknown as string,
+      postal_code: "8600",
+      city: "Duebendorf",
+    }
+    const fake = createFake({
+      patients: [noHnr],
+      destinations: [],
+      remaining: { patients: 0, destinations: 0 },
+    })
+
+    const res = await processGeocodingBatch(fake.client, 50)
+
+    expect(res.processed).toBe(1)
+    expect(res.errors[0]?.address).toBe("Alterszentrum Imwil, 8600 Duebendorf")
+  })
+
   it("does not fetch destinations when patients already fill the limit", async () => {
     mockGeocode.mockResolvedValue(okResult)
     const fake = createFake({

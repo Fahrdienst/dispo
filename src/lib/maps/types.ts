@@ -23,7 +23,10 @@ export interface RouteResult {
 /** Address input for geocoding (Swiss format) */
 export interface AddressInput {
   street: string
-  house_number: string
+  /** Optional: many imported facility addresses have no separate house number
+   *  (it's embedded in `street` or genuinely absent). Google geocodes fine
+   *  without it. */
+  house_number?: string | null
   postal_code: string
   city: string
 }

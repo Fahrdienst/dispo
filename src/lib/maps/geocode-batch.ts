@@ -49,18 +49,20 @@ type Client = SupabaseClient<Database>
 function addressOf(r: OpenRecord): AddressInput {
   return {
     street: r.street!,
-    house_number: r.house_number!,
+    house_number: r.house_number, // optional — many facility addresses lack one
     postal_code: r.postal_code!,
     city: r.city!,
   }
 }
 
 function addressLabel(a: AddressInput): string {
-  return `${a.street} ${a.house_number}, ${a.postal_code} ${a.city}`
+  const streetPart = a.house_number ? `${a.street} ${a.house_number}` : a.street
+  return `${streetPart}, ${a.postal_code} ${a.city}`
 }
 
-/** Fetch up to `limit` open, fully-addressed records not yet attempted this
- *  session (geocode_updated_at is null or older than the cursor). */
+/** Fetch up to `limit` open records with street/postal_code/city (house number
+ *  optional) not yet attempted this session (geocode_updated_at null or older
+ *  than the cursor). */
 async function fetchOpen(
   supabase: Client,
   table: GeocodableTable,
@@ -73,7 +75,6 @@ async function fetchOpen(
     .or(OPEN_STATUS_FILTER)
     .or(`geocode_updated_at.is.null,geocode_updated_at.lt.${cursor}`)
     .not("street", "is", null)
-    .not("house_number", "is", null)
     .not("postal_code", "is", null)
     .not("city", "is", null)
     .order("geocode_updated_at", { ascending: true, nullsFirst: true })
@@ -85,7 +86,7 @@ async function fetchOpen(
   return (data ?? []) as OpenRecord[]
 }
 
-/** Count open, fully-addressed records not yet attempted this session. */
+/** Count open records (street/postal_code/city present) not yet attempted. */
 async function countOpen(
   supabase: Client,
   table: GeocodableTable,
@@ -97,7 +98,6 @@ async function countOpen(
     .or(OPEN_STATUS_FILTER)
     .or(`geocode_updated_at.is.null,geocode_updated_at.lt.${cursor}`)
     .not("street", "is", null)
-    .not("house_number", "is", null)
     .not("postal_code", "is", null)
     .not("city", "is", null)
   return count ?? 0
