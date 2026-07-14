@@ -9,7 +9,19 @@ import { geocodeAndUpdateRecord } from "@/lib/maps/geocode"
 import { logAudit } from "@/lib/audit/logger"
 import { uuidSchema } from "@/lib/validations/shared"
 import type { ActionResult } from "@/actions/shared"
-import type { Tables } from "@/lib/types/database"
+import type { Tables, TablesInsert, TablesUpdate } from "@/lib/types/database"
+import type { CostBearer } from "@/lib/patients/constants"
+
+// #125: the generated DB types don't yet include patients.cost_bearer (they are
+// regenerated centrally after the M13 merge). Extend the write payload types
+// locally so the new column is written type-safely — no `any`, no @ts-ignore.
+// Drop these intersections once database.ts is regenerated.
+type PatientInsertPayload = TablesInsert<"patients"> & {
+  cost_bearer?: CostBearer | null
+}
+type PatientUpdatePayload = TablesUpdate<"patients"> & {
+  cost_bearer?: CostBearer | null
+}
 
 export async function createPatient(
   _prevState: ActionResult<Tables<"patients">> | null,
@@ -36,7 +48,7 @@ export async function createPatient(
   const supabase = await createClient()
   const { data: patient, error } = await supabase
     .from("patients")
-    .insert(patientData)
+    .insert(patientData as PatientInsertPayload)
     .select()
     .single()
 
@@ -130,7 +142,9 @@ export async function updatePatient(
     .update(
       // Mark pending on address change so the backfill/cron can recover if the
       // fire-and-forget geocode below fails.
-      addressChanged ? { ...patientData, geocode_status: "pending" as const } : patientData
+      (addressChanged
+        ? { ...patientData, geocode_status: "pending" as const }
+        : patientData) as PatientUpdatePayload
     )
     .eq("id", id)
     .select()
@@ -213,7 +227,7 @@ export async function createPatientInline(
   const supabase = await createClient()
   const { data: patient, error } = await supabase
     .from("patients")
-    .insert(result.data)
+    .insert(result.data as PatientInsertPayload)
     .select()
     .single()
 

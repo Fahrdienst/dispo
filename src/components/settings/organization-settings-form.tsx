@@ -36,6 +36,11 @@ export function OrganizationSettingsForm({ settings }: Props) {
   const [emailMsg, setEmailMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [isSendingEmail, startEmailSend] = useTransition()
 
+  const fieldErrors =
+    state && !state.success ? state.fieldErrors : undefined
+  const fieldError = (name: string): string | undefined =>
+    fieldErrors?.[name]?.[0]
+
   function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -373,6 +378,90 @@ export function OrganizationSettingsForm({ settings }: Props) {
               {emailMsg && (
                 <p className={`text-xs ${emailMsg.ok ? "text-emerald-600" : "text-red-600"}`}>
                   {emailMsg.text}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================= */}
+        {/* Zeit-Puffer (Issue #128) */}
+        {/* ============================================================= */}
+        <div className="rounded-xl border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-6 py-4">
+            <h2 className="text-base font-semibold">Zeit-Puffer</h2>
+            <p className="text-xs text-slate-500">
+              Standardwerte für die vorgeschlagene Abholzeit. Pro Fahrt
+              überschreibbar.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-3">
+            <div>
+              <Label htmlFor="default_pickup_buffer_minutes">
+                Vorlauf-Puffer (Min.)
+              </Label>
+              <Input
+                id="default_pickup_buffer_minutes"
+                name="default_pickup_buffer_minutes"
+                type="number"
+                min={0}
+                max={120}
+                step={1}
+                inputMode="numeric"
+                defaultValue={settings?.default_pickup_buffer_minutes ?? 5}
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Vor der Fahrtdauer, damit der Fahrer rechtzeitig da ist.
+              </p>
+              {fieldError("default_pickup_buffer_minutes") && (
+                <p className="mt-1 text-xs text-red-600">
+                  {fieldError("default_pickup_buffer_minutes")}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="default_boarding_minutes">
+                Ein-/Aussteige-Zeit (Min.)
+              </Label>
+              <Input
+                id="default_boarding_minutes"
+                name="default_boarding_minutes"
+                type="number"
+                min={0}
+                max={120}
+                step={1}
+                inputMode="numeric"
+                defaultValue={settings?.default_boarding_minutes ?? 0}
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Zeit für das Boarding beim Patienten.
+              </p>
+              {fieldError("default_boarding_minutes") && (
+                <p className="mt-1 text-xs text-red-600">
+                  {fieldError("default_boarding_minutes")}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="default_return_buffer_minutes">
+                Rückfahr-Puffer (Min.)
+              </Label>
+              <Input
+                id="default_return_buffer_minutes"
+                name="default_return_buffer_minutes"
+                type="number"
+                min={0}
+                max={120}
+                step={1}
+                inputMode="numeric"
+                defaultValue={settings?.default_return_buffer_minutes ?? 15}
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Nach dem Termin bis zur Rückfahr-Abholung.
+              </p>
+              {fieldError("default_return_buffer_minutes") && (
+                <p className="mt-1 text-xs text-red-600">
+                  {fieldError("default_return_buffer_minutes")}
                 </p>
               )}
             </div>

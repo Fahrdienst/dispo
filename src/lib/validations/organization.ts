@@ -2,6 +2,20 @@ import { z } from "zod"
 
 const emptyToNull = (v: string) => (v === "" ? null : v)
 
+/**
+ * Time-buffer default (minutes), configurable per organization (Issue #128).
+ * FormData delivers strings, so coerce to an integer and clamp to a sane
+ * range. 0-120 mirrors the CHECK constraint in
+ * supabase/migrations/20260329_000001_org_settings_time_buffers.sql.
+ */
+const bufferMinutes = (fallback: number) =>
+  z.coerce
+    .number({ invalid_type_error: "Ganzzahl erforderlich" })
+    .int("Ganzzahl erforderlich")
+    .min(0, "Mindestens 0 Minuten")
+    .max(120, "Maximal 120 Minuten")
+    .default(fallback)
+
 export const updateOrganizationSchema = z.object({
   org_name: z.string().min(1, "Organisationsname ist erforderlich").max(200),
   org_street: z.string().transform(emptyToNull).nullable().optional(),
@@ -51,6 +65,10 @@ export const updateOrganizationSchema = z.object({
     .nullable()
     .optional()
     .pipe(z.string().email("Ungültige E-Mail-Adresse").nullable().optional()),
+  // Zeit-Puffer-Defaults (Issue #128) — Defaults = bisherige Konstanten.
+  default_pickup_buffer_minutes: bufferMinutes(5),
+  default_boarding_minutes: bufferMinutes(0),
+  default_return_buffer_minutes: bufferMinutes(15),
 })
 
 export type UpdateOrganizationFormValues = z.infer<

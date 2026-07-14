@@ -1,6 +1,16 @@
 import { z } from "zod"
+import { COST_BEARER_VALUES, COST_BEARER_NONE } from "@/lib/patients/constants"
 
 const emptyToNull = (v: string) => (v === "" ? null : v)
+
+/**
+ * Cost bearer (#125). Optional. The <Select> submits either an enum value, an
+ * empty string, or the "__none__" sentinel — all of the latter map to null.
+ */
+const costBearerField = z.preprocess(
+  (v) => (v === "" || v === COST_BEARER_NONE || v === undefined ? null : v),
+  z.enum(COST_BEARER_VALUES).nullable()
+)
 
 export const patientSchema = z.object({
   first_name: z.string().min(1, "Vorname ist erforderlich").max(100),
@@ -36,6 +46,7 @@ export const patientSchema = z.object({
     .transform(emptyToNull)
     .nullable()
     .optional(),
+  cost_bearer: costBearerField,
   impairments: z
     .array(z.enum(["rollator", "wheelchair", "stretcher", "companion"]))
     .default([]),
@@ -66,6 +77,7 @@ export const patientInlineSchema = z.object({
     .min(1, "PLZ ist erforderlich")
     .regex(/^\d{4}$/, "PLZ muss 4-stellig sein (CH)"),
   city: z.string().min(1, "Ort ist erforderlich").max(100),
+  cost_bearer: costBearerField,
 })
 
 export type PatientInlineFormValues = z.infer<typeof patientInlineSchema>

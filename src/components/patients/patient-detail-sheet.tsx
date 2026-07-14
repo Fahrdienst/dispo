@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { MapPin, Phone, ShieldAlert, MessageSquare, StickyNote, Plus } from "lucide-react"
+import { MapPin, Phone, ShieldAlert, MessageSquare, StickyNote, Plus, Wallet } from "lucide-react"
 import {
   Sheet,
   SheetContent,
@@ -18,6 +18,7 @@ import { DeactivateDialog } from "@/components/shared/deactivate-dialog"
 import { AnonymizeDialog } from "@/components/shared/anonymize-dialog"
 import { anonymizePatient } from "@/actions/gdpr"
 import type { Tables, Enums } from "@/lib/types/database"
+import { COST_BEARER_LABELS, type PatientWithCostBearer } from "@/lib/patients/constants"
 
 const IMPAIRMENT_LABELS: Record<string, string> = {
   rollator: "Rollator",
@@ -65,6 +66,11 @@ export function PatientDetailSheet({
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
   const hasCoords = patient.lat != null && patient.lng != null && apiKey
 
+  // #125: cost_bearer is not yet in the generated patient type — read via a
+  // documented cast (through unknown, since the current row type omits the
+  // column). Remove once database.ts is regenerated.
+  const costBearer = (patient as unknown as PatientWithCostBearer).cost_bearer
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="sm:max-w-[480px] flex flex-col">
@@ -100,6 +106,17 @@ export function PatientDetailSheet({
             <div className="flex items-start gap-2 text-sm">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <span>{address}</span>
+            </div>
+          )}
+
+          {/* Cost bearer */}
+          {costBearer && (
+            <div className="flex items-center gap-2 text-sm">
+              <Wallet className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>
+                <span className="text-muted-foreground">Kostenträger: </span>
+                {COST_BEARER_LABELS[costBearer]}
+              </span>
             </div>
           )}
 

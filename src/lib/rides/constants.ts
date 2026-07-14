@@ -13,6 +13,7 @@
  */
 
 import type { Enums } from "@/lib/types/database"
+import type { RideRequirement } from "@/lib/rides/requirements"
 
 type RideStatus = Enums<"ride_status">
 type RideDirection = Enums<"ride_direction">
@@ -155,6 +156,23 @@ export const IMPAIRMENT_TYPE_LABELS: Record<Enums<"impairment_type">, string> = 
   wheelchair: "Rollstuhl",
   stretcher:  "Liegend",
   companion:  "Begleitperson",
+}
+
+/**
+ * Ride requirement labels in German (Issue #126).
+ *
+ * Keyed by the local `RideRequirement` union (the generated Supabase types do
+ * not know the `ride_requirement` enum yet -- regenerated centrally after the
+ * M13 merge). `oxygen`/`carry_chair` are informative-only flags that do not
+ * affect the vehicle type; see `src/lib/rides/requirements.ts`.
+ */
+export const RIDE_REQUIREMENT_LABELS: Record<RideRequirement, string> = {
+  wheelchair:  "Rollstuhl",
+  rollator:    "Rollator",
+  companion:   "Begleitung",
+  oxygen:      "Sauerstoff",
+  carry_chair: "Tragestuhl",
+  stretcher:   "Liegend",
 }
 
 /** Absence type labels in German (driver_absences, Issue #104). */

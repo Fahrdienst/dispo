@@ -7,6 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { SubmitButton } from "@/components/shared/submit-button"
@@ -15,6 +22,12 @@ import { LocationMap } from "@/components/shared/location-map"
 import { PlacesAutocomplete, type PlaceSelectResult } from "@/components/shared/places-autocomplete"
 import { createPatient, updatePatient } from "@/actions/patients"
 import type { Tables } from "@/lib/types/database"
+import {
+  COST_BEARER_VALUES,
+  COST_BEARER_LABELS,
+  COST_BEARER_NONE,
+  type PatientWithCostBearer,
+} from "@/lib/patients/constants"
 
 const IMPAIRMENT_OPTIONS = [
   { value: "rollator", label: "Rollator" },
@@ -53,6 +66,10 @@ export function PatientForm({ patient }: PatientFormProps) {
     useState<string[]>(initialImpairments)
 
   const fieldErrors = state && !state.success ? state.fieldErrors : undefined
+
+  // #125: cost_bearer is not yet in the generated patient type — read via cast.
+  const costBearerDefault =
+    (patient as PatientWithCostBearer | undefined)?.cost_bearer ?? COST_BEARER_NONE
 
   function toggleImpairment(value: string, checked: boolean) {
     setCheckedImpairments((prev) =>
@@ -132,6 +149,30 @@ export function PatientForm({ patient }: PatientFormProps) {
             {fieldErrors?.phone && (
               <p className="text-sm text-destructive">
                 {fieldErrors.phone[0]}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cost_bearer">Kostenträger</Label>
+            <Select name="cost_bearer" defaultValue={costBearerDefault}>
+              <SelectTrigger id="cost_bearer">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={COST_BEARER_NONE}>
+                  Nicht angegeben
+                </SelectItem>
+                {COST_BEARER_VALUES.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {COST_BEARER_LABELS[value]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {fieldErrors?.cost_bearer && (
+              <p className="text-sm text-destructive">
+                {fieldErrors.cost_bearer[0]}
               </p>
             )}
           </div>
