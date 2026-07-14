@@ -168,7 +168,7 @@ export async function createRide(
       dest.lat != null &&
       dest.lng != null
     ) {
-      const { calculateRidePrice } = await import(
+      const { calculateRidePrice, isPriceCalculationFailure } = await import(
         "@/lib/billing/calculate-price"
       )
       const priceResult = await calculateRidePrice({
@@ -183,7 +183,11 @@ export async function createRide(
         isTagesheimImwilOverride: is_tagesheim_imwil,
       })
 
-      if (priceResult) {
+      if (isPriceCalculationFailure(priceResult)) {
+        console.warn(
+          "Preisberechnung übersprungen: Route für Ausserkantonal-Tarif nicht verfügbar."
+        )
+      } else {
         priceFields = {
           ...priceFields,
           distance_meters: priceResult.distance_meters,
@@ -431,7 +435,7 @@ async function createRideWithSeries(
       dest.lat != null &&
       dest.lng != null
     ) {
-      const { calculateRidePrice } = await import(
+      const { calculateRidePrice, isPriceCalculationFailure } = await import(
         "@/lib/billing/calculate-price"
       )
       const priceResult = await calculateRidePrice({
@@ -446,7 +450,11 @@ async function createRideWithSeries(
         isTagesheimImwilOverride: is_tagesheim_imwil,
       })
 
-      if (priceResult) {
+      if (isPriceCalculationFailure(priceResult)) {
+        console.warn(
+          "Preisberechnung übersprungen: Route für Ausserkantonal-Tarif nicht verfügbar."
+        )
+      } else {
         priceFields = {
           ...priceFields,
           distance_meters: priceResult.distance_meters,
@@ -741,7 +749,7 @@ export async function updateRide(
       dest.lat != null &&
       dest.lng != null
     ) {
-      const { calculateRidePrice } = await import(
+      const { calculateRidePrice, isPriceCalculationFailure } = await import(
         "@/lib/billing/calculate-price"
       )
       const priceResult = await calculateRidePrice({
@@ -756,7 +764,11 @@ export async function updateRide(
         isTagesheimImwilOverride: is_tagesheim_imwil,
       })
 
-      if (priceResult) {
+      if (isPriceCalculationFailure(priceResult)) {
+        console.warn(
+          "Preisberechnung übersprungen: Route für Ausserkantonal-Tarif nicht verfügbar."
+        )
+      } else {
         priceFields = {
           ...priceFields,
           distance_meters: priceResult.distance_meters,
