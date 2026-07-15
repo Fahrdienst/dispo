@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { MapPin, Phone, ShieldAlert, MessageSquare, StickyNote, Plus, Wallet } from "lucide-react"
+import { MapPin, Phone, ShieldAlert, MessageSquare, StickyNote, Plus, Wallet, Receipt } from "lucide-react"
 import {
   Sheet,
   SheetContent,
@@ -85,11 +85,19 @@ export function PatientDetailSheet({
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 py-4">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/patients/${patient.id}/edit`}>
-              Bearbeiten
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/patients/${patient.id}`}>
+                <Receipt className="mr-2 h-4 w-4" />
+                Fahrten & Quittungen
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/patients/${patient.id}/edit`}>
+                Bearbeiten
+              </Link>
+            </Button>
+          </div>
 
           <Separator />
 
