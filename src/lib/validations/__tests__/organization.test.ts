@@ -104,3 +104,74 @@ describe("updateOrganizationSchema — time buffers (#128)", () => {
     expect(result.success).toBe(false)
   })
 })
+
+describe("updateOrganizationSchema — driver compensation rates (#153)", () => {
+  it("defaults both rates to null when omitted", () => {
+    const result = updateOrganizationSchema.safeParse(validBase)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.driver_comp_per_ride_chf).toBeNull()
+      expect(result.data.driver_comp_per_km_chf).toBeNull()
+    }
+  })
+
+  it("maps empty strings to null (unconfigured)", () => {
+    const result = updateOrganizationSchema.safeParse({
+      ...validBase,
+      driver_comp_per_ride_chf: "",
+      driver_comp_per_km_chf: "",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.driver_comp_per_ride_chf).toBeNull()
+      expect(result.data.driver_comp_per_km_chf).toBeNull()
+    }
+  })
+
+  it("coerces numeric strings to numbers", () => {
+    const result = updateOrganizationSchema.safeParse({
+      ...validBase,
+      driver_comp_per_ride_chf: "5.00",
+      driver_comp_per_km_chf: "0.70",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.driver_comp_per_ride_chf).toBe(5)
+      expect(result.data.driver_comp_per_km_chf).toBe(0.7)
+    }
+  })
+
+  it("accepts 0 as a valid rate", () => {
+    const result = updateOrganizationSchema.safeParse({
+      ...validBase,
+      driver_comp_per_ride_chf: "0",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.driver_comp_per_ride_chf).toBe(0)
+    }
+  })
+
+  it("rejects a negative rate", () => {
+    const result = updateOrganizationSchema.safeParse({
+      ...validBase,
+      driver_comp_per_km_chf: "-1",
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(
+        result.error.issues.some((i) =>
+          i.path.includes("driver_comp_per_km_chf")
+        )
+      ).toBe(true)
+    }
+  })
+
+  it("rejects a non-numeric rate string", () => {
+    const result = updateOrganizationSchema.safeParse({
+      ...validBase,
+      driver_comp_per_ride_chf: "abc",
+    })
+    expect(result.success).toBe(false)
+  })
+})

@@ -16,6 +16,25 @@ const bufferMinutes = (fallback: number) =>
     .max(120, "Maximal 120 Minuten")
     .default(fallback)
 
+/**
+ * Driver-compensation rate (CHF), optional — an empty field means "not
+ * configured" and is stored as NULL (→ CHF 0 in the live report formula, M14
+ * Phase 14.3). FormData delivers strings; map "" → null, reject non-numbers.
+ * Max mirrors the numeric(8,2) column headroom without being absurd.
+ */
+const compensationRate = z.preprocess(
+  (v) => {
+    if (v === "" || v == null) return null
+    const n = Number(v)
+    return Number.isNaN(n) ? v : n
+  },
+  z
+    .number({ invalid_type_error: "Ungültiger Betrag" })
+    .min(0, "Betrag darf nicht negativ sein")
+    .max(9999.99, "Betrag zu gross")
+    .nullable()
+)
+
 export const updateOrganizationSchema = z.object({
   org_name: z.string().min(1, "Organisationsname ist erforderlich").max(200),
   org_street: z.string().transform(emptyToNull).nullable().optional(),
@@ -69,6 +88,9 @@ export const updateOrganizationSchema = z.object({
   default_pickup_buffer_minutes: bufferMinutes(5),
   default_boarding_minutes: bufferMinutes(0),
   default_return_buffer_minutes: bufferMinutes(15),
+  // Fahrer-Entschädigungssätze (Issue #153) — optional, live im Report genutzt.
+  driver_comp_per_ride_chf: compensationRate,
+  driver_comp_per_km_chf: compensationRate,
 })
 
 export type UpdateOrganizationFormValues = z.infer<
