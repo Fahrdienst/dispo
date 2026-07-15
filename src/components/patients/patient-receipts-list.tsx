@@ -26,8 +26,8 @@ const RECEIPT_STATUS_LABELS = {
 
 /**
  * Read-only list of the patient's receipts (Nummer, Zeitraum, Betrag, Status).
- * Each row links to the receipt detail in the finance area, where PDF download
- * and storno live (Peter B's territory — link contract only).
+ * Each row links to the receipt list in the finance area (highlighted via
+ * ?created=), where PDF download and storno live.
  */
 export function PatientReceiptsList({ receipts }: PatientReceiptsListProps) {
   if (receipts.length === 0) {
@@ -101,7 +101,7 @@ export function PatientReceiptsList({ receipts }: PatientReceiptsListProps) {
                 </TableCell>
                 <TableCell>
                   <Link
-                    href={`/finance/receipts/${receipt.id}`}
+                    href={`/finance/receipts?year=${receipt.receiptNumber.split("-")[1]}&created=${receipt.id}`}
                     className="text-sm text-muted-foreground underline-offset-4 hover:underline"
                   >
                     Öffnen

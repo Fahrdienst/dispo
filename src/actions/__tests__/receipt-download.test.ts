@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { RECEIPT_SIGNED_URL_TTL_SECONDS } from "../receipt-download"
+import { RECEIPT_SIGNED_URL_TTL_SECONDS } from "@/lib/receipts/constants"
 
 // SEC-M14-005 (HIGH): receipt-PDF signed URLs must be short-lived (≤ 5 min),
 // NOT the long-lived `feedback` pattern. This pins the hard ceiling so a future

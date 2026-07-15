@@ -4,19 +4,10 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAuth } from "@/lib/auth/require-auth"
 import type { ActionResult } from "@/actions/shared"
+import { RECEIPT_SIGNED_URL_TTL_SECONDS } from "@/lib/receipts/constants"
 
 // Private receipts bucket (Migration 20260718, SEC-M14-005/007/012).
 const RECEIPTS_BUCKET = "receipts"
-
-/**
- * TTL for receipt-PDF signed URLs.
- *
- * SEC-M14-005 (HIGH): receipt PDFs are downloaded on-demand inside an
- * authenticated session, so the URL must be short-lived. This deliberately does
- * NOT reuse the 1-year `feedback` pattern (that URL is embedded in a GitHub
- * issue). Hard ceiling: 5 minutes.
- */
-export const RECEIPT_SIGNED_URL_TTL_SECONDS = 300
 
 /**
  * Produce a short-lived signed download URL for a receipt PDF.
