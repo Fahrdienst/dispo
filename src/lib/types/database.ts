@@ -693,10 +693,13 @@ export type Database = {
       }
       patients: {
         Row: {
+          billing_recipient_address: string | null
+          billing_recipient_name: string | null
           city: string | null
           comment: string | null
           cost_bearer: Database["public"]["Enums"]["cost_bearer_type"] | null
           created_at: string
+          email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           first_name: string
@@ -711,9 +714,6 @@ export type Database = {
           lng: number | null
           notes: string | null
           patient_number: string | null
-          billing_recipient_address: string | null
-          billing_recipient_name: string | null
-          email: string | null
           phone: string | null
           place_id: string | null
           postal_code: string | null
@@ -721,10 +721,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          billing_recipient_address?: string | null
+          billing_recipient_name?: string | null
           city?: string | null
           comment?: string | null
           cost_bearer?: Database["public"]["Enums"]["cost_bearer_type"] | null
           created_at?: string
+          email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           first_name: string
@@ -739,9 +742,6 @@ export type Database = {
           lng?: number | null
           notes?: string | null
           patient_number?: string | null
-          billing_recipient_address?: string | null
-          billing_recipient_name?: string | null
-          email?: string | null
           phone?: string | null
           place_id?: string | null
           postal_code?: string | null
@@ -749,10 +749,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          billing_recipient_address?: string | null
+          billing_recipient_name?: string | null
           city?: string | null
           comment?: string | null
           cost_bearer?: Database["public"]["Enums"]["cost_bearer_type"] | null
           created_at?: string
+          email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           first_name?: string
@@ -767,9 +770,6 @@ export type Database = {
           lng?: number | null
           notes?: string | null
           patient_number?: string | null
-          billing_recipient_address?: string | null
-          billing_recipient_name?: string | null
-          email?: string | null
           phone?: string | null
           place_id?: string | null
           postal_code?: string | null
@@ -1506,6 +1506,7 @@ export const Constants = {
         "other",
       ],
       impairment_type: ["rollator", "wheelchair", "stretcher", "companion"],
+      receipt_status: ["issued", "cancelled"],
       recurrence_type: ["daily", "weekly", "biweekly", "monthly"],
       rejection_reason: [
         "schedule_conflict",
