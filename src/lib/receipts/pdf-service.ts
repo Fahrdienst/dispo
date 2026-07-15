@@ -70,24 +70,19 @@ function receiptYear(receiptNumber: string, issuedAt: string): string {
 }
 
 /**
- * Render a receipt PDF from its immutable snapshot, upload it to the private
- * `receipts` bucket at `<year>/<receipt_number>.pdf` (SEC-M14-012: no PII in the
- * path), and set `receipts.pdf_path`.
+ * Load and denormalize a receipt's immutable snapshot into the fully
+ * self-contained `ReceiptPdfData` needed to render its PDF (no further I/O).
  *
- * Runs AFTER the DB transaction (ADR-015 E5) using the service-role client, so
- * it bypasses RLS while the immutability triggers still permit the `pdf_path`
- * change. Fully idempotent: re-running overwrites the same object and re-sets
- * `pdf_path` (used by the "PDF neu erzeugen" retry when a receipt exists with
- * `pdf_path = NULL`).
+ * Shared by both the single-receipt generator (`generateAndStoreReceiptPdf`)
+ * and the on-demand collective batch renderer (`renderBatchReceiptPdf`), so
+ * every page — single or batch — is built from exactly the same frozen data.
  *
- * @throws when the receipt is missing, rendering fails, or the upload fails —
- *         the caller decides how to surface it (the receipt itself stays valid).
+ * @throws when the receipt head is missing or its positions cannot be loaded.
  */
-export async function generateAndStoreReceiptPdf(
+export async function loadReceiptPdfData(
+  supabase: AdminClient,
   receiptId: string
-): Promise<{ pdfPath: string }> {
-  const supabase = createAdminClient()
-
+): Promise<ReceiptPdfData> {
   // 1. Load the receipt head.
   const { data: receipt, error: receiptError } = await supabase
     .from("receipts")
@@ -138,7 +133,7 @@ export async function generateAndStoreReceiptPdf(
     amount: row.amount,
   }))
 
-  const data: ReceiptPdfData = {
+  return {
     receiptNumber: receipt.receipt_number,
     recipientName: receipt.recipient_name,
     recipientAddress: receipt.recipient_address,
@@ -161,13 +156,35 @@ export async function generateAndStoreReceiptPdf(
     },
     logoDataUri,
   }
+}
+
+/**
+ * Render a receipt PDF from its immutable snapshot, upload it to the private
+ * `receipts` bucket at `<year>/<receipt_number>.pdf` (SEC-M14-012: no PII in the
+ * path), and set `receipts.pdf_path`.
+ *
+ * Runs AFTER the DB transaction (ADR-015 E5) using the service-role client, so
+ * it bypasses RLS while the immutability triggers still permit the `pdf_path`
+ * change. Fully idempotent: re-running overwrites the same object and re-sets
+ * `pdf_path` (used by the "PDF neu erzeugen" retry when a receipt exists with
+ * `pdf_path = NULL`).
+ *
+ * @throws when the receipt is missing, rendering fails, or the upload fails —
+ *         the caller decides how to surface it (the receipt itself stays valid).
+ */
+export async function generateAndStoreReceiptPdf(
+  receiptId: string
+): Promise<{ pdfPath: string }> {
+  const supabase = createAdminClient()
+
+  const data = await loadReceiptPdfData(supabase, receiptId)
 
   // 6. Render to a PDF buffer (Node runtime).
   const buffer = await renderToBuffer(ReceiptDocument({ data }))
 
   // 7. Upload to the private bucket (overwrite for idempotency).
-  const year = receiptYear(receipt.receipt_number, receipt.issued_at)
-  const pdfPath = `${year}/${receipt.receipt_number}.pdf`
+  const year = receiptYear(data.receiptNumber, data.issuedAt)
+  const pdfPath = `${year}/${data.receiptNumber}.pdf`
   const { error: uploadError } = await supabase.storage
     .from(RECEIPTS_BUCKET)
     .upload(pdfPath, buffer, {

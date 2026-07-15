@@ -191,22 +191,24 @@ function orgAddressLines(data: ReceiptPdfData): string[] {
 }
 
 /**
- * Build the receipt PDF element. Returns the root `<Document>` element directly
- * (not a wrapper component) so its type is `ReactElement<DocumentProps>`, which
- * `renderToBuffer` accepts without a cast.
+ * A single receipt as one A4 `<Page>`. Extracted so both the single-receipt
+ * document and the collective batch document (one page per receipt, ADR-015 E6)
+ * render byte-identical pages from the same immutable snapshot.
+ *
+ * `key` is required when composed into a multi-page `<Document>`.
  */
-export function ReceiptDocument({ data }: { data: ReceiptPdfData }): React.ReactElement {
+export function ReceiptPage({
+  data,
+  pageKey,
+}: {
+  data: ReceiptPdfData
+  pageKey?: string | number
+}): React.ReactElement {
   const recipientAddressLines = data.recipientAddress.split("\n").filter(Boolean)
   const isCancelled = data.status === "cancelled"
 
   return (
-    <Document
-      title={`Quittung ${data.receiptNumber}`}
-      author={data.org.name}
-      creator={data.org.name}
-      producer="Dispo"
-    >
-      <Page size="A4" style={styles.page}>
+    <Page key={pageKey} size="A4" style={styles.page}>
         {/* Letterhead */}
         <View style={styles.header}>
           {data.logoDataUri ? (
@@ -293,7 +295,24 @@ export function ReceiptDocument({ data }: { data: ReceiptPdfData }): React.React
           <Text>Ausgestellt durch: {data.issuedByName}</Text>
           <Text>{data.org.name}</Text>
         </View>
-      </Page>
+    </Page>
+  )
+}
+
+/**
+ * Build the receipt PDF element. Returns the root `<Document>` element directly
+ * (not a wrapper component) so its type is `ReactElement<DocumentProps>`, which
+ * `renderToBuffer` accepts without a cast.
+ */
+export function ReceiptDocument({ data }: { data: ReceiptPdfData }): React.ReactElement {
+  return (
+    <Document
+      title={`Quittung ${data.receiptNumber}`}
+      author={data.org.name}
+      creator={data.org.name}
+      producer="Dispo"
+    >
+      <ReceiptPage data={data} />
     </Document>
   )
 }
