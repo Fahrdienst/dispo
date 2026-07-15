@@ -587,6 +587,9 @@ export type Database = {
       organization_settings: {
         Row: {
           created_at: string
+          default_boarding_minutes: number
+          default_pickup_buffer_minutes: number
+          default_return_buffer_minutes: number
           driver_comp_per_km_chf: number | null
           driver_comp_per_ride_chf: number | null
           email_enabled: boolean
@@ -609,6 +612,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          default_boarding_minutes?: number
+          default_pickup_buffer_minutes?: number
+          default_return_buffer_minutes?: number
           driver_comp_per_km_chf?: number | null
           driver_comp_per_ride_chf?: number | null
           email_enabled?: boolean
@@ -631,6 +637,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          default_boarding_minutes?: number
+          default_pickup_buffer_minutes?: number
+          default_return_buffer_minutes?: number
           driver_comp_per_km_chf?: number | null
           driver_comp_per_ride_chf?: number | null
           email_enabled?: boolean
@@ -686,6 +695,7 @@ export type Database = {
         Row: {
           city: string | null
           comment: string | null
+          cost_bearer: Database["public"]["Enums"]["cost_bearer_type"] | null
           created_at: string
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
@@ -713,6 +723,7 @@ export type Database = {
         Insert: {
           city?: string | null
           comment?: string | null
+          cost_bearer?: Database["public"]["Enums"]["cost_bearer_type"] | null
           created_at?: string
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
@@ -740,6 +751,7 @@ export type Database = {
         Update: {
           city?: string | null
           comment?: string | null
+          cost_bearer?: Database["public"]["Enums"]["cost_bearer_type"] | null
           created_at?: string
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
@@ -1038,6 +1050,7 @@ export type Database = {
           polyline: string | null
           price_override: number | null
           price_override_reason: string | null
+          requirements: Database["public"]["Enums"]["ride_requirement"][]
           return_pickup_time: string | null
           ride_series_id: string | null
           status: Database["public"]["Enums"]["ride_status"]
@@ -1073,6 +1086,7 @@ export type Database = {
           polyline?: string | null
           price_override?: number | null
           price_override_reason?: string | null
+          requirements?: Database["public"]["Enums"]["ride_requirement"][]
           return_pickup_time?: string | null
           ride_series_id?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
@@ -1108,6 +1122,7 @@ export type Database = {
           polyline?: string | null
           price_override?: number | null
           price_override_reason?: string | null
+          requirements?: Database["public"]["Enums"]["ride_requirement"][]
           return_pickup_time?: string | null
           ride_series_id?: string | null
           status?: Database["public"]["Enums"]["ride_status"]
@@ -1276,6 +1291,11 @@ export type Database = {
         | "confirmed"
         | "rejected"
         | "cancelled"
+      cost_bearer_type:
+        | "health_insurance"
+        | "self_payer"
+        | "municipality"
+        | "other"
       day_of_week:
         | "monday"
         | "tuesday"
@@ -1305,6 +1325,13 @@ export type Database = {
         | "dispatcher_override"
         | "timeout"
       ride_direction: "outbound" | "return" | "both"
+      ride_requirement:
+        | "wheelchair"
+        | "rollator"
+        | "companion"
+        | "oxygen"
+        | "carry_chair"
+        | "stretcher"
       ride_status:
         | "unplanned"
         | "planned"
@@ -1456,6 +1483,12 @@ export const Constants = {
         "rejected",
         "cancelled",
       ],
+      cost_bearer_type: [
+        "health_insurance",
+        "self_payer",
+        "municipality",
+        "other",
+      ],
       day_of_week: [
         "monday",
         "tuesday",
@@ -1488,6 +1521,14 @@ export const Constants = {
         "timeout",
       ],
       ride_direction: ["outbound", "return", "both"],
+      ride_requirement: [
+        "wheelchair",
+        "rollator",
+        "companion",
+        "oxygen",
+        "carry_chair",
+        "stretcher",
+      ],
       ride_status: [
         "unplanned",
         "planned",

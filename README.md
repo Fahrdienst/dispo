@@ -583,3 +583,20 @@ Expected: `role = 'driver'` **and** a non-NULL `driver_id`. If you see `role = '
 
 - Someone changed the database schema but did not regenerate and commit the types file.
 - Run `npm run db:types` locally, verify the diff, and commit the updated `src/lib/types/database.ts`.
+
+## Fahrt erfassen (One-Page-Dispo)
+
+Milestone **M13** adds a dedicated ride-capture page at `/rides/erfassen` — a two-column "One-Page-Dispo" screen for dispatchers. The left column captures **who → where → when**; the right column shows the map, the back-calculated pickup time(s) and the price **live**, without saving.
+
+Key ideas:
+
+- **Time model** (`src/lib/rides/time-calc.ts`): outbound pickup = appointment start − drive time − pickup buffer − boarding; return pickup = appointment end + return buffer; appointment end = appointment start + duration. The three buffers are org-wide defaults (`organization_settings`, loaded via `loadRideTimeBuffers`) and overridable per ride.
+- **Round trip = two linked rides**: the return leg is a separate `rides` row with `direction=return` and `parent_ride_id` pointing at the outbound (ADR-008).
+- **Cost bearer** lives on the patient (`cost_bearer`), never on the ride. **Requirements** (`ride_requirement[]`) live on the ride; only `wheelchair` influences the vehicle type (`requirementsToVehicleType`).
+- **Never block**: missing geocoding, price or appointment time produce non-blocking `warnings` (`collectRideWarnings`) instead of hard errors — `createRide` saves and returns `success: true` with warnings instead of redirecting. `save_intent=order_sheet` suppresses the redirect so the M11 order sheet can open.
+- **Driver assignment is out of scope** here — captured rides start `unplanned` and are assigned later in the dispatch board.
+
+The existing `ride-form.tsx` (editing) is unchanged. Design rationale: [ADR-014](docs/adrs/014-fahrt-erfassung.md). Dispatcher walkthrough: [docs/guides/fahrt-erfassen.md](docs/guides/fahrt-erfassen.md).
+
+---
+

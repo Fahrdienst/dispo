@@ -541,6 +541,32 @@ export function RideForm({
                 <p className="text-sm text-destructive" role="alert">{state.error}</p>
               )}
 
+              {/* Non-blocking persistence warnings (Issue #130). The ride was
+                  saved; these are hints, not errors. Full UI follows in #139. */}
+              {state?.success &&
+                state.warnings &&
+                state.warnings.length > 0 && (
+                  <div
+                    className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                    role="status"
+                  >
+                    <p className="font-medium">
+                      Fahrt gespeichert — mit Hinweisen:
+                    </p>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                      {state.warnings.map((w) => (
+                        <li key={w.code}>{w.message}</li>
+                      ))}
+                    </ul>
+                    <Link
+                      href={`/rides?date=${state.data.date}`}
+                      className="mt-2 inline-block font-medium underline"
+                    >
+                      Weiter zu den Fahrten
+                    </Link>
+                  </div>
+                )}
+
               {/* Warning banner for linked rides (edit mode) */}
               {isEdit && hasLinkedRides && (
                 <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">

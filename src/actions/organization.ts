@@ -5,10 +5,31 @@ import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/require-admin"
 import { updateOrganizationSchema } from "@/lib/validations/organization"
 import type { ActionResult } from "@/actions/shared"
-import type { Tables } from "@/lib/types/database"
+import type { Database, Tables } from "@/lib/types/database"
 
-// Use the auto-generated type from Supabase
-export type OrganizationSettings = Tables<"organization_settings">
+// -----------------------------------------------------------------------------
+// TYPE NOTE (Issue #128):
+// The time-buffer columns are added in migration
+// 20260329_000001_org_settings_time_buffers.sql. The generated Supabase types
+// (src/lib/types/database.ts) are regenerated centrally AFTER this branch is
+// merged, so they do not know these columns yet. We augment the generated Row
+// and Update types locally so app code stays type-safe and `tsc` stays green.
+// Cast sites are marked below. Once the types are regenerated, the intersections
+// become redundant no-ops and can be removed.
+// -----------------------------------------------------------------------------
+type TimeBufferColumns = {
+  default_pickup_buffer_minutes: number
+  default_boarding_minutes: number
+  default_return_buffer_minutes: number
+}
+
+// Use the auto-generated type from Supabase, augmented with the new columns.
+export type OrganizationSettings = Tables<"organization_settings"> &
+  TimeBufferColumns
+
+type OrganizationSettingsUpdate =
+  Database["public"]["Tables"]["organization_settings"]["Update"] &
+    Partial<TimeBufferColumns>
 
 // =============================================================================
 // GET ORGANIZATION SETTINGS
@@ -27,7 +48,9 @@ export async function getOrganizationSettings(): Promise<OrganizationSettings | 
     return null
   }
 
-  return data
+  // Cast: `data` lacks the time-buffer columns in the generated types (see
+  // TYPE NOTE above); the DB row does include them post-migration.
+  return data as unknown as OrganizationSettings
 }
 
 // =============================================================================
@@ -66,9 +89,11 @@ export async function updateOrganizationSettings(
     return { success: false, error: "Organisationseinstellungen nicht gefunden" }
   }
 
+  // Cast: `result.data` now carries the time-buffer fields, which the generated
+  // Update type does not know yet (see TYPE NOTE above).
   const { data, error } = await supabase
     .from("organization_settings")
-    .update(result.data)
+    .update(result.data as OrganizationSettingsUpdate)
     .eq("id", current.id)
     .select()
     .single()
@@ -79,7 +104,7 @@ export async function updateOrganizationSettings(
   }
 
   revalidatePath("/settings")
-  return { success: true, data }
+  return { success: true, data: data as unknown as OrganizationSettings }
 }
 
 // =============================================================================

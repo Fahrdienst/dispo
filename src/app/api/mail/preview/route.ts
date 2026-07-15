@@ -51,14 +51,9 @@ export async function GET(request: Request) {
     )
   }
 
-  if (!ride.driver_id) {
-    return NextResponse.json(
-      { error: "No driver assigned to this ride" },
-      { status: 404 }
-    )
-  }
-
-  // Load full order sheet data (uses admin client internally)
+  // Load full order sheet data (uses admin client internally). driver_id may be
+  // null for unplanned rides captured via the one-page dispo (#139) — the order
+  // sheet then renders a "no driver assigned yet" placeholder.
   try {
     const data = await loadOrderSheetData(rideId, ride.driver_id, "#", "#")
     let html = assembleOrderSheet(data)

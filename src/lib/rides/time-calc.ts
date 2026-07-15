@@ -11,10 +11,15 @@ import {
   addMinutesToTime,
   subtractMinutesFromTime,
   DEFAULT_PICKUP_BUFFER_MINUTES,
+  DEFAULT_BOARDING_MINUTES,
   DEFAULT_RETURN_BUFFER_MINUTES,
 } from "@/lib/validations/rides"
 
-export { DEFAULT_PICKUP_BUFFER_MINUTES }
+export {
+  DEFAULT_PICKUP_BUFFER_MINUTES,
+  DEFAULT_BOARDING_MINUTES,
+  DEFAULT_RETURN_BUFFER_MINUTES,
+}
 
 export interface RideTimeCalcInputs {
   /** Appointment start time in "HH:MM" format, or null if unknown */
@@ -25,6 +30,12 @@ export interface RideTimeCalcInputs {
   duration_seconds: number | null
   /** Buffer minutes before drive duration (default: DEFAULT_PICKUP_BUFFER_MINUTES) */
   pickupBufferMinutes?: number
+  /**
+   * Boarding time in minutes reserved at the patient for boarding/alighting.
+   * Added to the outbound back-calculation so the driver arrives early enough
+   * to complete boarding before the appointment (default: DEFAULT_BOARDING_MINUTES).
+   */
+  boardingMinutes?: number
   /** Buffer minutes after appointment end for return pickup (default: DEFAULT_RETURN_BUFFER_MINUTES) */
   returnBufferMinutes?: number
 }
@@ -39,7 +50,7 @@ export interface RideTimeCalcResult {
 /**
  * Calculate suggested pickup times for a ride.
  *
- * Outbound: appointment_time - ceil(duration_seconds / 60) - pickupBufferMinutes
+ * Outbound: appointment_time - ceil(duration_seconds / 60) - pickupBufferMinutes - boardingMinutes
  * Return:   appointment_end_time + returnBufferMinutes
  *
  * Returns null for either value if the required inputs are missing
@@ -51,13 +62,15 @@ export function calculateRideTimes(inputs: RideTimeCalcInputs): RideTimeCalcResu
     appointment_end_time,
     duration_seconds,
     pickupBufferMinutes = DEFAULT_PICKUP_BUFFER_MINUTES,
+    boardingMinutes = DEFAULT_BOARDING_MINUTES,
     returnBufferMinutes = DEFAULT_RETURN_BUFFER_MINUTES,
   } = inputs
 
   const suggestedPickupTime = calculateOutboundPickup(
     appointment_time,
     duration_seconds,
-    pickupBufferMinutes
+    pickupBufferMinutes,
+    boardingMinutes
   )
 
   const suggestedReturnPickupTime = calculateReturnPickup(
@@ -70,19 +83,20 @@ export function calculateRideTimes(inputs: RideTimeCalcInputs): RideTimeCalcResu
 
 /**
  * Calculate outbound pickup time.
- * appointment_time - ceil(duration_seconds / 60) - bufferMinutes
+ * appointment_time - ceil(duration_seconds / 60) - bufferMinutes - boardingMinutes
  */
 function calculateOutboundPickup(
   appointmentTime: string | null,
   durationSeconds: number | null,
-  bufferMinutes: number
+  bufferMinutes: number,
+  boardingMinutes: number
 ): string | null {
   if (appointmentTime === null || durationSeconds === null) {
     return null
   }
 
   const durationMinutes = Math.ceil(durationSeconds / 60)
-  const totalMinutesToSubtract = durationMinutes + bufferMinutes
+  const totalMinutesToSubtract = durationMinutes + bufferMinutes + boardingMinutes
 
   return subtractMinutesFromTime(appointmentTime, totalMinutesToSubtract)
 }

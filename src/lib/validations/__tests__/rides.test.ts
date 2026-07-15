@@ -387,6 +387,44 @@ describe("rideSchema", () => {
       expect(result.data.price_override_reason).toBe("Sondertarif vereinbart")
     }
   })
+
+  // --- Requirements (Issue #126/#130) ---
+
+  it("defaults requirements to an empty array when omitted", () => {
+    const result = rideSchema.safeParse(validRide)
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.requirements).toEqual([])
+    }
+  })
+
+  it("accepts a whitelisted set of requirements", () => {
+    const result = rideSchema.safeParse({
+      ...validRide,
+      requirements: ["wheelchair", "oxygen", "companion"],
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.requirements).toEqual([
+        "wheelchair",
+        "oxygen",
+        "companion",
+      ])
+    }
+  })
+
+  it("rejects a requirement value outside the enum", () => {
+    const result = rideSchema.safeParse({
+      ...validRide,
+      requirements: ["wheelchair", "teleport"],
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(
+        result.error.issues.some((i) => i.path.includes("requirements"))
+      ).toBe(true)
+    }
+  })
 })
 
 // --- addMinutesToTime helper ---

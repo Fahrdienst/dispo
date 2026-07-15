@@ -5,6 +5,13 @@ import { useFormState } from "react-dom"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -17,6 +24,11 @@ import { SubmitButton } from "@/components/shared/submit-button"
 import { AddressFields } from "@/components/shared/address-fields"
 import { createPatientInline } from "@/actions/patients"
 import type { Tables } from "@/lib/types/database"
+import {
+  COST_BEARER_VALUES,
+  COST_BEARER_LABELS,
+  COST_BEARER_NONE,
+} from "@/lib/patients/constants"
 
 interface PatientInlineDialogProps {
   open: boolean
@@ -114,6 +126,30 @@ export function PatientInlineDialog({
               }
               required
             />
+
+            <div className="space-y-2">
+              <Label htmlFor="inline_patient_cost_bearer">Kostenträger</Label>
+              <Select name="cost_bearer" defaultValue={COST_BEARER_NONE}>
+                <SelectTrigger id="inline_patient_cost_bearer">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={COST_BEARER_NONE}>
+                    Nicht angegeben
+                  </SelectItem>
+                  {COST_BEARER_VALUES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {COST_BEARER_LABELS[value]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {state && !state.success && state.fieldErrors?.cost_bearer && (
+                <p className="text-sm text-destructive">
+                  {state.fieldErrors.cost_bearer[0]}
+                </p>
+              )}
+            </div>
 
             <DialogFooter>
               <Button

@@ -133,11 +133,16 @@ interface DriverRow {
  * Uses the admin client (service role) to bypass RLS, consistent with
  * other mail functions that run in background/cron contexts.
  *
- * @throws Error if ride or driver is not found
+ * `driverId` is nullable: rides captured via the one-page dispo (#139) are
+ * unplanned and have no driver yet, but an order sheet must still be
+ * printable/previewable. When null, the driver fields are left empty and the
+ * order sheet renders a "not yet assigned" placeholder in the driver block.
+ *
+ * @throws Error if the ride (or a non-null driver) is not found
  */
 export async function loadOrderSheetData(
   rideId: string,
-  driverId: string,
+  driverId: string | null,
   confirmUrl: string,
   rejectUrl: string
 ): Promise<OrderSheetData> {
@@ -171,24 +176,40 @@ export async function loadOrderSheetData(
     throw new Error(`Failed to load ride ${rideId}: ${rideError?.message ?? "not found"}`)
   }
 
-  // Load driver
-  const { data: driver, error: driverError } = await supabase
-    .from("drivers")
-    .select(`
-      first_name, last_name, street, house_number,
-      postal_code, city, phone, email, vehicle_type
-    `)
-    .eq("id", driverId)
-    .single()
+  // Load driver (optional). Unplanned rides captured via #139 have no driver
+  // yet; the order sheet still renders with a placeholder driver block.
+  let driverData: DriverRow = {
+    first_name: "",
+    last_name: "",
+    street: null,
+    house_number: null,
+    postal_code: null,
+    city: null,
+    phone: null,
+    email: null,
+    vehicle_type: "",
+  }
 
-  if (driverError || !driver) {
-    throw new Error(`Failed to load driver ${driverId}: ${driverError?.message ?? "not found"}`)
+  if (driverId) {
+    const { data: driver, error: driverError } = await supabase
+      .from("drivers")
+      .select(`
+        first_name, last_name, street, house_number,
+        postal_code, city, phone, email, vehicle_type
+      `)
+      .eq("id", driverId)
+      .single()
+
+    if (driverError || !driver) {
+      throw new Error(`Failed to load driver ${driverId}: ${driverError?.message ?? "not found"}`)
+    }
+
+    driverData = driver as DriverRow
   }
 
   // Cast join results to typed aliases
   const patient = (ride as unknown as RideWithJoins).patients
   const destination = (ride as unknown as RideWithJoins).destinations
-  const driverData = driver as DriverRow
 
   // Load organization name (singleton row, fallback to default)
   const { data: orgSettings } = await supabase
