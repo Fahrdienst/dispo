@@ -21,8 +21,10 @@ PATTERNS=(
 
 FOUND=0
 
+# Note: husky runs hooks with `sh -e`; a no-match grep pipeline exits 1 and
+# would abort the script mid-assignment, so every pipeline needs `|| true`.
 for pattern in "${PATTERNS[@]}"; do
-  MATCHES=$(echo "$STAGED_FILES" | xargs grep -lE "$pattern" 2>/dev/null | grep -v ".example" | grep -v "node_modules" | grep -v ".husky")
+  MATCHES=$(echo "$STAGED_FILES" | xargs grep -lE "$pattern" 2>/dev/null | grep -v ".example" | grep -v "node_modules" | grep -v ".husky" || true)
   if [ -n "$MATCHES" ]; then
     if [ "$FOUND" -eq 0 ]; then
       echo ""
@@ -30,7 +32,7 @@ for pattern in "${PATTERNS[@]}"; do
       echo "=========================================="
       FOUND=1
     fi
-    echo "$STAGED_FILES" | xargs grep -nE "$pattern" 2>/dev/null | grep -v ".example" | grep -v ".husky"
+    echo "$STAGED_FILES" | xargs grep -nE "$pattern" 2>/dev/null | grep -v ".example" | grep -v ".husky" || true
   fi
 done
 

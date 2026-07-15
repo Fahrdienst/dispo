@@ -10,6 +10,10 @@ type AuditAction =
   | "login"
   | "deactivate"
   | "activate"
+  // Finance module (M14) — SEC-M14-006: receipt cancellation and data exports
+  // must be attributable (accountability, Art. 5 Abs. 2 DSGVO).
+  | "cancel"
+  | "export"
 
 type AuditEntityType =
   | "ride"
@@ -20,6 +24,9 @@ type AuditEntityType =
   | "organization"
   | "fare"
   | "zone"
+  // Finance module (M14) — SEC-M14-006.
+  | "receipt"
+  | "report"
 
 interface AuditEntry {
   userId: string

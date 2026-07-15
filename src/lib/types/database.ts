@@ -1259,6 +1259,18 @@ export type Database = {
         Returns: Database["public"]["Enums"]["user_role"]
       }
       next_receipt_number: { Args: { p_year: number }; Returns: number }
+      // Manually added (Issue #147): migration 20260720_000001_issue_receipt_rpc.sql.
+      // The generated Supabase types are regenerated centrally after merge; until
+      // then this augmentation keeps `.rpc("issue_receipt", ...)` type-safe.
+      issue_receipt: {
+        Args: {
+          p_patient_id: string
+          p_period_from: string
+          p_period_to: string
+          p_ride_ids: string[]
+        }
+        Returns: Database["public"]["Tables"]["receipts"]["Row"]
+      }
       request_absence: {
         Args: {
           p_end_date: string
