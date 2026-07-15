@@ -111,9 +111,14 @@ export default async function FinanceReceiptsPage({
             Zahlungsbestätigungen erstellen, versenden und stornieren.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/finance/receipts/new">Neue Quittung</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href="/finance/receipts/batch">Sammellauf</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/finance/receipts/new">Neue Quittung</Link>
+          </Button>
+        </div>
       </div>
       <ReceiptList
         receipts={rows}
