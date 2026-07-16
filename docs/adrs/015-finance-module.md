@@ -232,6 +232,47 @@ Issue in M14 eingearbeitet.
 
 ---
 
+## Implementation Notes (Stand: M14 abgeschlossen, 2026-07)
+
+Ergänzt nach Abschluss aller vier Phasen (Issue #156). Dokumentiert, wo die Umsetzung
+vom oben skizzierten Entscheid **abweicht** bzw. ihn **konkretisiert**. Die Kern-Entscheide
+(E1–E9) sind unverändert gültig.
+
+- **Dashboard-Aggregation via SECURITY-INVOKER-RPCs statt reiner Server-Component-Aggregation
+  (E7 konkretisiert).** E7 formuliert „direkte SQL-Aggregationen in Server Components“. In der
+  Umsetzung liegen die Aggregationen in **fünf `SECURITY INVOKER`-RPCs** (Migration
+  `20260723_000001_finance_dashboard_rpcs.sql`): `finance_dashboard_monthly`,
+  `finance_dashboard_top_destinations`, `finance_dashboard_top_patients`,
+  `finance_dashboard_top_drivers`, `finance_dashboard_receivable_count`. Grund: Der Supabase-JS-Client
+  kann kein `GROUP BY` absetzen und PostgREST kappt Row-Sets bei 1000 Zeilen — eine Aggregation im
+  TS-Layer müsste zehntausende Fahrten über die Leitung ziehen. Die RPCs aggregieren in SQL und liefern
+  winzige Result-Sets (≤24 Monatszeilen bzw. Top-5). `SECURITY INVOKER` (nicht `DEFINER`) hält die
+  bestehende RLS aktiv; zusätzlich Rollen-Gate (admin/operator) + `REVOKE`/`GRANT` + `SET search_path`.
+  **Kein Widerspruch zu E7** (weiterhin keine Materialized Views); nur die Kapselung wanderte von
+  inline-Server-Component in benannte RPCs. Das reine Auffüllen leerer Monate bleibt TS-Logik
+  (`buildMonthTimeline`/`buildChartSeries`).
+
+- **Statistik-Dimension „Zone“ nutzt den gespeicherten `rides.tariff_zone`-Snapshot.** Die Zonen-Dimension
+  (`src/lib/finance/statistics.ts`) liest den zum Fahrtzeitpunkt eingefrorenen `rides.tariff_zone`, statt
+  die Zone bei der Auswertung aus der Patienten-PLZ neu abzuleiten. Das ist konsistent mit dem
+  Snapshot-Prinzip (E1) und dem übrigen Tarifmodell (ADR-010) und liefert stabile, reproduzierbare
+  Auswertungen auch nach späteren Zonen-/PLZ-Änderungen. Vor-Tarif-Fahrten ohne `tariff_zone` fallen in
+  einen „Unbekannt“-Bucket.
+
+- **Belegnummer-Jahr aus `date_part('year', now())` (Session-Zeitzone).** `issue_receipt()` bildet den
+  Jahresteil der Nummer (`Q-<Jahr>-<5>`) aus `date_part('year', now())`. Der Wert hängt damit von der
+  Session-Zeitzone ab; nahe am Jahreswechsel (31.12. spätabends / 01.01. frühmorgens) entscheidet die
+  DB-Session-Zeitzone über die Jahres-Zuordnung. Die **Sequenz-Isolation pro Jahr** ist unabhängig davon
+  race-frei (atomarer Upsert, E2) und getestet (`supabase/tests/m14_receipts.sql`, 2099 vs. 2100).
+  Sollte die Jahresgrenze operativ relevant werden, ist die Zeitzone der RPC explizit zu fixieren
+  (`SET LOCAL TimeZone = 'Europe/Zurich'`) — bewusst nicht im MVP.
+
+- **Sammel-PDF: Re-Rendering statt Merge (E6) umgesetzt; on-demand, nicht persistiert.** `renderBatchReceiptPdf`
+  rendert alle Belege eines Laufs in **ein** mehrseitiges Dokument (eine Seite je Beleg, aus den
+  unveränderlichen Snapshots), sortiert nach Belegnummer. Das Sammel-PDF wird **nicht** im Storage
+  abgelegt — die per-Beleg-PDFs bleiben die archivarische Quelle. Der Dokumenttitel unterscheidet Einzel
+  („Quittung Q-…“) und Sammel („Sammellauf <von> – <bis>“).
+
 ## Betroffene Bereiche (Grobschnitt, Details in den Issues)
 
 - **Migration (14.1):** `receipts`, `receipt_items`, `receipt_counters` (+ RPC + Trigger), Partial-Unique-Index,
