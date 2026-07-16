@@ -126,6 +126,43 @@ export const rideSchema = z
       .string()
       .optional()
       .transform((v) => v === "on" || v === "true"),
+    // --- Pickup-location override (Issue #127/#138) ---
+    // NULL on every field = use the patient's home address (no data duplication;
+    // Route/Preis fall back to the patient coordinates). Only set when the
+    // dispatcher captures a different pickup location; lat/lng arrive from the
+    // client as geocoded hidden-field strings and are parsed to numbers here.
+    pickup_location_text: z
+      .string()
+      .max(500)
+      .transform(emptyToNull)
+      .nullable()
+      .optional(),
+    pickup_lat: z
+      .string()
+      .transform(emptyToNull)
+      .nullable()
+      .optional()
+      .transform((v) => {
+        if (!v) return null
+        const n = parseFloat(v)
+        return Number.isFinite(n) ? n : null
+      }),
+    pickup_lng: z
+      .string()
+      .transform(emptyToNull)
+      .nullable()
+      .optional()
+      .transform((v) => {
+        if (!v) return null
+        const n = parseFloat(v)
+        return Number.isFinite(n) ? n : null
+      }),
+    pickup_place_id: z
+      .string()
+      .max(255)
+      .transform(emptyToNull)
+      .nullable()
+      .optional(),
     // --- Price override fields (ADR-010, Issue #60) ---
     price_override: z
       .string()

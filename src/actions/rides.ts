@@ -32,12 +32,25 @@ import { trackEvent } from "@/lib/telemetry"
 import { uuidSchema } from "@/lib/validations/shared"
 import { collectRideWarnings } from "@/lib/rides/warnings"
 import type { ActionResult, ActionWarning } from "@/actions/shared"
-import type { Tables, Enums, Json } from "@/lib/types/database"
+import type { Tables, TablesInsert, Enums, Json } from "@/lib/types/database"
 import type { RideRequirement } from "@/lib/rides/requirements"
 
 /** Shown when a driver is assigned while on an approved absence (Issue #104). */
 const DRIVER_ABSENT_ERROR =
   "Der gewaehlte Fahrer ist an diesem Datum abwesend (Ferien/Abwesenheit). Bitte einen anderen Fahrer waehlen."
+
+// Issue #127: the pickup_* override columns exist in the DB (migration
+// 20260721_000001) but are not in the generated types yet — they are
+// regenerated centrally after the M13/M14 merge. Extend the insert payload
+// locally so the columns are written type-safely (no `any`, no @ts-ignore).
+// Remove this intersection once database.ts is regenerated.
+type RidePickupOverrideFields = {
+  pickup_location_text?: string | null
+  pickup_lat?: number | null
+  pickup_lng?: number | null
+  pickup_place_id?: string | null
+}
+type RideInsertPayload = TablesInsert<"rides"> & RidePickupOverrideFields
 
 /**
  * Parse ride form data through `rideSchema`.
@@ -119,6 +132,10 @@ export async function createRide(
     is_tagesheim_imwil,
     has_escort,
     requirements,
+    pickup_location_text,
+    pickup_lat,
+    pickup_lng,
+    pickup_place_id,
     ...rideData
   } = result.data
   // A `companion` requirement always implies an escort (Issue #130).
@@ -126,6 +143,17 @@ export async function createRide(
   const status: Enums<"ride_status"> = rideData.driver_id
     ? "planned"
     : "unplanned"
+
+  // Pickup-location override (#127/#138). When both coordinates are present the
+  // dispatcher captured a different pickup location; Route and price then start
+  // there instead of the patient's home address. All null = unchanged behavior.
+  const hasPickupOverride = pickup_lat != null && pickup_lng != null
+  const pickupOverrideFields: RidePickupOverrideFields = {
+    pickup_location_text,
+    pickup_lat,
+    pickup_lng,
+    pickup_place_id,
+  }
 
   const supabase = await createClient()
 
@@ -197,24 +225,37 @@ export async function createRide(
     const patient = patientRes.data
     const dest = destRes.data
 
-    patientGeocoded = patient?.lat != null && patient?.lng != null
+    // Route/price origin: pickup override if set, else the patient's home.
+    // Inline null-checks so TS narrows the coordinates (a const `boolean` would
+    // not narrow pickup_lat/pickup_lng here).
+    const originCoords: { lat: number; lng: number } | null =
+      pickup_lat != null && pickup_lng != null
+        ? { lat: pickup_lat, lng: pickup_lng }
+        : patient?.lat != null && patient?.lng != null
+          ? { lat: patient.lat, lng: patient.lng }
+          : null
+
+    // "Origin geocoded" for the non-blocking warning: an override always carries
+    // coordinates, otherwise it reflects the patient's geocoding status.
+    patientGeocoded = hasPickupOverride || originCoords != null
     destinationGeocoded = dest?.lat != null && dest?.lng != null
 
     if (
-      patient?.postal_code &&
+      originCoords &&
       dest?.postal_code &&
-      patient.lat != null &&
-      patient.lng != null &&
       dest.lat != null &&
-      dest.lng != null
+      dest.lng != null &&
+      (hasPickupOverride || patient?.postal_code != null)
     ) {
       const { calculateRidePrice, isPriceCalculationFailure } = await import(
         "@/lib/billing/calculate-price"
       )
       const priceResult = await calculateRidePrice({
-        patientPostalCode: patient.postal_code,
+        // patientPostalCode is not used by the tariff (zone is destination-based);
+        // pass the patient's for completeness even when overriding the origin.
+        patientPostalCode: patient?.postal_code ?? "",
         destinationPostalCode: dest.postal_code,
-        patientCoords: { lat: patient.lat, lng: patient.lng },
+        patientCoords: originCoords,
         destinationCoords: { lat: dest.lat, lng: dest.lng },
         direction: rideData.direction,
         durationCategory: duration_category,
@@ -249,10 +290,17 @@ export async function createRide(
     console.error("Price calculation failed during createRide:", err)
   }
 
-  // 1. Create the outbound ride
+  // 1. Create the outbound ride. The pickup_* override columns are cast via
+  // RideInsertPayload until the generated types are regenerated (see top).
   const { data: outboundRide, error } = await supabase
     .from("rides")
-    .insert({ ...rideData, ...priceFields, requirements, status })
+    .insert({
+      ...rideData,
+      ...priceFields,
+      ...pickupOverrideFields,
+      requirements,
+      status,
+    } as RideInsertPayload)
     .select()
     .single()
 
@@ -403,9 +451,25 @@ async function createRideWithSeries(
     is_tagesheim_imwil,
     has_escort,
     requirements,
+    pickup_location_text,
+    pickup_lat,
+    pickup_lng,
+    pickup_place_id,
     ...rideData
   } = rideResult.data
   const effectiveHasEscort = resolveHasEscort(has_escort, requirements)
+
+  // Pickup-location override (#127/#138). Applied to the initial outbound ride
+  // only — future series occurrences and the return leg keep the patient's home
+  // address (NULL). See createRide for the semantics.
+  const hasPickupOverride = pickup_lat != null && pickup_lng != null
+  const pickupOverrideFields: RidePickupOverrideFields = {
+    pickup_location_text,
+    pickup_lat,
+    pickup_lng,
+    pickup_place_id,
+  }
+
   const seriesData = seriesResult.data
   const status: Enums<"ride_status"> = rideData.driver_id
     ? "planned"
@@ -505,24 +569,33 @@ async function createRideWithSeries(
     const patient = patientRes.data
     const dest = destRes.data
 
-    patientGeocoded = patient?.lat != null && patient?.lng != null
+    // Route/price origin: pickup override if set, else the patient's home.
+    // Inline null-checks so TS narrows the coordinates (a const `boolean` would
+    // not narrow pickup_lat/pickup_lng here).
+    const originCoords: { lat: number; lng: number } | null =
+      pickup_lat != null && pickup_lng != null
+        ? { lat: pickup_lat, lng: pickup_lng }
+        : patient?.lat != null && patient?.lng != null
+          ? { lat: patient.lat, lng: patient.lng }
+          : null
+
+    patientGeocoded = hasPickupOverride || originCoords != null
     destinationGeocoded = dest?.lat != null && dest?.lng != null
 
     if (
-      patient?.postal_code &&
+      originCoords &&
       dest?.postal_code &&
-      patient.lat != null &&
-      patient.lng != null &&
       dest.lat != null &&
-      dest.lng != null
+      dest.lng != null &&
+      (hasPickupOverride || patient?.postal_code != null)
     ) {
       const { calculateRidePrice, isPriceCalculationFailure } = await import(
         "@/lib/billing/calculate-price"
       )
       const priceResult = await calculateRidePrice({
-        patientPostalCode: patient.postal_code,
+        patientPostalCode: patient?.postal_code ?? "",
         destinationPostalCode: dest.postal_code,
-        patientCoords: { lat: patient.lat, lng: patient.lng },
+        patientCoords: originCoords,
         destinationCoords: { lat: dest.lat, lng: dest.lng },
         direction: rideData.direction,
         durationCategory: duration_category,
@@ -559,16 +632,18 @@ async function createRideWithSeries(
     )
   }
 
-  // 5. Create the initial ride
+  // 5. Create the initial ride (carries the pickup override; cast via
+  // RideInsertPayload until the generated types are regenerated).
   const { data: initialRide, error: rideError } = await supabase
     .from("rides")
     .insert({
       ...rideData,
       ...priceFields,
+      ...pickupOverrideFields,
       requirements,
       status,
       ride_series_id: series.id,
-    })
+    } as RideInsertPayload)
     .select()
     .single()
 
@@ -1204,10 +1279,15 @@ export async function assignDriver(
 /**
  * Calculate route distance and duration between a patient and a destination.
  * Used by the ride form to display route info before submission.
+ *
+ * `pickupOverride` (#138): when the dispatcher captured a different pickup
+ * location, its geocoded coordinates are used as the route origin instead of
+ * the patient's home address. Omitted/null = unchanged behavior (patient home).
  */
 export async function calculateRouteForRide(
   patientId: string,
-  destinationId: string
+  destinationId: string,
+  pickupOverride?: { lat: number; lng: number } | null
 ): Promise<
 
   ActionResult<{
@@ -1254,7 +1334,15 @@ export async function calculateRouteForRide(
   const patient = patientRes.data
   const dest = destRes.data
 
-  if (patient.lat == null || patient.lng == null) {
+  // Origin = pickup override (already geocoded on the client) or patient home.
+  const origin: { lat: number; lng: number } | null =
+    pickupOverride != null
+      ? { lat: pickupOverride.lat, lng: pickupOverride.lng }
+      : patient.lat != null && patient.lng != null
+        ? { lat: patient.lat, lng: patient.lng }
+        : null
+
+  if (!origin) {
     return {
       success: false,
       error: "Patientenadresse hat keine Koordinaten. Geocoding-Status: " +
@@ -1271,18 +1359,15 @@ export async function calculateRouteForRide(
 
   try {
     const { getRoute } = await import("@/lib/maps/directions")
-    const route = await getRoute(
-      { lat: patient.lat, lng: patient.lng },
-      { lat: dest.lat, lng: dest.lng }
-    )
+    const route = await getRoute(origin, { lat: dest.lat, lng: dest.lng })
 
     return {
       success: true,
       data: {
         distance_meters: route.distance_meters,
         duration_seconds: route.duration_seconds,
-        origin_lat: patient.lat,
-        origin_lng: patient.lng,
+        origin_lat: origin.lat,
+        origin_lng: origin.lng,
         dest_lat: dest.lat,
         dest_lng: dest.lng,
         polyline: route.polyline ?? "",
@@ -1291,6 +1376,53 @@ export async function calculateRouteForRide(
   } catch (err: unknown) {
     console.error("Route calculation failed:", err)
     return { success: false, error: "Routenberechnung fehlgeschlagen" }
+  }
+}
+
+/**
+ * Geocode a free-text pickup-location override (#138).
+ *
+ * Marco's cost constraint: this runs ONLY when the dispatcher actually enters a
+ * different pickup location (on blur / on confirm — never per keystroke), and
+ * the caller caches the result so the same text is not geocoded twice. Routed
+ * through the central server-key Maps wrapper (`geocodeText`); no direct fetch.
+ */
+export async function geocodePickupLocation(
+  query: string
+): Promise<
+  ActionResult<{
+    lat: number
+    lng: number
+    place_id: string
+    formatted_address: string
+  }>
+> {
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
+  }
+
+  const trimmed = query.trim()
+  if (trimmed.length < 3) {
+    return {
+      success: false,
+      error: "Bitte geben Sie eine vollständige Adresse ein.",
+    }
+  }
+
+  try {
+    const { geocodeText } = await import("@/lib/maps/geocode")
+    const result = await geocodeText(trimmed)
+    if (!result) {
+      return {
+        success: false,
+        error: "Adresse konnte nicht gefunden werden. Bitte prüfen.",
+      }
+    }
+    return { success: true, data: result }
+  } catch (err: unknown) {
+    console.error("Pickup geocoding failed:", err)
+    return { success: false, error: "Geocoding fehlgeschlagen." }
   }
 }
 

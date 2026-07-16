@@ -50,6 +50,7 @@ import type { Tables } from "@/lib/types/database"
 import { CapturePatientField } from "./capture/capture-patient-field"
 import { CaptureDestinationField } from "./capture/capture-destination-field"
 import { CostBearerDisplay } from "./capture/cost-bearer-display"
+import { PickupOverrideField } from "./capture/pickup-override-field"
 import { RequirementChips } from "./capture/requirement-chips"
 import { SeriesToggle } from "./capture/series-toggle"
 import { RideMapPanel } from "./capture/ride-map-panel"
@@ -62,6 +63,7 @@ import type {
   RideType,
   RouteInfo,
   DurationCategory,
+  PickupOverride,
 } from "./capture/types"
 
 export interface RideCaptureFormProps {
@@ -122,6 +124,11 @@ export function RideCaptureForm({
   // --- WER ---
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(
     defaultPatientId ?? null
+  )
+
+  // --- Pickup-location override (#138). null = patient home address (default). ---
+  const [pickupOverride, setPickupOverride] = useState<PickupOverride | null>(
+    null
   )
 
   // --- WOHIN & WANN ---
@@ -218,12 +225,22 @@ export function RideCaptureForm({
     [appointmentTime, appointmentEndTime, routeInfo, timeBuffers]
   )
 
-  // --- Route calculation on patient/destination change ---
+  // --- Route calculation on patient/destination/pickup change ---
+  // The override (if set) becomes the route origin; otherwise the server falls
+  // back to the patient's home address (unchanged behavior).
   const calculateRoute = useCallback(
-    (patientId: string, destinationId: string) => {
+    (
+      patientId: string,
+      destinationId: string,
+      override: PickupOverride | null
+    ) => {
       startRouteTransition(async () => {
         setRouteError(null)
-        const result = await calculateRouteForRide(patientId, destinationId)
+        const result = await calculateRouteForRide(
+          patientId,
+          destinationId,
+          override ? { lat: override.lat, lng: override.lng } : null
+        )
         if (result.success) {
           setRouteInfo(result.data)
         } else {
@@ -237,12 +254,18 @@ export function RideCaptureForm({
 
   useEffect(() => {
     if (selectedPatientId && selectedDestinationId) {
-      calculateRoute(selectedPatientId, selectedDestinationId)
+      calculateRoute(selectedPatientId, selectedDestinationId, pickupOverride)
     } else {
       setRouteInfo(null)
       setRouteError(null)
     }
-  }, [selectedPatientId, selectedDestinationId, calculateRoute])
+  }, [selectedPatientId, selectedDestinationId, pickupOverride, calculateRoute])
+
+  // Reset the pickup override whenever the patient changes — an override is
+  // location-specific and must not silently carry over to another patient.
+  useEffect(() => {
+    setPickupOverride(null)
+  }, [selectedPatientId])
 
   // --- Keep the suggested pickup times in the fields until manually overridden ---
   useEffect(() => {
@@ -293,6 +316,33 @@ export function RideCaptureForm({
       <input type="hidden" name="duration_category" value={durationCategory} />
       {isRoundTrip && <input type="hidden" name="create_return_ride" value="true" />}
 
+      {/* Pickup-location override (#138). Only emitted when set; absent = NULL
+          columns = patient home address (unchanged behavior). */}
+      {pickupOverride && (
+        <>
+          <input
+            type="hidden"
+            name="pickup_location_text"
+            value={pickupOverride.text}
+          />
+          <input
+            type="hidden"
+            name="pickup_lat"
+            value={String(pickupOverride.lat)}
+          />
+          <input
+            type="hidden"
+            name="pickup_lng"
+            value={String(pickupOverride.lng)}
+          />
+          <input
+            type="hidden"
+            name="pickup_place_id"
+            value={pickupOverride.place_id ?? ""}
+          />
+        </>
+      )}
+
       {/* ================= LEFT: capture ================= */}
       <div className="space-y-6">
         {state && !state.success && state.error && (
@@ -322,6 +372,14 @@ export function RideCaptureForm({
               />
             </div>
             <CostBearerDisplay patient={selectedPatient} />
+            {/* key remounts the field on patient change so its internal input /
+                mode reset together with the parent's pickupOverride reset. */}
+            <PickupOverrideField
+              key={selectedPatientId ?? "none"}
+              patient={selectedPatient}
+              value={pickupOverride}
+              onChange={setPickupOverride}
+            />
           </CardContent>
         </Card>
 

@@ -1046,6 +1046,10 @@ export type Database = {
           notes: string | null
           parent_ride_id: string | null
           patient_id: string
+          pickup_lat: number | null
+          pickup_lng: number | null
+          pickup_location_text: string | null
+          pickup_place_id: string | null
           pickup_time: string
           polyline: string | null
           price_override: number | null
@@ -1082,6 +1086,10 @@ export type Database = {
           notes?: string | null
           parent_ride_id?: string | null
           patient_id: string
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          pickup_location_text?: string | null
+          pickup_place_id?: string | null
           pickup_time: string
           polyline?: string | null
           price_override?: number | null
@@ -1118,6 +1126,10 @@ export type Database = {
           notes?: string | null
           parent_ride_id?: string | null
           patient_id?: string
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          pickup_location_text?: string | null
+          pickup_place_id?: string | null
           pickup_time?: string
           polyline?: string | null
           price_override?: number | null

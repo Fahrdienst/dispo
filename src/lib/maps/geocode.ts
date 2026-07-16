@@ -62,6 +62,43 @@ export async function geocodeAddress(
 }
 
 /**
+ * Geocodes a free-text address string via the Google Geocoding API.
+ *
+ * Used for the per-ride pickup-location override (#138): the dispatcher types a
+ * single free-text line ("Strasse Nr, PLZ Ort") instead of the structured
+ * patient/destination address fields. Routed through the same central Maps
+ * wrapper (`callMapsApi`, server key) as {@link geocodeAddress} — no direct
+ * fetch (ESLint rule) — and constrained to Switzerland.
+ *
+ * @returns GeocodeResult on success, or null when the query yields no result.
+ * @throws GeocodeFailedError on API errors.
+ */
+export async function geocodeText(
+  query: string
+): Promise<GeocodeResult | null> {
+  const data = await callMapsApi<GeocodeApiResponse>(GEOCODING_API_URL, {
+    address: query,
+    components: "country:CH",
+  })
+
+  if (data.status === "ZERO_RESULTS") {
+    return null
+  }
+
+  const firstResult = data.results[0]
+  if (!firstResult) {
+    throw new GeocodeFailedError("Geocoding returned OK but no results")
+  }
+
+  return {
+    lat: firstResult.geometry.location.lat,
+    lng: firstResult.geometry.location.lng,
+    place_id: firstResult.place_id,
+    formatted_address: firstResult.formatted_address,
+  }
+}
+
+/**
  * Geocodes an address and updates the corresponding record in the database.
  * Designed for fire-and-forget usage after patient/destination create/update.
  *

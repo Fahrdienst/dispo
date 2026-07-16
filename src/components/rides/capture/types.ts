@@ -33,6 +33,27 @@ export interface CapturePatient {
   first_name: string
   last_name: string
   cost_bearer: Enums<"cost_bearer_type"> | null
+  // Home address — shown as the default pickup location (#138). Nullable so
+  // inline-created patients (which forward only id + name) stay valid.
+  street?: string | null
+  house_number?: string | null
+  postal_code?: string | null
+  city?: string | null
+}
+
+/**
+ * Per-ride pickup-location override (#127/#138). `null` on the form means "use
+ * the patient's home address" — the default, unchanged behavior. When set, it
+ * carries the free-text address plus the geocoded coordinates so Route and
+ * price start at the override instead of the patient's home.
+ */
+export interface PickupOverride {
+  /** Free-text address as entered / confirmed by the dispatcher. */
+  text: string
+  lat: number
+  lng: number
+  /** Google Place-ID of the geocoded result (cache reference), if available. */
+  place_id: string | null
 }
 
 /** Minimal destination shape needed by the capture page. */

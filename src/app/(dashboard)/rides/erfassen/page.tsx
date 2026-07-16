@@ -34,7 +34,9 @@ export default async function ErfassenPage({ searchParams }: ErfassenPageProps) 
   const [patientsRes, destinationsRes, timeBuffers] = await Promise.all([
     supabase
       .from("patients")
-      .select("id, first_name, last_name, cost_bearer")
+      .select(
+        "id, first_name, last_name, cost_bearer, street, house_number, postal_code, city"
+      )
       .eq("is_active", true)
       .order("last_name"),
     supabase
