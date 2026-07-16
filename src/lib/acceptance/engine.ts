@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin"
+import { zurichWallTimeToUtc } from "@/lib/utils/dates"
 import { recordAssignmentEvent } from "./events"
 import {
   NORMAL_SLA_WINDOWS,
@@ -11,18 +12,22 @@ import type {
   RejectionReason,
   ResolutionMethod,
   EscalationResult,
+  NextDeadline,
   SLAWindows,
 } from "./types"
 
+const MS_PER_MINUTE = 60 * 1000
+
 /**
- * Determine if a ride is short-notice based on pickup time.
- * Short-notice = pickup is less than 60 minutes from now.
+ * Determine if a ride is short-notice based on its start time.
+ * Short-notice = ride start is less than SHORT_NOTICE_THRESHOLD_MINUTES (48h)
+ * from now. The ride date + pickup time are wall-clock values in Europe/Zurich
+ * and are converted to an absolute instant so the comparison is timezone-safe
+ * (the server runtime is UTC).
  */
 export function isShortNotice(rideDate: string, pickupTime: string): boolean {
-  const pickupDateTime = new Date(`${rideDate}T${pickupTime}`)
-  const now = new Date()
-  const diffMs = pickupDateTime.getTime() - now.getTime()
-  const diffMinutes = diffMs / (1000 * 60)
+  const pickupInstantMs = zurichWallTimeToUtc(rideDate, pickupTime).getTime()
+  const diffMinutes = (pickupInstantMs - Date.now()) / MS_PER_MINUTE
   return diffMinutes < SHORT_NOTICE_THRESHOLD_MINUTES
 }
 
@@ -31,6 +36,44 @@ export function isShortNotice(rideDate: string, pickupTime: string): boolean {
  */
 export function getSLAWindows(shortNotice: boolean): SLAWindows {
   return shortNotice ? SHORT_NOTICE_SLA_WINDOWS : NORMAL_SLA_WINDOWS
+}
+
+/** Minimal shape needed to compute a deadline (subset of acceptance_tracking). */
+export interface DeadlineInput {
+  stage: AcceptanceStage
+  is_short_notice: boolean
+  notified_at: string
+}
+
+/**
+ * Compute the next escalation deadline for a tracking record.
+ *
+ * Single source of truth shared by the cron engine (below) and the UI countdown
+ * on ride cards, so both compute identical deadlines from the same SLA windows.
+ * Returns null for terminal stages or stages with nothing left to escalate.
+ *
+ * Note: per concept §3.3 the flow is `notified → reminder_1 → timed_out`
+ * (one reminder). Legacy `reminder_2` records still escalate to `timed_out`.
+ */
+export function nextDeadline(tracking: DeadlineInput): NextDeadline | null {
+  const windows = getSLAWindows(tracking.is_short_notice)
+  const notifiedAtMs = new Date(tracking.notified_at).getTime()
+
+  switch (tracking.stage) {
+    case "notified":
+      return {
+        nextStage: "reminder_1",
+        dueAt: new Date(notifiedAtMs + windows.reminder1 * MS_PER_MINUTE),
+      }
+    case "reminder_1":
+    case "reminder_2":
+      return {
+        nextStage: "timed_out",
+        dueAt: new Date(notifiedAtMs + windows.timeout * MS_PER_MINUTE),
+      }
+    default:
+      return null
+  }
 }
 
 /**
@@ -188,106 +231,102 @@ export async function checkPendingAcceptances(): Promise<EscalationResult[]> {
   const now = Date.now()
 
   for (const tracking of trackings) {
-    const windows = getSLAWindows(tracking.is_short_notice)
-    const notifiedAt = new Date(tracking.notified_at).getTime()
-    const minutesSinceNotified = (now - notifiedAt) / (1000 * 60)
-
-    let nextStage: AcceptanceStage | null = null
     const currentStage = tracking.stage as AcceptanceStage
 
-    if (
-      currentStage === "notified" &&
-      minutesSinceNotified >= windows.reminder1
-    ) {
-      nextStage = "reminder_1"
-    } else if (
-      currentStage === "reminder_1" &&
-      minutesSinceNotified >= windows.reminder2
-    ) {
-      nextStage = "reminder_2"
-    } else if (
-      currentStage === "reminder_2" &&
-      minutesSinceNotified >= windows.timeout
-    ) {
-      nextStage = "timed_out"
+    // Shared deadline logic (UI countdown uses the same function).
+    const deadline = nextDeadline({
+      stage: currentStage,
+      is_short_notice: tracking.is_short_notice,
+      notified_at: tracking.notified_at,
+    })
+
+    // Nothing to escalate yet, or stage is terminal.
+    if (!deadline || now < deadline.dueAt.getTime()) {
+      continue
     }
 
-    if (nextStage) {
-      const escalated = await escalateToStage(
-        tracking.id,
-        currentStage,
-        nextStage
-      )
+    const nextStage = deadline.nextStage
 
-      results.push({
-        trackingId: tracking.id,
+    // Atomic, conditional transition — only succeeds if the stage is still the
+    // one we observed (SEC-M9-004 / #186). Guarantees exactly-once escalation
+    // even when the cron overlaps or runs more frequently.
+    const escalated = await escalateToStage(
+      tracking.id,
+      currentStage,
+      nextStage
+    )
+
+    results.push({
+      trackingId: tracking.id,
+      rideId: tracking.ride_id,
+      driverId: tracking.driver_id,
+      fromStage: currentStage,
+      toStage: nextStage,
+      escalated,
+    })
+
+    // Only the process that won the atomic transition (escalated === true)
+    // acts, so history is recorded and mail is dispatched exactly once (#186).
+    if (!escalated) {
+      continue
+    }
+
+    // Append to the per-ride status history (assignment_events, #164): the
+    // system escalated this request. Actor is the system; the reminder stage
+    // is kept as human-readable detail.
+    if (nextStage === "reminder_1" || nextStage === "reminder_2") {
+      await recordAssignmentEvent({
         rideId: tracking.ride_id,
         driverId: tracking.driver_id,
-        fromStage: currentStage,
-        toStage: nextStage,
-        escalated,
+        acceptanceTrackingId: tracking.id,
+        event: "reminder_sent",
+        actor: "system",
+        detail: nextStage,
       })
+    } else if (nextStage === "timed_out") {
+      await recordAssignmentEvent({
+        rideId: tracking.ride_id,
+        driverId: tracking.driver_id,
+        acceptanceTrackingId: tracking.id,
+        event: "timed_out",
+        actor: "system",
+      })
+    }
 
-      // Append to the per-ride status history (assignment_events, Issue #164):
-      // the system escalated this request. Only record when the atomic stage
-      // transition actually happened (SEC-M9-004). The reminder stage / timeout
-      // is kept as human-readable detail; actor is the system.
-      if (escalated) {
-        if (nextStage === "reminder_1" || nextStage === "reminder_2") {
-          await recordAssignmentEvent({
-            rideId: tracking.ride_id,
-            driverId: tracking.driver_id,
-            acceptanceTrackingId: tracking.id,
-            event: "reminder_sent",
-            actor: "system",
-            detail: nextStage,
-          })
-        } else if (nextStage === "timed_out") {
-          await recordAssignmentEvent({
-            rideId: tracking.ride_id,
-            driverId: tracking.driver_id,
-            acceptanceTrackingId: tracking.id,
-            event: "timed_out",
-            actor: "system",
-          })
-        }
+    // Send reminder email for the reminder stage.
+    if (nextStage === "reminder_1" || nextStage === "reminder_2") {
+      try {
+        const { sendDriverReminder } = await import(
+          "@/lib/mail/templates/driver-reminder"
+        )
+        await sendDriverReminder(
+          tracking.ride_id,
+          tracking.driver_id,
+          nextStage
+        )
+      } catch (err) {
+        console.error(
+          `Failed to send reminder for tracking ${tracking.id}:`,
+          err
+        )
       }
+    }
 
-      // Send reminder emails for reminder stages
-      if (escalated && (nextStage === "reminder_1" || nextStage === "reminder_2")) {
-        try {
-          const { sendDriverReminder } = await import(
-            "@/lib/mail/templates/driver-reminder"
-          )
-          await sendDriverReminder(
-            tracking.ride_id,
-            tracking.driver_id,
-            nextStage
-          )
-        } catch (err) {
-          console.error(
-            `Failed to send reminder for tracking ${tracking.id}:`,
-            err
-          )
-        }
-      }
-
-      // Send dispatcher escalation for timeout
-      if (escalated && nextStage === "timed_out") {
-        try {
-          const { sendDispatcherEscalation } = await import(
-            "@/lib/mail/templates/dispatcher-escalation"
-          )
-          await sendDispatcherEscalation(
-            tracking.ride_id,
-            tracking.driver_id
-          )
-        } catch (err) {
-          console.error(
-            `Failed to send escalation for tracking ${tracking.id}:`,
-            err
-          )
-        }
+    // Send dispatcher escalation for timeout.
+    if (nextStage === "timed_out") {
+      try {
+        const { sendDispatcherEscalation } = await import(
+          "@/lib/mail/templates/dispatcher-escalation"
+        )
+        await sendDispatcherEscalation(
+          tracking.ride_id,
+          tracking.driver_id
+        )
+      } catch (err) {
+        console.error(
+          `Failed to send escalation for tracking ${tracking.id}:`,
+          err
+        )
       }
     }
   }

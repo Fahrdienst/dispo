@@ -4,6 +4,41 @@
  * dispatch-board.tsx, and dashboard/page.tsx.
  */
 
+/** IANA timezone the business operates in. Ride dates/times are wall-clock in this zone. */
+export const APP_TIME_ZONE = "Europe/Zurich"
+
+/**
+ * Offset in milliseconds between the given timezone and UTC at a specific instant.
+ * Positive when the zone is ahead of UTC (e.g. +1h CET, +2h CEST).
+ */
+function timeZoneOffsetMs(instant: Date, timeZone: string): number {
+  // `toLocaleString` re-renders the instant as wall-clock text in each zone;
+  // re-parsing both as local Dates and subtracting yields the zone offset.
+  const utcWall = new Date(instant.toLocaleString("en-US", { timeZone: "UTC" }))
+  const zoneWall = new Date(instant.toLocaleString("en-US", { timeZone }))
+  return zoneWall.getTime() - utcWall.getTime()
+}
+
+/**
+ * Interpret a naive date + time as Europe/Zurich wall-clock time and return the
+ * corresponding absolute instant (a UTC Date). DST (CET/CEST) is handled via the
+ * Intl timezone database, so callers must never assume a fixed +1/+2h offset.
+ *
+ * Server runtimes (Vercel) run in UTC, so parsing `new Date("2026-03-05T10:00:00")`
+ * would silently mislabel a Zurich ride by the zone offset — this helper fixes that.
+ *
+ * @param dateStr YYYY-MM-DD
+ * @param timeStr HH:mm or HH:mm:ss
+ */
+export function zurichWallTimeToUtc(dateStr: string, timeStr: string): Date {
+  // Treat the wall time as if it were UTC, then subtract the real zone offset.
+  // Using the offset at this (approximate) instant is exact except within the
+  // ~1h DST transition windows, which is irrelevant for our hour-scale SLAs.
+  const asIfUtc = new Date(`${dateStr}T${timeStr}Z`)
+  const offsetMs = timeZoneOffsetMs(asIfUtc, APP_TIME_ZONE)
+  return new Date(asIfUtc.getTime() - offsetMs)
+}
+
 /** Get today as YYYY-MM-DD. */
 export function getToday(): string {
   return new Date().toISOString().split("T")[0]!

@@ -3,13 +3,27 @@ import { mailTransport } from "@/lib/mail/transport"
 import { escapeHtml, formatDate, formatTime } from "@/lib/mail/utils"
 import { getAppUrl } from "@/lib/acceptance/constants"
 
+/**
+ * Short, non-identifying ride reference. Format: F-YYMMDD-last4
+ * (matches the order-sheet reference, e.g. F-260225-a3f1).
+ */
+function formatRideRef(date: string, rideId: string): string {
+  const [yyyy = "", mm = "", dd = ""] = date.split("-")
+  return `F-${yyyy.slice(2)}${mm}${dd}-${rideId.slice(-4)}`
+}
+
+/**
+ * Data for the dispatcher escalation mail.
+ * SEC #186 / data minimization: NO patient PII. The mail carries only the ride
+ * reference, time, a coarse region, and a deep link into the authenticated app
+ * where the dispatcher sees full details.
+ */
 interface EscalationEmailData {
   driverName: string
-  patientName: string
-  destinationName: string
+  rideRef: string
+  region: string
   date: string // Already formatted
   pickupTime: string
-  direction: string // Raw enum value (unused in escalation, kept for consistency)
   dispatchUrl: string
 }
 
@@ -19,10 +33,10 @@ function dispatcherEscalationEmail(data: EscalationEmailData): {
 } {
   const subject = `Zeitueberschreitung: Fahrt am ${data.date} – Fahrer hat nicht reagiert`
 
-  // Escape all user-provided data for XSS protection
+  // Escape all dynamic data for XSS protection
   const driverName = escapeHtml(data.driverName)
-  const patientName = escapeHtml(data.patientName)
-  const destinationName = escapeHtml(data.destinationName)
+  const rideRef = escapeHtml(data.rideRef)
+  const region = escapeHtml(data.region)
   const date = escapeHtml(data.date)
   const pickupTime = escapeHtml(formatTime(data.pickupTime))
 
@@ -67,16 +81,16 @@ function dispatcherEscalationEmail(data: EscalationEmailData): {
                   <td style="padding:6px 16px;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                       <tr>
-                        <td style="color:#71717a;font-size:13px;padding:4px 0;width:100px;">Fahrer</td>
+                        <td style="color:#71717a;font-size:13px;padding:4px 0;width:100px;">Fahrt-Ref.</td>
+                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${rideRef}</td>
+                      </tr>
+                      <tr>
+                        <td style="color:#71717a;font-size:13px;padding:4px 0;">Fahrer</td>
                         <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${driverName}</td>
                       </tr>
                       <tr>
-                        <td style="color:#71717a;font-size:13px;padding:4px 0;">Patient</td>
-                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${patientName}</td>
-                      </tr>
-                      <tr>
-                        <td style="color:#71717a;font-size:13px;padding:4px 0;">Ziel</td>
-                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${destinationName}</td>
+                        <td style="color:#71717a;font-size:13px;padding:4px 0;">Region</td>
+                        <td style="color:#18181b;font-size:14px;font-weight:500;padding:4px 0;">${region}</td>
                       </tr>
                       <tr>
                         <td style="color:#71717a;font-size:13px;padding:4px 0;">Datum</td>
@@ -131,13 +145,13 @@ export async function sendDispatcherEscalation(
 ): Promise<void> {
   const supabase = createAdminClient()
 
-  // Load ride with patient and destination
+  // Data minimization (#186): only load a coarse region (destination city),
+  // never patient names or the full destination for the escalation mail.
   const { data: ride } = await supabase
     .from("rides")
     .select(`
-      id, date, pickup_time, direction,
-      patients!inner(first_name, last_name),
-      destinations!inner(display_name)
+      id, date, pickup_time,
+      destinations!inner(city, postal_code)
     `)
     .eq("id", rideId)
     .single()
@@ -174,16 +188,19 @@ export async function sendDispatcherEscalation(
     return
   }
 
-  const patient = ride.patients as unknown as { first_name: string; last_name: string }
-  const destination = ride.destinations as unknown as { display_name: string }
+  const destination = ride.destinations as unknown as {
+    city: string | null
+    postal_code: string | null
+  }
+  // Coarse region only — city, or postal code as fallback, never a full address.
+  const region = destination.city ?? destination.postal_code ?? "Unbekannt"
 
   const { subject, html } = dispatcherEscalationEmail({
     driverName: `${driver.first_name} ${driver.last_name}`,
-    patientName: `${patient.first_name} ${patient.last_name}`,
-    destinationName: destination.display_name,
+    rideRef: formatRideRef(ride.date, ride.id),
+    region,
     date: formatDate(ride.date),
     pickupTime: ride.pickup_time,
-    direction: ride.direction,
     dispatchUrl: `${appUrl}/dispatch?date=${ride.date}`,
   })
 

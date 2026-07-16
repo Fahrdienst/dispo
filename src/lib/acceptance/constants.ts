@@ -1,27 +1,38 @@
 import type { AcceptanceStage, RejectionReason, SLAWindows } from "./types"
 
 /**
- * SLA windows for normal rides (pickup > 60 min from now).
- * Values in minutes after initial notification.
+ * One hour expressed in minutes.
+ * SLA windows are defined in hours (concept §3.3) but stored and compared in
+ * minutes so the escalation engine works on a single unit. Deriving the minute
+ * values from this constant keeps the intent readable and avoids magic numbers.
+ */
+export const MINUTES_PER_HOUR = 60
+
+/**
+ * SLA windows for normal rides (ride start >= 48h from now).
+ * Concept §3.3: reminder after 24h, dispatcher escalation after 48h.
+ * Values are minutes after the initial notification.
  */
 export const NORMAL_SLA_WINDOWS: SLAWindows = {
-  reminder1: 10,
-  reminder2: 25,
-  timeout: 40,
+  reminder1: 24 * MINUTES_PER_HOUR, // 24h → 1440 min
+  timeout: 48 * MINUTES_PER_HOUR, // 48h → 2880 min
 }
 
 /**
- * SLA windows for short-notice rides (pickup <= 60 min from now).
- * Shortened escalation times for urgent assignments.
+ * SLA windows for short-notice rides (ride start < 48h from now).
+ * Concept §3.3: shortened to a reminder after 4h and escalation after 8h.
+ * Values are minutes after the initial notification.
  */
 export const SHORT_NOTICE_SLA_WINDOWS: SLAWindows = {
-  reminder1: 3,
-  reminder2: 8,
-  timeout: 15,
+  reminder1: 4 * MINUTES_PER_HOUR, // 4h → 240 min
+  timeout: 8 * MINUTES_PER_HOUR, // 8h → 480 min
 }
 
-/** Threshold in minutes: pickup within this window = short notice */
-export const SHORT_NOTICE_THRESHOLD_MINUTES = 60
+/**
+ * Threshold in minutes: a ride whose start is closer than this is treated as
+ * short notice (concept §3.3: «Start < 48h = kurzfristig»). 48h = 2880 min.
+ */
+export const SHORT_NOTICE_THRESHOLD_MINUTES = 48 * MINUTES_PER_HOUR
 
 /** Active (non-terminal) stages for tracking queries */
 export const ACTIVE_STAGES: readonly AcceptanceStage[] = [
