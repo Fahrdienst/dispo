@@ -1269,8 +1269,8 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: {
           month: string
-          ride_count: number
           revenue: number
+          ride_count: number
           total_meters: number
         }[]
       }
@@ -1279,16 +1279,28 @@ export type Database = {
         Returns: number
       }
       finance_dashboard_top_destinations: {
-        Args: { p_from: string; p_to: string; p_limit: number }
-        Returns: { id: string; label: string; ride_count: number }[]
+        Args: { p_from: string; p_limit: number; p_to: string }
+        Returns: {
+          id: string
+          label: string
+          ride_count: number
+        }[]
       }
       finance_dashboard_top_drivers: {
-        Args: { p_from: string; p_to: string; p_limit: number }
-        Returns: { id: string; label: string; ride_count: number }[]
+        Args: { p_from: string; p_limit: number; p_to: string }
+        Returns: {
+          id: string
+          label: string
+          ride_count: number
+        }[]
       }
       finance_dashboard_top_patients: {
-        Args: { p_from: string; p_to: string; p_limit: number }
-        Returns: { id: string; label: string; ride_count: number }[]
+        Args: { p_from: string; p_limit: number; p_to: string }
+        Returns: {
+          id: string
+          label: string
+          ride_count: number
+        }[]
       }
       get_user_driver_id: { Args: never; Returns: string }
       get_user_role: {
