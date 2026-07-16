@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { zurichWallTimeToUtc } from "@/lib/utils/dates"
+import { recordAssignmentEvent } from "./events"
 import {
   NORMAL_SLA_WINDOWS,
   SHORT_NOTICE_SLA_WINDOWS,
@@ -265,10 +266,35 @@ export async function checkPendingAcceptances(): Promise<EscalationResult[]> {
     })
 
     // Only the process that won the atomic transition (escalated === true)
-    // sends mail, so reminders/escalations are dispatched exactly once (#186).
+    // acts, so history is recorded and mail is dispatched exactly once (#186).
+    if (!escalated) {
+      continue
+    }
+
+    // Append to the per-ride status history (assignment_events, #164): the
+    // system escalated this request. Actor is the system; the reminder stage
+    // is kept as human-readable detail.
+    if (nextStage === "reminder_1" || nextStage === "reminder_2") {
+      await recordAssignmentEvent({
+        rideId: tracking.ride_id,
+        driverId: tracking.driver_id,
+        acceptanceTrackingId: tracking.id,
+        event: "reminder_sent",
+        actor: "system",
+        detail: nextStage,
+      })
+    } else if (nextStage === "timed_out") {
+      await recordAssignmentEvent({
+        rideId: tracking.ride_id,
+        driverId: tracking.driver_id,
+        acceptanceTrackingId: tracking.id,
+        event: "timed_out",
+        actor: "system",
+      })
+    }
 
     // Send reminder email for the reminder stage.
-    if (escalated && (nextStage === "reminder_1" || nextStage === "reminder_2")) {
+    if (nextStage === "reminder_1" || nextStage === "reminder_2") {
       try {
         const { sendDriverReminder } = await import(
           "@/lib/mail/templates/driver-reminder"
@@ -287,7 +313,7 @@ export async function checkPendingAcceptances(): Promise<EscalationResult[]> {
     }
 
     // Send dispatcher escalation for timeout.
-    if (escalated && nextStage === "timed_out") {
+    if (nextStage === "timed_out") {
       try {
         const { sendDispatcherEscalation } = await import(
           "@/lib/mail/templates/dispatcher-escalation"

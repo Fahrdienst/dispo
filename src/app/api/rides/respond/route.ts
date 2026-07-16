@@ -1,9 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { consumeToken, invalidateTokensForRide } from "@/lib/mail/tokens"
+import { sendDriverConfirmation } from "@/lib/mail/send-driver-confirmation"
 import { canTransition } from "@/lib/rides/status-machine"
 import { isAcceptanceFlowEnabled } from "@/lib/acceptance/constants"
 import { resolveAcceptance } from "@/lib/acceptance/engine"
+import { recordAssignmentEvent } from "@/lib/acceptance/events"
 import { rateLimitRideRespond } from "@/lib/security/rate-limit"
 import type { Enums } from "@/lib/types/database"
 
@@ -147,6 +149,16 @@ export async function POST(request: NextRequest) {
   // 7. SEC-M9-006: Invalidate all other tokens for this ride
   await invalidateTokensForRide(tokenData.ride_id)
 
+  // 7b. On confirmation, send the driver a confirmation email with .ics
+  //     attachment (M15, #166). Only on the actual transition to `confirmed`
+  //     — an already-used token short-circuits above, so no double send.
+  //     Fire-and-forget: a mail failure must never affect the status mutation.
+  if (validAction === "confirm") {
+    sendDriverConfirmation(tokenData.ride_id, tokenData.driver_id).catch(
+      console.error
+    )
+  }
+
   // 8. Resolve acceptance tracking if enabled
   if (isAcceptanceFlowEnabled()) {
     const resolution = validAction === "confirm" ? "confirmed" : "rejected"
@@ -157,6 +169,17 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // 9. Redirect to success page
+  // 9. Append to the per-ride status history (assignment_events, Issue #164):
+  // driver responded from the email 1-click link. The driver_id comes from the
+  // consumed token (server-verified above against the ride), never from client
+  // input; actor is the driver (#185).
+  await recordAssignmentEvent({
+    rideId: tokenData.ride_id,
+    driverId: tokenData.driver_id,
+    event: validAction === "confirm" ? "confirmed" : "rejected",
+    actor: "driver",
+  })
+
+  // 10. Redirect to success page
   return successRedirect(request, validAction)
 }
