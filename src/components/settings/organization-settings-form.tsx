@@ -468,6 +468,69 @@ export function OrganizationSettingsForm({ settings }: Props) {
           </div>
         </div>
 
+        {/* ============================================================= */}
+        {/* Fahrer-Entschädigung (Issue #153) */}
+        {/* ============================================================= */}
+        <div className="rounded-xl border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-6 py-4">
+            <h2 className="text-base font-semibold">Fahrer-Entschädigung</h2>
+            <p className="text-xs text-slate-500">
+              Sätze für die Entschädigungsberechnung im Fahrer-Report
+              (Pauschale pro Fahrt + km-Satz). Leer lassen = kein Satz (CHF 0).
+            </p>
+          </div>
+          <div className="space-y-4 p-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="driver_comp_per_ride_chf">
+                  Pauschale pro Fahrt (CHF)
+                </Label>
+                <Input
+                  id="driver_comp_per_ride_chf"
+                  name="driver_comp_per_ride_chf"
+                  type="number"
+                  min={0}
+                  max={9999.99}
+                  step={0.05}
+                  inputMode="decimal"
+                  defaultValue={settings?.driver_comp_per_ride_chf ?? ""}
+                  placeholder="z.B. 5.00"
+                />
+                {fieldError("driver_comp_per_ride_chf") && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {fieldError("driver_comp_per_ride_chf")}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="driver_comp_per_km_chf">km-Satz (CHF)</Label>
+                <Input
+                  id="driver_comp_per_km_chf"
+                  name="driver_comp_per_km_chf"
+                  type="number"
+                  min={0}
+                  max={9999.99}
+                  step={0.05}
+                  inputMode="decimal"
+                  defaultValue={settings?.driver_comp_per_km_chf ?? ""}
+                  placeholder="z.B. 0.70"
+                />
+                {fieldError("driver_comp_per_km_chf") && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {fieldError("driver_comp_per_km_chf")}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+              Hinweis: Die Entschädigung wird im Report live berechnet und nicht
+              gespeichert. Eine Änderung dieser Sätze wirkt sich{" "}
+              <strong>rückwirkend auf alle Reports</strong> aus (auch auf
+              vergangene Zeiträume).
+            </div>
+          </div>
+        </div>
+
         {/* Save */}
         <div className="flex justify-end">
           <SubmitButton>Einstellungen speichern</SubmitButton>
