@@ -1265,6 +1265,31 @@ export type Database = {
         }
         Returns: undefined
       }
+      finance_dashboard_monthly: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          month: string
+          ride_count: number
+          revenue: number
+          total_meters: number
+        }[]
+      }
+      finance_dashboard_receivable_count: {
+        Args: { p_from: string; p_to: string }
+        Returns: number
+      }
+      finance_dashboard_top_destinations: {
+        Args: { p_from: string; p_to: string; p_limit: number }
+        Returns: { id: string; label: string; ride_count: number }[]
+      }
+      finance_dashboard_top_drivers: {
+        Args: { p_from: string; p_to: string; p_limit: number }
+        Returns: { id: string; label: string; ride_count: number }[]
+      }
+      finance_dashboard_top_patients: {
+        Args: { p_from: string; p_to: string; p_limit: number }
+        Returns: { id: string; label: string; ride_count: number }[]
+      }
       get_user_driver_id: { Args: never; Returns: string }
       get_user_role: {
         Args: never
