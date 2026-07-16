@@ -1,80 +1,23 @@
 import { createAdminClient } from "@/lib/supabase/admin"
-import { zurichWallTimeToUtc } from "@/lib/utils/dates"
 import { recordAssignmentEvent } from "./events"
-import {
-  NORMAL_SLA_WINDOWS,
-  SHORT_NOTICE_SLA_WINDOWS,
-  SHORT_NOTICE_THRESHOLD_MINUTES,
-  ACTIVE_STAGES,
-} from "./constants"
+import { ACTIVE_STAGES } from "./constants"
+import { isShortNotice, nextDeadline } from "./deadlines"
 import type {
   AcceptanceStage,
   RejectionReason,
   ResolutionMethod,
   EscalationResult,
-  NextDeadline,
-  SLAWindows,
 } from "./types"
 
-const MS_PER_MINUTE = 60 * 1000
-
-/**
- * Determine if a ride is short-notice based on its start time.
- * Short-notice = ride start is less than SHORT_NOTICE_THRESHOLD_MINUTES (48h)
- * from now. The ride date + pickup time are wall-clock values in Europe/Zurich
- * and are converted to an absolute instant so the comparison is timezone-safe
- * (the server runtime is UTC).
- */
-export function isShortNotice(rideDate: string, pickupTime: string): boolean {
-  const pickupInstantMs = zurichWallTimeToUtc(rideDate, pickupTime).getTime()
-  const diffMinutes = (pickupInstantMs - Date.now()) / MS_PER_MINUTE
-  return diffMinutes < SHORT_NOTICE_THRESHOLD_MINUTES
-}
-
-/**
- * Get the appropriate SLA windows based on short-notice status.
- */
-export function getSLAWindows(shortNotice: boolean): SLAWindows {
-  return shortNotice ? SHORT_NOTICE_SLA_WINDOWS : NORMAL_SLA_WINDOWS
-}
-
-/** Minimal shape needed to compute a deadline (subset of acceptance_tracking). */
-export interface DeadlineInput {
-  stage: AcceptanceStage
-  is_short_notice: boolean
-  notified_at: string
-}
-
-/**
- * Compute the next escalation deadline for a tracking record.
- *
- * Single source of truth shared by the cron engine (below) and the UI countdown
- * on ride cards, so both compute identical deadlines from the same SLA windows.
- * Returns null for terminal stages or stages with nothing left to escalate.
- *
- * Note: per concept §3.3 the flow is `notified → reminder_1 → timed_out`
- * (one reminder). Legacy `reminder_2` records still escalate to `timed_out`.
- */
-export function nextDeadline(tracking: DeadlineInput): NextDeadline | null {
-  const windows = getSLAWindows(tracking.is_short_notice)
-  const notifiedAtMs = new Date(tracking.notified_at).getTime()
-
-  switch (tracking.stage) {
-    case "notified":
-      return {
-        nextStage: "reminder_1",
-        dueAt: new Date(notifiedAtMs + windows.reminder1 * MS_PER_MINUTE),
-      }
-    case "reminder_1":
-    case "reminder_2":
-      return {
-        nextStage: "timed_out",
-        dueAt: new Date(notifiedAtMs + windows.timeout * MS_PER_MINUTE),
-      }
-    default:
-      return null
-  }
-}
+// Pure SLA deadline math now lives in `./deadlines` (server + client safe).
+// Re-export it here so existing `@/lib/acceptance/engine` imports keep working
+// and `nextDeadline` remains the single source of truth (concept §6, #171).
+export {
+  isShortNotice,
+  getSLAWindows,
+  nextDeadline,
+  type DeadlineInput,
+} from "./deadlines"
 
 /**
  * Cancel any active acceptance tracking for a ride.
