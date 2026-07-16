@@ -26,7 +26,7 @@ export const fahrerMeineFahrten: HelpArticle = {
       blocks: [
         {
           type: "paragraph",
-          text: "Unter „Meine Fahrten“ sehen Sie alle Fahrten, die Ihnen zugeteilt wurden. Klicken Sie dazu oben im Menü auf „Meine Fahrten“. Die App zeigt zunächst den heutigen Tag.",
+          text: "Unter „Meine Fahrten“ sehen Sie alle Fahrten, die Ihnen zugeteilt wurden. Klicken Sie dazu links im Menü auf „Meine Fahrten“. Die App zeigt zunächst den heutigen Tag.",
         },
         // TODO(content): Screenshot der Fahrer-Ansicht "Meine Fahrten" mit einer Fahrtkarte.
       ],
@@ -46,7 +46,8 @@ export const fahrerMeineFahrten: HelpArticle = {
             "den Namen der Person und das Ziel,",
             "die Richtung (Hinfahrt, Rückfahrt oder Hin & Rück),",
             "einen Fortschrittsbalken, der den Stand der Fahrt zeigt,",
-            "eine Schaltfläche zum Starten der Navigation.",
+            "eine Schaltfläche zum Starten der Navigation,",
+            "einen Link „Details anzeigen“ zur Detailseite mit Kartenansicht.",
           ],
         },
         {
@@ -54,6 +55,21 @@ export const fahrerMeineFahrten: HelpArticle = {
           variant: "tip",
           title: "Zum Ziel navigieren",
           text: "Die grosse Schaltfläche führt Sie mit Google Maps zur richtigen Adresse. Vor dem Abholen heisst sie „Abholung ansteuern“ (zur Person), danach „Ziel ansteuern“ (zum Ziel). Die Navigation öffnet sich in einem neuen Fenster.",
+        },
+      ],
+    },
+    {
+      id: "detailseite",
+      heading: "Die Route auf der Karte ansehen",
+      blocks: [
+        {
+          type: "paragraph",
+          text: "Über „Details anzeigen“ auf einer Fahrtkarte öffnen Sie die Detailseite der Fahrt. Dort finden Sie unter anderem eine Karte, die den Weg von der Abholadresse (roter Punkt „H“) zum Ziel (blauer Punkt „Z“) zeigt.",
+        },
+        {
+          type: "callout",
+          variant: "info",
+          text: "Ist für eine Fahrt noch keine Route hinterlegt, zeigt die Karte nur die beiden Punkte ohne Verbindungslinie. Für die eigentliche Turn-by-turn-Navigation nutzen Sie weiterhin die Schaltflächen „Abholung ansteuern“ bzw. „Ziel ansteuern“.",
         },
       ],
     },

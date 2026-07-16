@@ -106,6 +106,43 @@ export const adminEinstellungen: HelpArticle = {
       ],
     },
     {
+      id: "geocoding",
+      heading: "Geocoding: Adressen auf der Karte verorten",
+      blocks: [
+        {
+          type: "paragraph",
+          text: "Damit Fahrten auf der Karte erscheinen und Routen berechnet werden können, braucht jede Patienten- und Zieladresse eine Position (Koordinaten). Das geschieht normalerweise automatisch, sobald Sie eine Adresse anlegen oder ändern. Der Reiter „Geocoding“ zeigt den Stand und lässt fehlende Positionen nachtragen.",
+        },
+        {
+          type: "paragraph",
+          text: "Oben sehen Sie je eine Übersicht für Patienten und für Ziele: wie viele Adressen bereits verortet sind und wie viele noch offen oder fehlgeschlagen sind.",
+        },
+        {
+          type: "steps",
+          steps: [
+            {
+              title: "Backfill starten",
+              text: "Klicken Sie auf „Backfill starten“. Die App arbeitet die offenen Adressen in Blöcken ab. Ein Fortschrittsbalken zeigt, wie viele verarbeitet sind, samt Anzahl erfolgreich, fehlgeschlagen und verbleibend.",
+            },
+            {
+              title: "Laufen lassen oder abbrechen",
+              text: "Der Lauf kann einige Minuten dauern. Mit „Abbrechen“ stoppen Sie nach dem aktuellen Block; bereits verortete Adressen bleiben gespeichert. Sie können jederzeit erneut starten – fertige Adressen werden übersprungen.",
+            },
+          ],
+        },
+        {
+          type: "callout",
+          variant: "info",
+          text: "Adressen, die Google nicht findet – etwa wegen Tippfehlern oder unvollständiger Angaben –, erscheinen am Ende in der Liste „Nicht geocodierbar“. Korrigieren Sie diese Adressen im jeweiligen Patienten- oder Ziel-Stammdatensatz; beim Speichern wird die Position automatisch neu ermittelt.",
+        },
+        {
+          type: "callout",
+          variant: "tip",
+          text: "Von Hand müssen Sie das selten anstossen: Neue oder geänderte Adressen werden sofort verortet, und ein täglicher Hintergrundlauf holt zuvor fehlgeschlagene Adressen von selbst nach.",
+        },
+      ],
+    },
+    {
       id: "system-sicherheit",
       heading: "System und Sicherheit",
       blocks: [
@@ -113,7 +150,7 @@ export const adminEinstellungen: HelpArticle = {
           type: "list",
           items: [
             "„System“: zeigt zur Information den Zustand der App und der angebundenen Dienste. Hier lässt sich nichts einstellen – die Seite dient nur dem Nachschauen.",
-            "„Geocoding“: hier können Adressen, die noch keine Position auf der Karte haben, erneut ermittelt werden.",
+            "„Geocoding“: hier tragen Sie fehlende Positionen von Adressen auf der Karte nach (siehe Abschnitt „Geocoding“ oben).",
             "„Sicherheit“: hier ändern Sie Ihr eigenes Passwort und richten bei Bedarf eine Zwei-Faktor-Anmeldung ein.",
           ],
         },

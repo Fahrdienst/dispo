@@ -39,7 +39,7 @@ export const patientAnlegen: HelpArticle = {
           steps: [
             {
               title: "Bereich „Patienten“ öffnen",
-              text: "Klicken Sie oben im Menü auf „Patienten“.",
+              text: "Klicken Sie links im Menü auf „Patienten“.",
             },
             {
               title: "Neue Person starten",
@@ -71,6 +71,10 @@ export const patientAnlegen: HelpArticle = {
             {
               title: "Notfallkontakt ergänzen (freiwillig)",
               text: "Unter „Notfallkontakt“ können Sie Name und Telefon einer Kontaktperson eintragen.",
+            },
+            {
+              title: "E-Mail für Quittungen (freiwillig)",
+              text: "Im Bereich „Rechnung & Zustellung“ können Sie unter „E-Mail (Quittungsversand)“ eine Adresse hinterlegen. Nur dann lassen sich Quittungen später per E-Mail zustellen. Bei Bedarf tragen Sie hier auch einen Kostenträger oder einen abweichenden Rechnungsempfänger ein.",
             },
           ],
         },
