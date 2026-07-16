@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { invalidateTokensForRide } from "@/lib/mail/tokens"
+import { sendDriverConfirmation } from "@/lib/mail/send-driver-confirmation"
 import {
   resolveAcceptance,
   cancelAcceptanceTracking,
@@ -63,6 +64,13 @@ export async function confirmAssignment(
 
   // SEC-M9-006: Invalidate all tokens for this ride
   await invalidateTokensForRide(rideId)
+
+  // Send confirmation email with .ics attachment (M15, #166).
+  // Fire-and-forget: a mail failure must never block the status mutation.
+  // `ride.driver_id` is guaranteed non-null here (checked above).
+  if (ride.driver_id) {
+    sendDriverConfirmation(rideId, ride.driver_id).catch(console.error)
+  }
 
   // Resolve acceptance tracking
   await resolveAcceptance(rideId, "confirmed", "driver_app")
