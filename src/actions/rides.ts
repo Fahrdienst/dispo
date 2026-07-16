@@ -32,6 +32,13 @@ import type { DriverDayStatus } from "@/lib/availability/driver-status"
 import { trackEvent } from "@/lib/telemetry"
 import { uuidSchema } from "@/lib/validations/shared"
 import { collectRideWarnings } from "@/lib/rides/warnings"
+import {
+  planCoAssignment,
+  resolveLinkedLegId,
+  isCoAssignable,
+  type CoAssignLegState,
+  type LegRole,
+} from "@/lib/rides/co-assign"
 import type { ActionResult, ActionWarning } from "@/actions/shared"
 import type { Tables, TablesInsert, Enums, Json } from "@/lib/types/database"
 import type { RideRequirement } from "@/lib/rides/requirements"
@@ -1313,6 +1320,293 @@ export async function assignDriver(
   revalidatePath("/rides")
   revalidatePath("/my/rides")
   return { success: true, data: undefined }
+}
+
+/** Columns needed to plan + apply a co-assignment for one leg. */
+interface CoAssignLegRow {
+  id: string
+  status: Enums<"ride_status">
+  driver_id: string | null
+  date: string
+  pickup_time: string
+  parent_ride_id: string | null
+}
+
+const CO_ASSIGN_LEG_COLUMNS =
+  "id, status, driver_id, date, pickup_time, parent_ride_id"
+
+/** Result of {@link assignDriverWithReturn}: which legs actually got assigned. */
+export interface AssignWithReturnResult {
+  /** Ride ids that were (re)assigned to the driver in this operation. */
+  assignedRideIds: string[]
+  /** Whether the linked return leg was co-assigned. */
+  returnLegAssigned: boolean
+  /**
+   * Set when `includeReturn` was requested but the linked leg was skipped
+   * because it is in a non-assignable status (terminal / already underway).
+   */
+  returnLegSkippedReason?: "not_assignable" | "no_linked_leg"
+}
+
+/**
+ * Assign a driver to a ride and, on request, to its linked return leg in one
+ * atomic action (Issue #167, concept §2.1/§2.3).
+ *
+ * The link is `rides.parent_ride_id` (self-FK, return → outbound); the linked
+ * leg is resolved in both directions. Security rule #182: the absence/conflict
+ * guard runs for *every* leg before anything is written — if any leg fails hard
+ * (driver absent), nothing is assigned and a speaking error is returned. If a
+ * DB write fails mid-way, already-applied legs are rolled back.
+ *
+ * Mail variant (documented per issue): MVP = one separate request mail + one
+ * token + one `acceptance_tracking` per leg. A single bundled double-token mail
+ * is a possible follow-up.
+ *
+ * `driverId` must be non-null — this action only assigns. Driver removal keeps
+ * going through {@link assignDriver}.
+ */
+export async function assignDriverWithReturn(
+  rideId: string,
+  driverId: string,
+  options: { includeReturn: boolean }
+): Promise<ActionResult<AssignWithReturnResult>> {
+  uuidSchema.parse(rideId)
+  uuidSchema.parse(driverId)
+
+  const auth = await requireAuth(["admin", "operator"])
+  if (!auth.authorized) {
+    return { success: false, error: auth.error }
+  }
+
+  const supabase = await createClient()
+
+  // 1) Load the primary leg the dispatcher explicitly picked.
+  const { data: primaryRow } = await supabase
+    .from("rides")
+    .select(CO_ASSIGN_LEG_COLUMNS)
+    .eq("id", rideId)
+    .single<CoAssignLegRow>()
+
+  if (!primaryRow) {
+    return { success: false, error: "Fahrt nicht gefunden" }
+  }
+
+  // 2) Resolve the linked return leg (both directions) when requested.
+  let linkedRow: CoAssignLegRow | null = null
+  let skippedReason: AssignWithReturnResult["returnLegSkippedReason"]
+
+  if (options.includeReturn) {
+    let linkedId = resolveLinkedLegId(primaryRow, null)
+
+    // Outbound leg: the linked return leg points back at us via parent_ride_id.
+    if (!linkedId) {
+      const { data: childRow } = await supabase
+        .from("rides")
+        .select("id")
+        .eq("parent_ride_id", rideId)
+        .maybeSingle()
+      linkedId = childRow?.id ?? null
+    }
+
+    if (!linkedId) {
+      skippedReason = "no_linked_leg"
+    } else {
+      const { data: fetchedLinked } = await supabase
+        .from("rides")
+        .select(CO_ASSIGN_LEG_COLUMNS)
+        .eq("id", linkedId)
+        .single<CoAssignLegRow>()
+
+      if (fetchedLinked && isCoAssignable(fetchedLinked.status)) {
+        linkedRow = fetchedLinked
+      } else {
+        // Linked leg exists but is terminal / already underway — never clobber
+        // it. The primary assignment still proceeds.
+        skippedReason = "not_assignable"
+      }
+    }
+  }
+
+  // 3) Build the leg list and compute the absence/conflict guard for EACH leg
+  //    (security #182) BEFORE mutating anything.
+  const legRows: Array<{ row: CoAssignLegRow; role: LegRole }> = [
+    { row: primaryRow, role: "primary" },
+  ]
+  if (linkedRow) legRows.push({ row: linkedRow, role: "return" })
+
+  const guardByRide = new Map<string, DriverDayStatus | null>()
+  const legStates: CoAssignLegState[] = []
+
+  for (const { row, role } of legRows) {
+    let driverStatus: DriverDayStatus | null = null
+    // Only guard when a *different* driver is being assigned (matches the
+    // single-assign flow — reassigning the same driver skips the check).
+    if (driverId !== row.driver_id) {
+      driverStatus = await getDriverDayStatus(
+        supabase,
+        driverId,
+        row.date,
+        row.pickup_time
+      )
+    }
+    guardByRide.set(row.id, driverStatus)
+    legStates.push({
+      rideId: row.id,
+      role,
+      status: row.status,
+      currentDriverId: row.driver_id,
+      isAbsent: driverStatus?.isAbsent ?? false,
+    })
+  }
+
+  // 4) Atomic go/no-go. Aborts (nothing assigned) if any leg's driver is absent.
+  const plan = planCoAssignment(legStates, driverId)
+  if (!plan.proceed) {
+    return { success: false, error: plan.error }
+  }
+
+  // 5) Apply the DB updates. Collect enough to roll back if a later write fails.
+  const applied: Array<{
+    rideId: string
+    prevDriverId: string | null
+    prevStatus: Enums<"ride_status">
+  }> = []
+
+  for (const leg of plan.legs) {
+    const source = legRows.find((l) => l.row.id === leg.rideId)
+    if (!source) continue
+
+    const updateData: {
+      driver_id: string
+      status?: Enums<"ride_status">
+    } = { driver_id: driverId }
+    if (leg.statusChanged) updateData.status = leg.targetStatus
+
+    const { error } = await supabase
+      .from("rides")
+      .update(updateData)
+      .eq("id", leg.rideId)
+
+    if (error) {
+      // Roll back everything applied so far so the operation stays all-or-none.
+      await rollbackAppliedLegs(supabase, applied)
+      return {
+        success: false,
+        error: `Zuweisung fehlgeschlagen: ${error.message}`,
+      }
+    }
+
+    applied.push({
+      rideId: leg.rideId,
+      prevDriverId: source.row.driver_id,
+      prevStatus: source.row.status,
+    })
+  }
+
+  // 6) All writes succeeded — run per-leg side effects (audit, out-of-avail
+  //    note, token invalidation, acceptance tracking, request mail, events).
+  const acceptanceEnabled = isAcceptanceFlowEnabled()
+  const assignedRideIds: string[] = []
+
+  for (const leg of plan.legs) {
+    const source = legRows.find((l) => l.row.id === leg.rideId)
+    if (!source) continue
+    const row = source.row
+    assignedRideIds.push(leg.rideId)
+
+    // Manipulation-safe audit trail for every assignment (#181).
+    if (leg.driverChanged) {
+      logAudit({
+        userId: auth.userId,
+        userRole: auth.role,
+        action: "assign",
+        entityType: "ride",
+        entityId: leg.rideId,
+        changes: {
+          driver_id: { old: row.driver_id, new: driverId },
+          status: { old: row.status, new: leg.targetStatus },
+        },
+        metadata: { co_assign: true, leg: leg.role },
+      }).catch(() => {})
+    }
+
+    // Note out-of-availability assignment in the communication_log (#104).
+    const guard = guardByRide.get(leg.rideId)
+    if (guard && !guard.isWithinAvailability) {
+      await logOutsideAvailabilityAssignment(supabase, {
+        rideId: leg.rideId,
+        authorId: auth.userId,
+        pickupTime: row.pickup_time,
+        hasAvailability: guard.hasAvailability,
+      })
+    }
+
+    // A fresh acceptance request is needed for this leg.
+    if (leg.requestAcceptance) {
+      await invalidateTokensForRide(leg.rideId)
+
+      // Fire-and-forget: send this leg's driver request email (one per leg).
+      sendDriverNotification(leg.rideId, driverId).catch(console.error)
+
+      // Per-ride status history (#164): dispatcher requested this driver.
+      await recordAssignmentEvent({
+        rideId: leg.rideId,
+        driverId,
+        event: "requested",
+        actor: "dispatcher",
+        detail: leg.role === "return" ? "return_leg" : null,
+      })
+
+      if (acceptanceEnabled) {
+        await createAcceptanceTracking(
+          leg.rideId,
+          driverId,
+          row.date,
+          row.pickup_time
+        )
+      }
+    }
+  }
+
+  revalidatePath("/dispatch")
+  revalidatePath("/rides")
+  revalidatePath("/my/rides")
+
+  return {
+    success: true,
+    data: {
+      assignedRideIds,
+      returnLegAssigned: plan.legs.some((l) => l.role === "return"),
+      ...(skippedReason ? { returnLegSkippedReason: skippedReason } : {}),
+    },
+  }
+}
+
+/**
+ * Revert `driver_id`/`status` for legs already updated in a co-assignment when a
+ * later leg's write fails, keeping the operation all-or-none (#182). Best-effort:
+ * logs but never throws so the caller can still surface the original error.
+ */
+async function rollbackAppliedLegs(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  applied: Array<{
+    rideId: string
+    prevDriverId: string | null
+    prevStatus: Enums<"ride_status">
+  }>
+): Promise<void> {
+  for (const leg of applied) {
+    const { error } = await supabase
+      .from("rides")
+      .update({ driver_id: leg.prevDriverId, status: leg.prevStatus })
+      .eq("id", leg.rideId)
+    if (error) {
+      console.error(
+        `[co-assign] Rollback failed for ride ${leg.rideId}:`,
+        error.message
+      )
+    }
+  }
 }
 
 /**
