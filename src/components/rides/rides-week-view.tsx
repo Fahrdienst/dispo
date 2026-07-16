@@ -204,7 +204,7 @@ function EmptyDayCell({
     <div className="flex min-h-[80px] flex-1 items-center justify-center rounded-md border border-dashed border-muted-foreground/20">
       {isStaff && !isPast ? (
         <Link
-          href={`/rides/new?date=${dateStr}`}
+          href={`/rides/erfassen?date=${dateStr}`}
           className="text-xs text-muted-foreground hover:text-foreground"
         >
           + Neue Fahrt

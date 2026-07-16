@@ -200,7 +200,7 @@ export function PatientDetailSheet({
 
         <SheetFooter className="flex-col gap-2 sm:flex-col">
           <Button variant="outline" className="w-full" asChild>
-            <Link href={`/rides/new?patient_id=${patient.id}`}>
+            <Link href={`/rides/erfassen?patient_id=${patient.id}`}>
               <Plus className="mr-2 h-4 w-4" />
               Neue Fahrt erfassen
             </Link>

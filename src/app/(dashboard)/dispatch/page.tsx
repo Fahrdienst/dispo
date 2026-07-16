@@ -21,7 +21,7 @@ import { checkPendingAcceptances } from "@/lib/acceptance/engine"
 import { getToday, getMondayOf, getSundayOf, getWeekDates } from "@/lib/utils/dates"
 import type { AcceptanceStage } from "@/lib/acceptance/types"
 import { PrintDayButton } from "@/components/dispatch/print-day-button"
-import { QuickCaptureButton } from "@/components/rides/quick-capture-button"
+import { NewRideButton } from "@/components/rides/new-ride-button"
 import type { Enums } from "@/lib/types/database"
 
 export const metadata: Metadata = {
@@ -115,7 +115,7 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
         description="Wochenuebersicht"
         actions={
           <>
-            <QuickCaptureButton />
+            <NewRideButton />
             <PrintDayButton date={today} />
           </>
         }
@@ -290,7 +290,7 @@ async function renderDayView(selectedDate: string, today: string) {
         description="Tagesuebersicht und Fahrerzuweisung"
         actions={
           <>
-            <QuickCaptureButton defaultDate={selectedDate} />
+            <NewRideButton defaultDate={selectedDate} />
             <PrintDayButton date={selectedDate} />
           </>
         }

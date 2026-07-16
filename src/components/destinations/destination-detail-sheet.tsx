@@ -155,7 +155,7 @@ export function DestinationDetailSheet({
 
         <SheetFooter className="flex-col gap-2 sm:flex-col">
           <Button variant="outline" className="w-full" asChild>
-            <Link href={`/rides/new?destination_id=${destination.id}`}>
+            <Link href={`/rides/erfassen?destination_id=${destination.id}`}>
               <Plus className="mr-2 h-4 w-4" />
               Neue Fahrt erfassen
             </Link>
