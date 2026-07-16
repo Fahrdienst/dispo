@@ -170,7 +170,7 @@ describe("escalation flow / idempotency semantics", () => {
   })
 
   it("does not re-fire the reminder once the record advanced past 'notified'", () => {
-    // A second hourly cron run at 25h sees the record already at reminder_1.
+    // A second check run at 25h sees the record already at reminder_1.
     // The reminder deadline no longer applies; only the 48h timeout can fire.
     const now = notifiedMs + 25 * MS_PER_HOUR
     expect(isDue("reminder_1", false, now)).toBe(false)

@@ -4,9 +4,17 @@ import { checkPendingAcceptances } from "@/lib/acceptance/engine"
 
 /**
  * Vercel Cron endpoint for acceptance tracking escalation.
- * Runs hourly (see vercel.json) to check for overdue driver responses and
- * drive the 24h/48h — resp. 4h/8h short-notice — reminder/escalation windows.
- * The fire-and-forget call on the dispatch page is a supplementary safety net.
+ * Runs once daily at 06:00 (see vercel.json) to check for overdue driver
+ * responses and drive the reminder/escalation windows.
+ *
+ * Cadence note: the Vercel Hobby plan only permits daily crons (a deliberate
+ * decision — no plan upgrade, no external scheduler). Consequences:
+ * - The 24h/48h normal windows are only hit at day granularity (a record
+ *   crossing its deadline is escalated at the next 06:00 run).
+ * - The 4h/8h short-notice windows cannot be met by this daily cron; that
+ *   escalation is primarily carried by the fire-and-forget
+ *   `checkPendingAcceptances()` call when the dispatch page is loaded, which
+ *   catches due deadlines throughout the working day.
  *
  * Auth: CRON_SECRET in Authorization header (Vercel sets this automatically).
  * The response body only contains opaque IDs (ride/driver/tracking UUIDs) — no
