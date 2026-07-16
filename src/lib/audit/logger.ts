@@ -6,6 +6,7 @@ type AuditAction =
   | "update"
   | "delete"
   | "status_change"
+  | "assign"
   | "reassign"
   | "login"
   | "deactivate"

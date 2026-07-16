@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin"
+import { recordAssignmentEvent } from "./events"
 import {
   NORMAL_SLA_WINDOWS,
   SHORT_NOTICE_SLA_WINDOWS,
@@ -226,6 +227,31 @@ export async function checkPendingAcceptances(): Promise<EscalationResult[]> {
         toStage: nextStage,
         escalated,
       })
+
+      // Append to the per-ride status history (assignment_events, Issue #164):
+      // the system escalated this request. Only record when the atomic stage
+      // transition actually happened (SEC-M9-004). The reminder stage / timeout
+      // is kept as human-readable detail; actor is the system.
+      if (escalated) {
+        if (nextStage === "reminder_1" || nextStage === "reminder_2") {
+          await recordAssignmentEvent({
+            rideId: tracking.ride_id,
+            driverId: tracking.driver_id,
+            acceptanceTrackingId: tracking.id,
+            event: "reminder_sent",
+            actor: "system",
+            detail: nextStage,
+          })
+        } else if (nextStage === "timed_out") {
+          await recordAssignmentEvent({
+            rideId: tracking.ride_id,
+            driverId: tracking.driver_id,
+            acceptanceTrackingId: tracking.id,
+            event: "timed_out",
+            actor: "system",
+          })
+        }
+      }
 
       // Send reminder emails for reminder stages
       if (escalated && (nextStage === "reminder_1" || nextStage === "reminder_2")) {
