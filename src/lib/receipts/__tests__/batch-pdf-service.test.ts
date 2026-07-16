@@ -108,6 +108,14 @@ function capturedPages(): Array<{ props: { data: { receiptNumber: string } } }> 
   }>
 }
 
+/** Read the <Document> title of the captured BatchReceiptDocument element. */
+function capturedTitle(): string {
+  const doc = H.capturedArgs[H.capturedArgs.length - 1] as {
+    props: { title: string }
+  }
+  return doc.props.title
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   H.capturedArgs.length = 0
@@ -134,6 +142,29 @@ describe("renderBatchReceiptPdf", () => {
     await renderBatchReceiptPdf(["id-3", "id-1", "id-2"])
     const numbers = capturedPages().map((p) => p.props.data.receiptNumber)
     expect(numbers).toEqual(["Q-2026-00001", "Q-2026-00002", "Q-2026-00003"])
+  })
+
+  it("renders a single valid receipt as a one-page 'Quittung' document (Einzel)", async () => {
+    // The 0/many cases are covered above; this pins the lone-receipt branch:
+    // exactly one loadable receipt must still render (not hit the throw) and,
+    // being a single page re-rendered from the same frozen snapshot as the
+    // archived single PDF, carry the single-receipt title — not the batch title.
+    const { buffer, count } = await renderBatchReceiptPdf(["id-2"])
+
+    expect(count).toBe(1)
+    expect(buffer).toBeInstanceOf(Buffer)
+    expect(H.mockRenderToBuffer).toHaveBeenCalledOnce()
+
+    const pages = capturedPages()
+    expect(pages).toHaveLength(1)
+    expect(pages[0]?.props.data.receiptNumber).toBe("Q-2026-00002")
+    expect(capturedTitle()).toBe("Quittung Q-2026-00002")
+  })
+
+  it("titles a multi-receipt run as a 'Sammellauf' over the period (Sammel)", async () => {
+    await renderBatchReceiptPdf(["id-1", "id-2", "id-3"])
+    // Collective title spans first period_from … last period_to of the run.
+    expect(capturedTitle()).toBe("Sammellauf 2026-07-01 – 2026-07-31")
   })
 
   it("skips receipts that cannot be loaded but renders the rest", async () => {

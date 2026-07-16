@@ -345,3 +345,78 @@ Bucket nach `feedback`-Muster; VVT-Eintrag erstellt.
 *Reviewed by Ioannis (CISO), 2026-07-15*
 *Klassifizierung: INTERNAL — VERTRAULICH*
 *Bezug: `docs/finanzmodul-konzept.md`, ADR-015 (in Arbeit, Martin)*
+
+---
+
+## 7. Verifikations-Nachtrag (Code-Review gegen `main`)
+
+**Datum:** 2026-07-16
+**Reviewer:** Ioannis (CISO)
+**Geprüfter Stand:** `main` @ `82d5216` (Merge M12 als Basis; M14 alle 4 Phasen gemerged).
+**Gegenstand:** Verifikation der Findings SEC-M14-001..013 **gegen den implementierten Code**
+(nicht gegen Behauptungen). Geprüfte Artefakte: Migrationen `20260718`–`20260723`,
+`src/actions/receipt-*`, `src/actions/driver-report.ts`, `src/actions/statistics.ts`,
+`src/actions/distance-backfill.ts`, `src/lib/receipts/*`, `src/lib/mail/receipt-mail.ts`,
+`src/lib/finance/*`, `src/lib/audit/logger.ts`, `src/app/(dashboard)/finance/**`.
+
+### 7.1 Gesamtverdikt
+
+**GO mit einer offenen Lücke (MEDIUM) + PO-Entscheiden.** Die beiden CRITICALs und die
+HIGH/MEDIUM/LOW-Findings sind ganz überwiegend sauber und teils vorbildlich umgesetzt
+(Immutability-Trigger, atomarer Nummernkreis, Snapshot-Schutz, Mail-Minimierung, TTL 300 s,
+Pseudonymisierung, Export-Audit). **Eine echte Lücke** wurde gefunden: der on-demand
+**Sammel-PDF-Download** (`.../receipts/batch/download/route.ts`) exportiert Beleg-Inhalte
+(Namen + medizinisch inferierbare Zielorte, bis zu 500 Belege) **ohne Audit-Eintrag** —
+Teilverstoß gegen SEC-M14-006 (Accountability Art. 5 Abs. 2). Kein Fix im Rahmen dieses
+Reviews (paralleler Agent), präzise dokumentiert unten.
+
+### 7.2 Ergebnis je Finding
+
+| ID | Severity | Verdikt | Nachweis (Datei) |
+|----|----------|---------|------------------|
+| SEC-M14-001 | CRITICAL | **UMGESETZT** | `20260718` §5/§7: BEFORE-UPDATE/DELETE-Trigger auf `receipts`+`receipt_items` (`SECURITY DEFINER SET search_path=public`), Default-Deny (kein UPDATE/DELETE-Policy), Storno-Propagation via AFTER-Trigger. |
+| SEC-M14-002 | CRITICAL | **UMGESETZT** | `20260718` §4: `next_receipt_number()` SECURITY DEFINER, atomarer `ON CONFLICT DO UPDATE`, Rollen-Gate (`service_role`/admin/operator), `receipt_counters` RLS deny-all. Aufruf in `issue_receipt` (`20260720`) in derselben Transaktion. |
+| SEC-M14-003 | HIGH | **UMGESETZT** | `20260718` §9: `anonymize_patient()` ergänzt um `UPDATE receipts SET patient_id=NULL`; Snapshot (`recipient_name/-address`, `receipt_items`) unangetastet; Trigger lässt `patient_id` nur → NULL kappen. Migrationskommentar (OR 958f) vorhanden. |
+| SEC-M14-004 | HIGH | **UMGESETZT** | `src/lib/mail/receipt-mail.ts`: Body trägt nur Anrede/Nr./Zeitraum/Org (schmales `ReceiptMailData`-Interface); PDF als **Anhang** (`attachments`), kein Link; `mail_log` metadaten-only; `escapeHtml` (XSS). |
+| SEC-M14-005 | HIGH | **UMGESETZT** | `src/lib/receipts/constants.ts` `RECEIPT_SIGNED_URL_TTL_SECONDS = 300`; einzige Signatur-Stelle für Belege in `receipt-download.ts`. Grep bestätigt: nur `feedback.ts` (1 J, gewollt) + `receipt-download.ts` (300 s) rufen `createSignedUrl`. Mail-Pfad nutzt gar keine URL. |
+| SEC-M14-006 | HIGH | **TEILWEISE** | Ausstellung (`20260720` RPC → `audit_log`), Storno (`receipt-cancel.ts` `action='cancel'`), CSV-Exporte (`driver-report.ts`/`statistics.ts` `action='export'/entity='report'`), Mailversand (`receipt-email.ts`) und Batch-Lauf (`receipt-batch.ts`) alle geloggt; `AuditAction`/`AuditEntityType` um `cancel`/`export`/`receipt`/`report` erweitert. **LÜCKE:** Sammel-PDF-Download nicht auditiert (7.3). |
+| SEC-M14-007 | MEDIUM | **UMGESETZT** | `20260723`: alle 5 Dashboard-RPCs `SECURITY INVOKER` **+** explizites Rollen-Gate (`get_user_role() IN ('admin','operator')`) + `REVOKE ALL FROM PUBLIC`. `statistics-data.ts`/`driver-report-data.ts` fetchen über user-scoped Client (RLS greift), Aggregation serverseitig. Bucket `receipts` `public=false`, kein Policy → Default-Deny. `/finance/layout.tsx` gated admin+operator. |
+| SEC-M14-008 | MEDIUM | **OFFEN (PO/Prozess)** | `billing_recipient_*` implementiert (`20260719`, `issue_receipt`), Kommentar verweist auf SEC-M14-008; **kein** Einwilligungs-/Vertretungsnachweis erzwungen. Erwartungsgemäß Prozess-/PO-Entscheid, kein Code-Fehler. |
+| SEC-M14-009 | MEDIUM | **UMGESETZT** | `statistics.ts`: Patient-Dimension → `exportLabel = patientPseudonym()` (P-<8hex>) im CSV, Klarname nur am Schirm; explizite Spalten-Allowlist (`STAT_CSV_COLUMNS`), kein `SELECT *` (`RIDE_SELECT` enumeriert). Fahrer-Report aggregat-only (keine Patienten/Ziele). `SENSITIVE_DIMENSIONS` markiert Ziel+Patient. |
+| SEC-M14-010 | MEDIUM | **UMGESETZT (Minimum)** | `receipt-mail.ts`: Empfänger ausschließlich aus `patients.email`, nie geraten, kein Send ohne Adresse. `receipt-list-email-dialog.tsx`: Bestätigungsdialog zeigt Zieladresse explizit vor Versand. Double-Opt-in/Verifikation bleibt PO-Option. |
+| SEC-M14-011 | MEDIUM | **OFFEN (geplant/PO)** | Kein 10-Jahres-Löschjob im Code (erwartungsgemäß zurückgestellt). Muss als geplante Maßnahme im VVT dokumentiert werden. |
+| SEC-M14-012 | LOW | **UMGESETZT** | `pdf-service.ts`: Pfad `<year>/<receipt_number>.pdf` (`receiptYear()`), keine PII; privater Bucket. |
+| SEC-M14-013 | LOW | **UMGESETZT** | `distance-backfill.ts`: admin-only, `logAudit(action='update', metadata.job='distance_backfill', processed/…)`; `getDistanceBackfillSkipped()` liefert nur `id`+`date` (keine Patientennamen). |
+
+### 7.3 Gefundene Lücke (präzise Dokumentation, NICHT gefixt)
+
+🟡 **SEC-M14-006-GAP (MEDIUM) — Sammel-PDF-Download ohne Audit-Eintrag**
+
+- **Datei:** `src/app/(dashboard)/finance/receipts/batch/download/route.ts`, `POST`-Handler,
+  nach erfolgreichem `renderBatchReceiptPdf(parsed.data.ids)` (Zeile ~49–59).
+- **Was fehlt:** Kein `logAudit(...)`. Die Route streamt ein Sammel-PDF mit bis zu 500
+  Beleg-Inhalten (Empfängername + medizinisch inferierbare Zielorte) an den Browser, ohne
+  festzuhalten, **wer wann welche Belege** exportiert hat. Auch die aufgerufene Lib-Funktion
+  `src/lib/receipts/batch-pdf-service.ts` (`renderBatchReceiptPdf`) protokolliert nicht.
+- **Warum relevant:** SEC-M14-006 verlangt, dass **Exporte** finanzieller/gesundheits-
+  adjazenter Daten attribuierbar sind (Art. 5 Abs. 2 DSGVO, Accountability). CSV-Exporte und
+  der Mailversand erfüllen das; dieser Bulk-PDF-Export ist die **einzige** Export-Oberfläche
+  ohne Audit — inkonsistent und die risikoreichste (höchstes Datenvolumen je Aktion).
+- **Positiv (bereits vorhanden):** `requireAuth(["admin","operator"])`, IDs im Body (nicht in
+  Access-Logs), `Cache-Control: no-store`, nicht persistiert.
+- **Empfohlene Maßnahme:** Nach erfolgreichem Render ein `logAudit({ action:'export',
+  entityType:'report', metadata:{ report_type:'receipt_batch_pdf', receipt_count:ids.length,
+  … } })` ergänzen (analog `statistics.ts`/`driver-report.ts`). Aufwand: gering.
+
+### 7.4 Positiv hervorzuheben
+
+- Immutability-Design ist mustergültig: Default-Deny **plus** Trigger als Defense-in-Depth,
+  `patient_id`/`ride_id` nur → NULL kappbar, DELETE stets blockiert — auch gegen den
+  service_role-Client, der RLS umgeht, aber die Trigger passiert.
+- Nummernkreis: Rollback gibt die Nummer frei (keine Lücken), Lücke bleibt bewusst ein
+  Compliance-Signal.
+- Neue SECURITY-INVOKER-RPCs (`20260723`) haben **zusätzlich** zum INVOKER-Modell ein
+  explizites Rollen-Gate — sauberer Gürtel-und-Hosenträger-Ansatz, keine Fahrer-Leaks über
+  Aggregat-Views.
+
+*Verifiziert von Ioannis (CISO), 2026-07-16 — Klassifizierung: INTERNAL — VERTRAULICH*

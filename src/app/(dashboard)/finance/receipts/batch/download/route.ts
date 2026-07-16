@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { z } from "zod"
 import { requireAuth } from "@/lib/auth/require-auth"
+import { logAudit } from "@/lib/audit/logger"
 import { renderBatchReceiptPdf } from "@/lib/receipts/batch-pdf-service"
 
 // @react-pdf/renderer needs the Node runtime (ADR-015 E6).
@@ -48,6 +49,19 @@ export async function POST(request: NextRequest): Promise<Response> {
   try {
     const { buffer } = await renderBatchReceiptPdf(parsed.data.ids)
     const filename = `Sammellauf-${new Date().toISOString().slice(0, 10)}.pdf`
+
+    // SEC-M14-006: the collective PDF is the richest export surface (names +
+    // health-inferable destinations), so the download must be attributable.
+    logAudit({
+      userId: auth.userId,
+      userRole: auth.role,
+      action: "export",
+      entityType: "report",
+      metadata: {
+        report_type: "receipt_batch_pdf",
+        receipt_count: parsed.data.ids.length,
+      },
+    }).catch(() => {})
 
     return new Response(new Uint8Array(buffer), {
       status: 200,
