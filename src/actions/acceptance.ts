@@ -9,6 +9,7 @@ import {
   cancelAcceptanceTracking,
 } from "@/lib/acceptance/engine"
 import { isAcceptanceFlowEnabled } from "@/lib/acceptance/constants"
+import { recordAssignmentEvent } from "@/lib/acceptance/events"
 import { rejectionSchema } from "@/lib/validations/acceptance"
 import { uuidSchema } from "@/lib/validations/shared"
 import { logAudit } from "@/lib/audit/logger"
@@ -66,6 +67,15 @@ export async function confirmAssignment(
 
   // Resolve acceptance tracking
   await resolveAcceptance(rideId, "confirmed", "driver_app")
+
+  // Append to the per-ride status history (assignment_events, Issue #164):
+  // driver confirmed. actor is derived server-side from the session (#185).
+  await recordAssignmentEvent({
+    rideId,
+    driverId: auth.driverId,
+    event: "confirmed",
+    actor: "driver",
+  })
 
   revalidatePath("/my/rides")
   revalidatePath("/dispatch")
@@ -147,6 +157,17 @@ export async function rejectAssignment(
     result.data.rejection_text ?? undefined
   )
 
+  // Append to the per-ride status history (assignment_events, Issue #164):
+  // driver rejected. The reason code is kept as human-readable detail; actor is
+  // derived server-side from the session (#185).
+  await recordAssignmentEvent({
+    rideId,
+    driverId: auth.driverId,
+    event: "rejected",
+    actor: "driver",
+    detail: result.data.rejection_reason,
+  })
+
   revalidatePath("/my/rides")
   revalidatePath("/dispatch")
   revalidatePath("/rides")
@@ -213,6 +234,16 @@ export async function reassignRide(
       status: { old: ride.status, new: "unplanned" },
     },
   }).catch(() => {})
+
+  // Append to the per-ride status history (assignment_events, Issue #164):
+  // dispatcher reassigned the ride (driver removed, back to the pool). actor is
+  // derived server-side (#185).
+  await recordAssignmentEvent({
+    rideId: parsedId.data,
+    driverId: ride.driver_id,
+    event: "reassigned",
+    actor: "dispatcher",
+  })
 
   revalidatePath("/dispatch")
   revalidatePath("/rides")

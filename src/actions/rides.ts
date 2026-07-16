@@ -18,6 +18,7 @@ import {
   createAcceptanceTracking,
   cancelAcceptanceTracking,
 } from "@/lib/acceptance/engine"
+import { recordAssignmentEvent } from "@/lib/acceptance/events"
 import {
   generateDatesForSeries,
   expandDirections,
@@ -1225,6 +1226,26 @@ export async function assignDriver(
     return { success: false, error: error.message }
   }
 
+  const driverChanged = driverId !== currentRide.driver_id
+  const newStatus = updateData.status ?? currentRide.status
+
+  // Manipulation-safe audit trail for every assignment/removal (finding #181):
+  // assignDriver previously wrote no audit_log entry. "assign" when a driver is
+  // set, "reassign" when a driver is removed or replaced.
+  if (driverChanged) {
+    logAudit({
+      userId: auth.userId,
+      userRole: auth.role,
+      action: driverId ? "assign" : "reassign",
+      entityType: "ride",
+      entityId: rideId,
+      changes: {
+        driver_id: { old: currentRide.driver_id, new: driverId },
+        status: { old: currentRide.status, new: newStatus },
+      },
+    }).catch(() => {})
+  }
+
   // Note out-of-availability assignment in the communication_log (Issue #104)
   if (driverId && driverStatus && !driverStatus.isWithinAvailability) {
     await logOutsideAvailabilityAssignment(supabase, {
@@ -1241,6 +1262,15 @@ export async function assignDriver(
 
     // Fire-and-forget: send driver notification email
     sendDriverNotification(rideId, driverId).catch(console.error)
+
+    // Append to the per-ride status history (assignment_events, Issue #164):
+    // dispatcher requested this driver. actor is derived server-side (#185).
+    await recordAssignmentEvent({
+      rideId,
+      driverId,
+      event: "requested",
+      actor: "dispatcher",
+    })
 
     // Create acceptance tracking if feature is enabled
     if (isAcceptanceFlowEnabled()) {
@@ -1268,6 +1298,15 @@ export async function assignDriver(
     if (isAcceptanceFlowEnabled()) {
       await cancelAcceptanceTracking(rideId)
     }
+
+    // Append to the per-ride status history (assignment_events, Issue #164):
+    // dispatcher removed the driver, ride returns to the pool for reassignment.
+    await recordAssignmentEvent({
+      rideId,
+      driverId: currentRide.driver_id,
+      event: "reassigned",
+      actor: "dispatcher",
+    })
   }
 
   revalidatePath("/dispatch")

@@ -86,6 +86,61 @@ export type Database = {
           },
         ]
       }
+      assignment_events: {
+        Row: {
+          acceptance_tracking_id: string | null
+          actor: Database["public"]["Enums"]["assignment_actor"]
+          created_at: string
+          detail: string | null
+          driver_id: string | null
+          event: Database["public"]["Enums"]["assignment_event_type"]
+          id: string
+          ride_id: string
+        }
+        Insert: {
+          acceptance_tracking_id?: string | null
+          actor: Database["public"]["Enums"]["assignment_actor"]
+          created_at?: string
+          detail?: string | null
+          driver_id?: string | null
+          event: Database["public"]["Enums"]["assignment_event_type"]
+          id?: string
+          ride_id: string
+        }
+        Update: {
+          acceptance_tracking_id?: string | null
+          actor?: Database["public"]["Enums"]["assignment_actor"]
+          created_at?: string
+          detail?: string | null
+          driver_id?: string | null
+          event?: Database["public"]["Enums"]["assignment_event_type"]
+          id?: string
+          ride_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_events_acceptance_tracking_id_fkey"
+            columns: ["acceptance_tracking_id"]
+            isOneToOne: false
+            referencedRelation: "acceptance_tracking"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_events_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_events_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignment_tokens: {
         Row: {
           action: string | null
@@ -1371,6 +1426,15 @@ export type Database = {
         | "confirmed"
         | "rejected"
         | "cancelled"
+      assignment_actor: "dispatcher" | "driver" | "system"
+      assignment_event_type:
+        | "requested"
+        | "reminder_sent"
+        | "confirmed"
+        | "rejected"
+        | "timed_out"
+        | "reassigned"
+        | "cancelled"
       cost_bearer_type:
         | "health_insurance"
         | "self_payer"
@@ -1561,6 +1625,16 @@ export const Constants = {
         "timed_out",
         "confirmed",
         "rejected",
+        "cancelled",
+      ],
+      assignment_actor: ["dispatcher", "driver", "system"],
+      assignment_event_type: [
+        "requested",
+        "reminder_sent",
+        "confirmed",
+        "rejected",
+        "timed_out",
+        "reassigned",
         "cancelled",
       ],
       cost_bearer_type: [

@@ -4,6 +4,7 @@ import { consumeToken, invalidateTokensForRide } from "@/lib/mail/tokens"
 import { canTransition } from "@/lib/rides/status-machine"
 import { isAcceptanceFlowEnabled } from "@/lib/acceptance/constants"
 import { resolveAcceptance } from "@/lib/acceptance/engine"
+import { recordAssignmentEvent } from "@/lib/acceptance/events"
 import { rateLimitRideRespond } from "@/lib/security/rate-limit"
 import type { Enums } from "@/lib/types/database"
 
@@ -157,6 +158,17 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // 9. Redirect to success page
+  // 9. Append to the per-ride status history (assignment_events, Issue #164):
+  // driver responded from the email 1-click link. The driver_id comes from the
+  // consumed token (server-verified above against the ride), never from client
+  // input; actor is the driver (#185).
+  await recordAssignmentEvent({
+    rideId: tokenData.ride_id,
+    driverId: tokenData.driver_id,
+    event: validAction === "confirm" ? "confirmed" : "rejected",
+    actor: "driver",
+  })
+
+  // 10. Redirect to success page
   return successRedirect(request, validAction)
 }
