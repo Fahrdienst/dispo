@@ -12,7 +12,7 @@ import {
   type AssignmentStatus,
 } from "../assignment-status"
 import type { Enums } from "@/lib/types/database"
-import type { DeadlineInput } from "@/lib/acceptance/engine"
+import type { DeadlineInput } from "@/lib/acceptance/deadlines"
 
 type RideStatus = Enums<"ride_status">
 
