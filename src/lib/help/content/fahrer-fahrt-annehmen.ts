@@ -32,7 +32,7 @@ export const fahrerFahrtAnnehmen: HelpArticle = {
         {
           type: "callout",
           variant: "info",
-          text: "Bitte antworten Sie möglichst zügig. Der Link in der E-Mail ist 48 Stunden gültig. Bleibt eine Antwort aus, erhalten Sie eine Erinnerung, und die Einteilung fragt gegebenenfalls eine andere Fahrerin oder einen anderen Fahrer an.",
+          text: "Bitte antworten Sie möglichst zügig. Bei Fahrten mit etwas Vorlauf haben Sie in der Regel bis zu 48 Stunden Zeit; bei kurzfristigen Fahrten (Start in weniger als 48 Stunden) ist das Zeitfenster deutlich kürzer. Bleibt eine Antwort aus, erhalten Sie eine Erinnerung, und die Einteilung fragt gegebenenfalls eine andere Fahrerin oder einen anderen Fahrer an.",
         },
       ],
     },

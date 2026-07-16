@@ -26,7 +26,7 @@ export const dispatchBoard: HelpArticle = {
       blocks: [
         {
           type: "paragraph",
-          text: "Im Bereich „Disposition“ planen Sie einen Tag: Sie sehen alle Fahrten und teilen ihnen Fahrerinnen und Fahrer zu. Klicken Sie dazu oben im Menü auf „Disposition“.",
+          text: "Im Bereich „Disposition“ planen Sie einen Tag: Sie sehen alle Fahrten und teilen ihnen Fahrerinnen und Fahrer zu. Klicken Sie dazu links im Menü auf „Disposition“.",
         },
         {
           type: "paragraph",

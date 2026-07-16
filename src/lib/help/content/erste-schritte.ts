@@ -50,7 +50,7 @@ export const ersteSchritte: HelpArticle = {
           type: "callout",
           variant: "warning",
           title: "Passwort vergessen?",
-          text: "Wenn Ihr Passwort nicht funktioniert, wenden Sie sich an Ihre Ansprechperson in der Administration. Sie kann Ihnen ein neues Passwort einrichten.",
+          text: "Klicken Sie auf der Anmeldeseite auf „Passwort vergessen?“. Sie erhalten dann per E-Mail einen Link, mit dem Sie sich selbst ein neues Passwort setzen können. Klappt das nicht, wenden Sie sich an Ihre Ansprechperson in der Administration.",
         },
       ],
     },

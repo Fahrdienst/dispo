@@ -43,7 +43,7 @@ export const abrechnung: HelpArticle = {
       blocks: [
         {
           type: "paragraph",
-          text: "Alles rund ums Geld finden Sie oben im Menü unter „Finanzen“. Der frühere Menüpunkt „Verrechnung“ ist darin aufgegangen – alte Lesezeichen funktionieren weiter und leiten automatisch auf „Finanzen → Export“.",
+          text: "Alles rund ums Geld finden Sie links im Menü unter „Finanzen“. Der frühere Menüpunkt „Verrechnung“ ist darin aufgegangen – alte Lesezeichen funktionieren weiter und leiten automatisch auf „Finanzen → Export“.",
         },
         {
           type: "list",

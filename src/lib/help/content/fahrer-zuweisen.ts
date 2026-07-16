@@ -37,7 +37,7 @@ export const fahrerZuweisen: HelpArticle = {
           steps: [
             {
               title: "Bereich „Disposition“ öffnen",
-              text: "Klicken Sie oben im Menü auf „Disposition“. Sie sehen den heutigen Tag mit allen Fahrten.",
+              text: "Klicken Sie links im Menü auf „Disposition“. Sie sehen den heutigen Tag mit allen Fahrten.",
             },
             {
               title: "Zum richtigen Tag wechseln",
@@ -69,9 +69,15 @@ export const fahrerZuweisen: HelpArticle = {
             },
             {
               title: "Fahrer anklicken",
-              text: "Klicken Sie den passenden Namen an. Die Zuweisung wird sofort gespeichert – Sie müssen nichts extra bestätigen.",
+              text: "Klicken Sie den passenden Namen an. Die Zuweisung wird in der Regel sofort gespeichert – Sie müssen nichts extra bestätigen.",
             },
           ],
+        },
+        {
+          type: "callout",
+          variant: "info",
+          title: "Abwesende und nicht verfügbare Fahrer",
+          text: "Fahrerinnen und Fahrer, die an diesem Tag abwesend sind, erscheinen in der Liste ausgegraut und lassen sich nicht auswählen. Wählen Sie jemanden, der zu dieser Zeit nicht als verfügbar eingetragen ist, fragt die App zur Sicherheit noch einmal nach („Ausserhalb der Verfügbarkeit – Trotzdem zuweisen?“).",
         },
         {
           type: "callout",

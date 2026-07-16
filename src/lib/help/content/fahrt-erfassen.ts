@@ -72,19 +72,23 @@ export const fahrtErfassen: HelpArticle = {
       heading: "Das Formular ausfüllen",
       blocks: [
         {
+          type: "paragraph",
+          text: "Die Erfassung führt Sie in drei Schritten durch: „Wer“, „Wohin & wann“ und „Fahrt“.",
+        },
+        {
           type: "steps",
           steps: [
             {
-              title: "Patientin oder Patient wählen",
-              text: "Tippen Sie in das Feld „Patient“ den Namen ein. Während Sie tippen, werden passende Einträge vorgeschlagen. Klicken Sie den richtigen an.",
+              title: "Schritt „Wer“: Patientin oder Patient wählen",
+              text: "Tippen Sie den Namen ein. Während Sie tippen, werden passende Einträge vorgeschlagen – klicken Sie den richtigen an. Ist die Person noch nicht gespeichert, legen Sie sie direkt hier neu an.",
             },
             {
-              title: "Ziel wählen",
-              text: "Wählen Sie im Feld „Ziel“ auf die gleiche Weise den Ort, zu dem gefahren wird – zum Beispiel eine Arztpraxis oder ein Spital.",
+              title: "Schritt „Wohin & wann“: Ziel und Termin",
+              text: "Wählen Sie das Ziel – zum Beispiel eine Arztpraxis oder ein Spital. Tragen Sie „Terminbeginn“ und „Termindauer“ ein. Die passende Abholzeit schlägt die App rechts im Bereich „Abholzeiten“ automatisch als „Hin-Abholung“ vor.",
             },
             {
-              title: "Datum und Uhrzeit eintragen",
-              text: "Tragen Sie das Datum und die gewünschte Uhrzeit ein. Achten Sie darauf, ob es eine Hinfahrt, eine Rückfahrt oder beides ist.",
+              title: "Schritt „Fahrt“: Fahrt-Typ wählen",
+              text: "Legen Sie mit dem Umschalter fest, ob es eine „Hin + Rück“-Fahrt oder eine „Einzelfahrt (nur Hin)“ ist.",
             },
             {
               title: "Angaben prüfen",
@@ -92,17 +96,7 @@ export const fahrtErfassen: HelpArticle = {
             },
           ],
         },
-        {
-          type: "screenshot",
-          src: "/help/screenshots/fahrt-erfassen-formular.png",
-          alt: "Das ausgefüllte Fahrten-Formular mit den Feldern Patient, Ziel, Datum, Uhrzeit und Richtung.",
-          caption: "Das ausgefüllte Formular vor dem Speichern.",
-          markers: [
-            { number: 1, x: 30, y: 22, label: "Patient auswählen" },
-            { number: 2, x: 30, y: 40, label: "Ziel auswählen" },
-            { number: 3, x: 30, y: 58, label: "Datum und Uhrzeit" },
-          ],
-        },
+        // TODO(content): Screenshot der neuen 3-Schritt-Erfassung (/rides/erfassen) mit den Schritten „Wer“, „Wohin & wann“, „Fahrt“ und dem Panel „Abholzeiten“.
       ],
     },
     {
@@ -111,7 +105,7 @@ export const fahrtErfassen: HelpArticle = {
       blocks: [
         {
           type: "paragraph",
-          text: "Klicken Sie unten auf „Speichern“. Die Fahrt erscheint danach in der Fahrtenübersicht und kann eingeteilt werden.",
+          text: "Zum Abschluss haben Sie zwei Schaltflächen: „Speichern & zur Übersicht“ sichert die Fahrt und bringt Sie zurück zur Fahrtenübersicht. „Auftragsblatt“ speichert die Fahrt ebenfalls und öffnet zusätzlich das Auftragsblatt zum Ausdrucken. Die Fahrt kann danach eingeteilt werden.",
         },
         {
           type: "callout",

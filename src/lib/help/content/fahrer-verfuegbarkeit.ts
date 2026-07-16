@@ -26,7 +26,7 @@ export const fahrerVerfuegbarkeit: HelpArticle = {
       blocks: [
         {
           type: "paragraph",
-          text: "Damit die Einteilung Ihnen passende Fahrten zuweisen kann, tragen Sie ein, wann Sie verfügbar sind. Klicken Sie dazu oben im Menü auf „Verfügbarkeit“.",
+          text: "Damit die Einteilung Ihnen passende Fahrten zuweisen kann, tragen Sie ein, wann Sie verfügbar sind. Klicken Sie dazu links im Menü auf „Verfügbarkeit“.",
         },
         {
           type: "paragraph",

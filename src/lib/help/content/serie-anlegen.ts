@@ -44,7 +44,7 @@ export const serieAnlegen: HelpArticle = {
           steps: [
             {
               title: "Bereich „Fahrtserien“ öffnen",
-              text: "Klicken Sie oben im Menü auf „Fahrtserien“.",
+              text: "Klicken Sie links im Menü auf „Fahrtserien“.",
             },
             {
               title: "Neue Serie starten",
