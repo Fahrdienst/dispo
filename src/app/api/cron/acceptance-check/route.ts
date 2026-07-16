@@ -4,9 +4,13 @@ import { checkPendingAcceptances } from "@/lib/acceptance/engine"
 
 /**
  * Vercel Cron endpoint for acceptance tracking escalation.
- * Runs every minute to check for overdue driver responses.
+ * Runs hourly (see vercel.json) to check for overdue driver responses and
+ * drive the 24h/48h — resp. 4h/8h short-notice — reminder/escalation windows.
+ * The fire-and-forget call on the dispatch page is a supplementary safety net.
  *
  * Auth: CRON_SECRET in Authorization header (Vercel sets this automatically).
+ * The response body only contains opaque IDs (ride/driver/tracking UUIDs) — no
+ * patient PII is logged or returned (#186).
  */
 export async function GET(request: Request) {
   // Verify cron secret

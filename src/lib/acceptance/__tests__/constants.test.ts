@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest"
 import {
+  MINUTES_PER_HOUR,
   NORMAL_SLA_WINDOWS,
   SHORT_NOTICE_SLA_WINDOWS,
   SHORT_NOTICE_THRESHOLD_MINUTES,
@@ -13,36 +14,32 @@ import {
 import type { AcceptanceStage, RejectionReason } from "../types"
 
 describe("SLA Windows", () => {
-  it("normal windows are in ascending order", () => {
-    expect(NORMAL_SLA_WINDOWS.reminder1).toBeLessThan(NORMAL_SLA_WINDOWS.reminder2)
-    expect(NORMAL_SLA_WINDOWS.reminder2).toBeLessThan(NORMAL_SLA_WINDOWS.timeout)
+  it("normal windows are in ascending order (reminder before timeout)", () => {
+    expect(NORMAL_SLA_WINDOWS.reminder1).toBeLessThan(NORMAL_SLA_WINDOWS.timeout)
   })
 
-  it("short-notice windows are in ascending order", () => {
-    expect(SHORT_NOTICE_SLA_WINDOWS.reminder1).toBeLessThan(SHORT_NOTICE_SLA_WINDOWS.reminder2)
-    expect(SHORT_NOTICE_SLA_WINDOWS.reminder2).toBeLessThan(SHORT_NOTICE_SLA_WINDOWS.timeout)
+  it("short-notice windows are in ascending order (reminder before timeout)", () => {
+    expect(SHORT_NOTICE_SLA_WINDOWS.reminder1).toBeLessThan(SHORT_NOTICE_SLA_WINDOWS.timeout)
   })
 
   it("short-notice windows are shorter than normal windows", () => {
     expect(SHORT_NOTICE_SLA_WINDOWS.reminder1).toBeLessThan(NORMAL_SLA_WINDOWS.reminder1)
-    expect(SHORT_NOTICE_SLA_WINDOWS.reminder2).toBeLessThan(NORMAL_SLA_WINDOWS.reminder2)
     expect(SHORT_NOTICE_SLA_WINDOWS.timeout).toBeLessThan(NORMAL_SLA_WINDOWS.timeout)
   })
 
-  it("short-notice threshold is 60 minutes", () => {
-    expect(SHORT_NOTICE_THRESHOLD_MINUTES).toBe(60)
+  it("short-notice threshold is 48h (concept §3.3)", () => {
+    expect(SHORT_NOTICE_THRESHOLD_MINUTES).toBe(48 * MINUTES_PER_HOUR)
+    expect(SHORT_NOTICE_THRESHOLD_MINUTES).toBe(2880)
   })
 
-  it("normal windows have expected values", () => {
-    expect(NORMAL_SLA_WINDOWS.reminder1).toBe(10)
-    expect(NORMAL_SLA_WINDOWS.reminder2).toBe(25)
-    expect(NORMAL_SLA_WINDOWS.timeout).toBe(40)
+  it("normal windows are 24h reminder / 48h timeout", () => {
+    expect(NORMAL_SLA_WINDOWS.reminder1).toBe(24 * MINUTES_PER_HOUR) // 1440
+    expect(NORMAL_SLA_WINDOWS.timeout).toBe(48 * MINUTES_PER_HOUR) // 2880
   })
 
-  it("short-notice windows have expected values", () => {
-    expect(SHORT_NOTICE_SLA_WINDOWS.reminder1).toBe(3)
-    expect(SHORT_NOTICE_SLA_WINDOWS.reminder2).toBe(8)
-    expect(SHORT_NOTICE_SLA_WINDOWS.timeout).toBe(15)
+  it("short-notice windows are 4h reminder / 8h timeout", () => {
+    expect(SHORT_NOTICE_SLA_WINDOWS.reminder1).toBe(4 * MINUTES_PER_HOUR) // 240
+    expect(SHORT_NOTICE_SLA_WINDOWS.timeout).toBe(8 * MINUTES_PER_HOUR) // 480
   })
 })
 

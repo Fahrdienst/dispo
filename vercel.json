@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/acceptance-check",
-      "schedule": "0 6 * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/geocode-backfill",
