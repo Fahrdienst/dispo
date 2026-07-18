@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin"
-import { mailTransport } from "@/lib/mail/transport"
+import { sendGuardedMail } from "@/lib/mail/send"
 import { absenceDecisionEmail } from "@/lib/mail/templates/absence-decision"
 import type { AbsenceType } from "@/lib/absences/status-machine"
 
@@ -85,15 +85,23 @@ export async function sendAbsenceDecisionNotification(
     note: absence.decision_note,
   })
 
-  // 4. Send. A transport failure is logged but never thrown.
+  // 4. Send (through the sandbox guard). A transport failure is logged but
+  //    never thrown.
   try {
-    await mailTransport.sendMail({
+    const guard = await sendGuardedMail({
       from: process.env.MAIL_FROM ?? process.env.GMAIL_USER,
       to: recipientEmail,
       subject,
       html,
+      template: "absence-decision",
     })
-    await logMail(supabase, absence.driver_id, recipientEmail, "sent", null)
+    await logMail(
+      supabase,
+      absence.driver_id,
+      guard.auditLabel,
+      guard.logStatus,
+      null
+    )
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
     console.error("Absence decision mail: send failed", message)
@@ -106,7 +114,7 @@ async function logMail(
   supabase: ReturnType<typeof createAdminClient>,
   driverId: string,
   recipient: string,
-  status: "sent" | "failed",
+  status: "sent" | "failed" | "logged",
   error: string | null
 ): Promise<void> {
   try {

@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createAssignmentToken } from "@/lib/mail/tokens"
 import { assembleOrderSheet } from "@/lib/mail/templates/order-sheet"
-import { mailTransport } from "@/lib/mail/transport"
+import { sendGuardedMail } from "@/lib/mail/send"
 import { formatDate, formatTime } from "@/lib/mail/utils"
 import { loadOrderSheetData } from "@/lib/mail/load-order-sheet-data"
 import type { OrderSheetData } from "@/lib/mail/load-order-sheet-data"
@@ -85,21 +85,22 @@ export async function sendDriverNotification(
   const html = assembleOrderSheet(orderData)
   const subject = `Neuer Auftrag \u2013 ${formatDate(orderData.date)}, ${formatTime(orderData.pickupTime)} Uhr`
 
-  // 5. Send email
+  // 5. Send email (through the sandbox guard)
   try {
-    await mailTransport.sendMail({
+    const guard = await sendGuardedMail({
       from: process.env.MAIL_FROM ?? process.env.GMAIL_USER,
       to: recipientEmail,
       subject,
       html,
+      template: "order-sheet",
     })
 
     await supabase.from("mail_log").insert({
       ride_id: rideId,
       driver_id: driverId,
       template: "order-sheet",
-      recipient: recipientEmail,
-      status: "sent",
+      recipient: guard.auditLabel,
+      status: guard.logStatus,
     })
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error"
