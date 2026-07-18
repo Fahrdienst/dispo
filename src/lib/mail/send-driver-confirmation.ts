@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { driverConfirmationEmail } from "@/lib/mail/templates/driver-confirmation"
 import { buildRideIcs, type RideIcsInput } from "@/lib/mail/ics"
-import { mailTransport } from "@/lib/mail/transport"
+import { sendGuardedMail } from "@/lib/mail/send"
 import { loadOrderSheetData } from "@/lib/mail/load-order-sheet-data"
 import type { OrderSheetData } from "@/lib/mail/load-order-sheet-data"
 
@@ -109,13 +109,14 @@ export async function sendDriverConfirmation(
   const { subject, html } = driverConfirmationEmail(orderData)
   const ics = buildRideIcs(toIcsInput(orderData))
 
-  // 4. Send
+  // 4. Send (through the sandbox guard)
   try {
-    await mailTransport.sendMail({
+    const guard = await sendGuardedMail({
       from: process.env.MAIL_FROM ?? process.env.GMAIL_USER,
       to: recipientEmail,
       subject,
       html,
+      template: TEMPLATE,
       attachments: [
         {
           filename: "fahrt.ics",
@@ -129,8 +130,8 @@ export async function sendDriverConfirmation(
       ride_id: rideId,
       driver_id: driverId,
       template: TEMPLATE,
-      recipient: recipientEmail,
-      status: "sent",
+      recipient: guard.auditLabel,
+      status: guard.logStatus,
     })
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error"

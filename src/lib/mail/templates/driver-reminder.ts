@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin"
-import { mailTransport } from "@/lib/mail/transport"
+import { sendGuardedMail } from "@/lib/mail/send"
 import { escapeHtml, formatDate, formatTime } from "@/lib/mail/utils"
 import { RIDE_DIRECTION_LABELS } from "@/lib/rides/constants"
 import { getAppUrl } from "@/lib/acceptance/constants"
@@ -215,19 +215,20 @@ export async function sendDriverReminder(
   })
 
   try {
-    await mailTransport.sendMail({
+    const guard = await sendGuardedMail({
       from: process.env.MAIL_FROM ?? process.env.GMAIL_USER,
       to: recipientEmail,
       subject,
       html,
+      template: `driver-reminder-${stage}`,
     })
 
     await supabase.from("mail_log").insert({
       ride_id: rideId,
       driver_id: driverId,
       template: `driver-reminder-${stage}`,
-      recipient: recipientEmail,
-      status: "sent",
+      recipient: guard.auditLabel,
+      status: guard.logStatus,
     })
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error"

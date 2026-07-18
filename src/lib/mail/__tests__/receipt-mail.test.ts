@@ -1,4 +1,12 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
+
+// receipt-mail.ts pulls in the guarded sender, which imports the server-only
+// Gmail transport. Mock the transport so this pure-render test does not drag
+// `server-only` (which throws under vitest) into the module graph.
+vi.mock("../transport", () => ({
+  mailTransport: { sendMail: vi.fn() },
+}))
+
 import { renderReceiptMail, type ReceiptMailData } from "../receipt-mail"
 
 const base: ReceiptMailData = {

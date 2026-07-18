@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin"
-import { mailTransport } from "@/lib/mail/transport"
+import { sendGuardedMail } from "@/lib/mail/send"
 import { escapeHtml, formatDate, formatTime } from "@/lib/mail/utils"
 import { getAppUrl } from "@/lib/acceptance/constants"
 
@@ -205,19 +205,20 @@ export async function sendDispatcherEscalation(
   })
 
   try {
-    await mailTransport.sendMail({
+    const guard = await sendGuardedMail({
       from: process.env.MAIL_FROM ?? process.env.GMAIL_USER,
       to: recipientEmail,
       subject,
       html,
+      template: "dispatcher-escalation",
     })
 
     await supabase.from("mail_log").insert({
       ride_id: rideId,
       driver_id: driverId,
       template: "dispatcher-escalation",
-      recipient: recipientEmail,
-      status: "sent",
+      recipient: guard.auditLabel,
+      status: guard.logStatus,
     })
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error"

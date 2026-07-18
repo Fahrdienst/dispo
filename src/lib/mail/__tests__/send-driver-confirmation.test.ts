@@ -1,10 +1,23 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from "vitest"
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type Mock,
+} from "vitest"
 import type { OrderSheetData } from "../load-order-sheet-data"
 
 // ---------------------------------------------------------------------------
 // Module mocks (hoisted by vitest)
 // ---------------------------------------------------------------------------
 
+// The sender now sends via `../send` (sendGuardedMail), which wraps the mocked
+// transport. We keep mocking the transport (not the guard) so this test still
+// exercises the real guard logic — pinned to live mode so behaviour matches
+// production delivery. `../transport` also imports `server-only`, which throws
+// under vitest; mocking it keeps that module out of the test graph entirely.
 vi.mock("../transport", () => ({
   mailTransport: { sendMail: vi.fn() },
 }))
@@ -145,8 +158,21 @@ const sendMailMock = mailTransport.sendMail as unknown as Mock
 const loadDataMock = loadOrderSheetData as unknown as Mock
 const createAdminClientMock = createAdminClient as unknown as Mock
 
+const ORIGINAL_MAIL_MODE = process.env.MAIL_MODE
+
 beforeEach(() => {
   vi.clearAllMocks()
+  // Pin to live mode so the guard delivers to the real recipient, matching
+  // the production delivery path this test asserts on.
+  process.env.MAIL_MODE = "live"
+})
+
+afterEach(() => {
+  if (ORIGINAL_MAIL_MODE === undefined) {
+    delete process.env.MAIL_MODE
+  } else {
+    process.env.MAIL_MODE = ORIGINAL_MAIL_MODE
+  }
 })
 
 // ---------------------------------------------------------------------------
