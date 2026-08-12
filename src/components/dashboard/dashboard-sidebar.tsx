@@ -122,7 +122,7 @@ export function DashboardSidebar({ role, logoutAction }: DashboardSidebarProps) 
     .filter((group) => group.items.length > 0)
 
   return (
-    <Sidebar open={open} setOpen={setOpen}>
+    <Sidebar open={open} setOpen={setOpen} animate={false}>
       <SidebarBody className="justify-between gap-6 border-r border-white/10 print:hidden">
         <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
           <Logo />
