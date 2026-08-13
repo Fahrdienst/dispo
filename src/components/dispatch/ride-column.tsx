@@ -18,6 +18,10 @@ interface RideColumnProps {
   selectedRideId: string | null
   onSelectRide: (rideId: string) => void
   onOpenDetail: (rideId: string) => void
+  /** Desktop drag & drop (#170): cards in assignable buckets become draggable. */
+  dragEnabled?: boolean
+  onRideDragStart?: (rideId: string) => void
+  onRideDragEnd?: () => void
 }
 
 /**
@@ -36,6 +40,9 @@ export function RideColumn({
   selectedRideId,
   onSelectRide,
   onOpenDetail,
+  dragEnabled = false,
+  onRideDragStart,
+  onRideDragEnd,
 }: RideColumnProps) {
   const counts = useMemo(() => {
     const c: Record<AssignmentStatus, number> = {
@@ -102,6 +109,15 @@ export function RideColumn({
               isSelected={selectedRideId === ride.id}
               onSelect={onSelectRide}
               onOpenDetail={onOpenDetail}
+              // Only rides still looking for a driver are draggable (#170) —
+              // matching the buckets the [Zuweisen] flow serves (#169).
+              draggable={
+                dragEnabled &&
+                (ride.assignmentStatus === "offen" ||
+                  ride.assignmentStatus === "abgelehnt")
+              }
+              onDragStart={onRideDragStart}
+              onDragEnd={onRideDragEnd}
             />
           ))}
         </div>

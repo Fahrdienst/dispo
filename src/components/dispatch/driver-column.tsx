@@ -37,6 +37,11 @@ interface DriverColumnProps {
   activeRide: SplitRide | null
   /** Called after a successful assignment (parent clears the selection). */
   onAssigned?: () => void
+  /**
+   * True while a ride card is being dragged (#170). Assignable driver cards
+   * become drop targets; a drop enters the SAME dialog flow as [Zuweisen].
+   */
+  dragActive?: boolean
 }
 
 /** "HH:MM:SS" | "HH:MM" -> "HH:MM". */
@@ -62,6 +67,7 @@ export function DriverColumn({
   rides,
   activeRide,
   onAssigned,
+  dragActive = false,
 }: DriverColumnProps) {
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
@@ -220,6 +226,7 @@ export function DriverColumn({
                 context={activeRide ? contextById.get(driver.id) ?? null : null}
                 onAssign={assignMode ? handleAssignClick : undefined}
                 assignPending={isPending}
+                dropActive={dragActive && assignMode}
               />
             ))
           )}

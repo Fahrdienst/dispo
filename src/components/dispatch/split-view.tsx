@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react"
 import { RideColumn } from "@/components/dispatch/ride-column"
 import { DriverColumn } from "@/components/dispatch/driver-column"
 import { RideQuickSheet } from "@/components/rides/ride-quick-sheet"
+import { useIsPointerFine } from "@/hooks/use-pointer-fine"
 import { ASSIGNMENT_STATUS_ORDER, type AssignmentStatus } from "@/lib/dispatch/assignment-status"
 import type {
   SplitRide,
@@ -25,8 +26,9 @@ interface SplitViewProps {
  *     the selection so the panel returns to its neutral state.
  *
  * A separate `detailRideId` drives the existing `RideQuickSheet` (ride detail).
- * Drag & drop and the live countdown are deliberately absent here — they land
- * in #170/#171.
+ * Desktop drag & drop (#170) is additive on top: dragging a ride activates it
+ * and a drop on a driver card enters the same dialog flow as [Zuweisen].
+ * The live countdown is deliberately absent here — it lands in #171.
  */
 export function SplitView({ rides, drivers }: SplitViewProps) {
   // Default to the first tab (in order) that actually has rides, else "offen".
@@ -39,10 +41,26 @@ export function SplitView({ rides, drivers }: SplitViewProps) {
   const [selectedRideId, setSelectedRideId] = useState<string | null>(null)
   const [detailRideId, setDetailRideId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  // Desktop drag & drop (#170): only offered on fine-pointer devices; the
+  // click flow (#169) stays the complete, keyboard-accessible path everywhere.
+  const dragEnabled = useIsPointerFine()
+  const [draggingRideId, setDraggingRideId] = useState<string | null>(null)
 
   const handleSelectRide = useCallback((rideId: string) => {
     // Toggle: clicking the active ride again de-selects it.
     setSelectedRideId((current) => (current === rideId ? null : rideId))
+  }, [])
+
+  const handleRideDragStart = useCallback((rideId: string) => {
+    // Dragging ACTIVATES the ride (no toggle) so the driver panel shows the
+    // context for exactly the card in hand — and the drop can reuse the
+    // active-ride assign flow unchanged.
+    setSelectedRideId(rideId)
+    setDraggingRideId(rideId)
+  }, [])
+
+  const handleRideDragEnd = useCallback(() => {
+    setDraggingRideId(null)
   }, [])
 
   const handleOpenDetail = useCallback((rideId: string) => {
@@ -65,12 +83,16 @@ export function SplitView({ rides, drivers }: SplitViewProps) {
           selectedRideId={selectedRideId}
           onSelectRide={handleSelectRide}
           onOpenDetail={handleOpenDetail}
+          dragEnabled={dragEnabled}
+          onRideDragStart={handleRideDragStart}
+          onRideDragEnd={handleRideDragEnd}
         />
         <DriverColumn
           drivers={drivers}
           rides={rides}
           activeRide={activeRide}
           onAssigned={() => setSelectedRideId(null)}
+          dragActive={draggingRideId !== null}
         />
       </div>
 

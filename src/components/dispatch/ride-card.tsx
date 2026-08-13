@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { CornerDownLeft, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -53,23 +54,36 @@ interface RideCardProps {
   isSelected: boolean
   onSelect: (rideId: string) => void
   onOpenDetail: (rideId: string) => void
+  /**
+   * Desktop drag & drop (#170): when true, the card can be dragged onto a
+   * driver card. Purely additive — selection + click flow stay fully usable
+   * (touch/keyboard never see this affordance).
+   */
+  draggable?: boolean
+  onDragStart?: (rideId: string) => void
+  onDragEnd?: () => void
 }
 
 /**
- * A single ride card in the split-view left column (M15, #168).
+ * A single ride card in the split-view left column (M15, #168–#170).
  *
- * Display + selection only. Clicking the card ACTIVATES the ride (the docking
- * point for context-filtering the driver panel in #169). A dedicated "Details"
- * button opens the existing `RideQuickSheet`. The `[Zuweisen]` button, drag
- * handle and live countdown are intentionally out of scope here (#169/#170/#171).
+ * Clicking the card ACTIVATES the ride (context-filtering + assign flow in the
+ * driver panel, #169). On desktop the card is additionally draggable onto a
+ * driver card (#170) — dropping it opens the SAME confirm dialog as the click
+ * flow. A dedicated "Details" button opens the existing `RideQuickSheet`.
+ * The live countdown is intentionally out of scope here (#171).
  */
 export function RideCard({
   ride,
   isSelected,
   onSelect,
   onOpenDetail,
+  draggable = false,
+  onDragStart,
+  onDragEnd,
 }: RideCardProps) {
   const isReturn = ride.parent_ride_id !== null
+  const [isDragging, setIsDragging] = useState(false)
 
   return (
     <div
@@ -83,10 +97,33 @@ export function RideCard({
           onSelect(ride.id)
         }
       }}
+      draggable={draggable}
+      onDragStart={
+        draggable
+          ? (e) => {
+              // Firefox needs data for the drag to start; the actual payload
+              // travels via React state (drag start activates the ride).
+              e.dataTransfer.setData("text/plain", ride.id)
+              e.dataTransfer.effectAllowed = "move"
+              setIsDragging(true)
+              onDragStart?.(ride.id)
+            }
+          : undefined
+      }
+      onDragEnd={
+        draggable
+          ? () => {
+              setIsDragging(false)
+              onDragEnd?.()
+            }
+          : undefined
+      }
       className={cn(
         "cursor-pointer rounded-lg border border-l-4 bg-card p-4 shadow-sm transition-colors hover:bg-muted/50",
         ASSIGNMENT_STATUS_BORDER_COLORS[ride.assignmentStatus],
-        isSelected && "ring-2 ring-primary ring-offset-2"
+        isSelected && "ring-2 ring-primary ring-offset-2",
+        draggable && "cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-50"
       )}
     >
       {/* Row 1: date + time · status badge (+ overdue marker) */}
