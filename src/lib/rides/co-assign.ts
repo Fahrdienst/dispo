@@ -136,10 +136,13 @@ export function planCoAssignment(
   }
 
   const planned: PlannedLeg[] = legs.map((leg) => {
-    // Mirror the single-assign auto-transition: an unplanned leg with no driver
-    // becomes `planned` when a driver is set. Any other status is preserved.
+    // Mirror the single-assign auto-transitions: an unplanned leg with no
+    // driver becomes `planned` when a driver is set, and a `rejected` leg
+    // returns to `planned` on re-assignment (state machine: rejected ->
+    // planned, #169). Any other status is preserved.
     const targetStatus: RideStatus =
-      leg.status === "unplanned" && !leg.currentDriverId
+      (leg.status === "unplanned" && !leg.currentDriverId) ||
+      leg.status === "rejected"
         ? "planned"
         : leg.status
 
@@ -151,9 +154,12 @@ export function planCoAssignment(
       targetStatus,
       statusChanged: targetStatus !== leg.status,
       driverChanged,
-      // A fresh request is needed when we newly (re)assign the driver and the
-      // leg is in the `planned` state awaiting acceptance.
-      requestAcceptance: driverChanged && targetStatus === "planned",
+      // A fresh request is needed when the leg ends up `planned` awaiting
+      // acceptance AND either the driver is new or the previous request was
+      // declined (re-requesting the same driver after a rejection).
+      requestAcceptance:
+        targetStatus === "planned" &&
+        (driverChanged || leg.status === "rejected"),
     }
   })
 

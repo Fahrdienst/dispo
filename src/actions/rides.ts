@@ -1215,6 +1215,13 @@ export async function assignDriver(
     updateData.status = "planned"
   }
 
+  // Auto-transition: rejected -> planned on re-assignment (state machine allows
+  // it; #169). Triggers the regular request side effects below, so the new
+  // driver gets a fresh acceptance request instead of a silently rejected ride.
+  if (currentRide.status === "rejected" && driverId) {
+    updateData.status = "planned"
+  }
+
   // Auto-transition: planned -> unplanned when driver is removed
   if (
     currentRide.status === "planned" &&
