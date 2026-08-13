@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -19,6 +20,12 @@ interface DriverCardProps {
   onAssign?: (driver: SplitDriver) => void
   /** Disables the assign button while a request is in flight. */
   assignPending?: boolean
+  /**
+   * Desktop drag & drop (#170): true while a ride card is being dragged.
+   * Assignable cards become drop targets (same flow as [Zuweisen]); absent
+   * drivers reject the drop natively (`not-allowed` cursor, no dialog).
+   */
+  dropActive?: boolean
 }
 
 /**
@@ -38,21 +45,71 @@ export function DriverCard({
   context = null,
   onAssign,
   assignPending = false,
+  dropActive = false,
 }: DriverCardProps) {
   const availableToday = !driver.is_absent_today && driver.today_slots.length > 0
+  const [isDragOver, setIsDragOver] = useState(false)
+  // dragenter/dragleave also fire for child elements — balance them with a
+  // counter so the highlight doesn't flicker while moving over the card.
+  const dragDepth = useRef(0)
 
   // Card tint: with context it encodes the context state, otherwise today's
   // availability (grundgerüst behavior).
   const highlighted = context ? context.state === "verfuegbar" : availableToday
 
+  // Drop target only while a ride drag is in progress AND this driver is
+  // assignable for it (#170). Absent drivers stay non-targets: without
+  // preventDefault the browser shows the «not allowed» cursor and drop
+  // never fires — no parallel assign path, no dialog.
+  const isDropTarget = dropActive && context?.assignable === true && !!onAssign
+
   return (
     <div
+      onDragOver={
+        isDropTarget
+          ? (e) => {
+              e.preventDefault()
+              e.dataTransfer.dropEffect = "move"
+            }
+          : undefined
+      }
+      onDragEnter={
+        isDropTarget
+          ? () => {
+              dragDepth.current += 1
+              setIsDragOver(true)
+            }
+          : undefined
+      }
+      onDragLeave={
+        isDropTarget
+          ? () => {
+              dragDepth.current -= 1
+              if (dragDepth.current <= 0) {
+                dragDepth.current = 0
+                setIsDragOver(false)
+              }
+            }
+          : undefined
+      }
+      onDrop={
+        isDropTarget
+          ? (e) => {
+              e.preventDefault()
+              dragDepth.current = 0
+              setIsDragOver(false)
+              onAssign?.(driver)
+            }
+          : undefined
+      }
       className={cn(
         "flex items-center justify-between gap-2 rounded-md border px-3 py-2",
         highlighted
           ? "border-green-200 bg-green-50"
           : "border-gray-200 bg-gray-50",
-        context && !context.assignable && "opacity-60"
+        context && !context.assignable && "opacity-60",
+        isDropTarget && "transition-shadow",
+        isDragOver && "ring-2 ring-primary"
       )}
     >
       <div className="flex min-w-0 flex-col">
