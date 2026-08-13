@@ -20,13 +20,13 @@ interface SplitViewProps {
  *
  * Owns the two pieces of client state the grundgerüst needs:
  *   - `activeTab`     — which of the four assignment buckets is shown.
- *   - `selectedRideId`— the "activated" ride. This is the docking point for the
- *     context-filtering + assign flow (#169): the driver panel already receives
- *     the active ride, it just doesn't filter/sort by it yet.
+ *   - `selectedRideId`— the "activated" ride. It drives the context-filtering +
+ *     assign flow in the driver panel (#169); a successful assignment clears
+ *     the selection so the panel returns to its neutral state.
  *
  * A separate `detailRideId` drives the existing `RideQuickSheet` (ride detail).
- * Assign button, drag & drop and the live countdown are deliberately absent
- * here — they land in #169/#170/#171.
+ * Drag & drop and the live countdown are deliberately absent here — they land
+ * in #170/#171.
  */
 export function SplitView({ rides, drivers }: SplitViewProps) {
   // Default to the first tab (in order) that actually has rides, else "offen".
@@ -66,7 +66,12 @@ export function SplitView({ rides, drivers }: SplitViewProps) {
           onSelectRide={handleSelectRide}
           onOpenDetail={handleOpenDetail}
         />
-        <DriverColumn drivers={drivers} activeRide={activeRide} />
+        <DriverColumn
+          drivers={drivers}
+          rides={rides}
+          activeRide={activeRide}
+          onAssigned={() => setSelectedRideId(null)}
+        />
       </div>
 
       <RideQuickSheet

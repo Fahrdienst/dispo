@@ -142,10 +142,9 @@ describe("planCoAssignment", () => {
     expect(plan.legs[0]?.requestAcceptance).toBe(false)
   })
 
-  it("keeps a rejected leg's status but re-requests acceptance for a new driver", () => {
-    // A rejected leg stays `rejected` here (no unplanned auto-transition), so it
-    // does not trigger a fresh request — the caller decides how to handle a
-    // rejected linked leg. Guard against accidental status promotion.
+  it("returns a rejected leg to planned and requests acceptance from the new driver", () => {
+    // Re-assignment after a rejection (#169): the state machine allows
+    // rejected -> planned, and the new driver needs a fresh request.
     const plan = planCoAssignment(
       [
         {
@@ -160,9 +159,29 @@ describe("planCoAssignment", () => {
     )
     expect(plan.proceed).toBe(true)
     if (!plan.proceed) return
-    expect(plan.legs[0]?.targetStatus).toBe("rejected")
-    expect(plan.legs[0]?.statusChanged).toBe(false)
+    expect(plan.legs[0]?.targetStatus).toBe("planned")
+    expect(plan.legs[0]?.statusChanged).toBe(true)
     expect(plan.legs[0]?.driverChanged).toBe(true)
-    expect(plan.legs[0]?.requestAcceptance).toBe(false)
+    expect(plan.legs[0]?.requestAcceptance).toBe(true)
+  })
+
+  it("re-requests acceptance when the SAME driver is asked again after rejecting", () => {
+    const plan = planCoAssignment(
+      [
+        {
+          rideId: OUTBOUND,
+          role: "primary",
+          status: "rejected",
+          currentDriverId: DRIVER,
+          isAbsent: false,
+        },
+      ],
+      DRIVER
+    )
+    expect(plan.proceed).toBe(true)
+    if (!plan.proceed) return
+    expect(plan.legs[0]?.targetStatus).toBe("planned")
+    expect(plan.legs[0]?.driverChanged).toBe(false)
+    expect(plan.legs[0]?.requestAcceptance).toBe(true)
   })
 })

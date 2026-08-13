@@ -95,7 +95,7 @@ async function renderSplitView(weekStart: string, today: string) {
     supabase
       .from("rides")
       .select(
-        "id, date, pickup_time, status, direction, driver_id, parent_ride_id, requirements, patients(first_name, last_name, city), destinations(display_name)"
+        "id, date, pickup_time, status, direction, driver_id, parent_ride_id, duration_seconds, requirements, patients(first_name, last_name, city), destinations(display_name)"
       )
       .gte("date", weekStart)
       .lte("date", weekEnd)
@@ -236,6 +236,8 @@ async function renderSplitView(weekStart: string, today: string) {
       destination_name: destination?.display_name ?? "–",
       requirements: r.requirements ?? [],
       parent_ride_id: r.parent_ride_id,
+      driver_id: r.driver_id,
+      duration_seconds: r.duration_seconds,
       assigned_driver_name: r.driver_id
         ? driverNameById.get(r.driver_id) ?? null
         : null,
@@ -278,6 +280,13 @@ async function renderSplitView(weekStart: string, today: string) {
       // Neutral: end date only, never the reason (#187).
       absent_until: coveringAbsence?.end_date ?? null,
       period_ride_count: periodRideCount.get(d.id) ?? 0,
+      availability,
+      // Strip the absence type before it crosses to the client (#187): the
+      // context filter (#169) only needs the neutral date range.
+      absences: absences.map((a) => ({
+        start_date: a.start_date,
+        end_date: a.end_date,
+      })),
     }
   })
 

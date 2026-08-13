@@ -9,6 +9,7 @@
 
 import type { Enums } from "@/lib/types/database"
 import type { AssignmentStatus } from "@/lib/dispatch/assignment-status"
+import type { AvailabilityRow } from "@/lib/availability/driver-status"
 
 type RideStatus = Enums<"ride_status">
 type RideDirection = Enums<"ride_direction">
@@ -33,6 +34,10 @@ export interface SplitRide {
   /** Operationally relevant transport requirements (wheelchair, companion, …). */
   requirements: RideRequirement[]
   parent_ride_id: string | null
+  /** Assigned/requested driver id — needed for conflict detection (#169). */
+  driver_id: string | null
+  /** Route duration; null until calculated. Conflict window fallback: 60 min. */
+  duration_seconds: number | null
   /** Currently requested driver, shown on Angefragt cards ("→ angefragt: …"). */
   assigned_driver_name: string | null
   /** Pickup time of the linked return ride, if any ("↩ Rückfahrt 11:00"). */
@@ -71,4 +76,20 @@ export interface SplitDriver {
   absent_until: string | null
   /** Number of rides assigned to this driver in the selected period (week). */
   period_ride_count: number
+  /**
+   * Raw `driver_availability` rows (weekly grid + upcoming date exceptions),
+   * so the client can resolve windows for the ACTIVE ride's date (#169).
+   */
+  availability: AvailabilityRow[]
+  /**
+   * Approved absence date ranges. Deliberately WITHOUT the absence type/reason
+   * (#187) — the wire format itself is neutral, not just the rendering.
+   */
+  absences: SplitDriverAbsence[]
+}
+
+/** Neutral absence range (no type/reason — #187 data minimization). */
+export interface SplitDriverAbsence {
+  start_date: string
+  end_date: string
 }

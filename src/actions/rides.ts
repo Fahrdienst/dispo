@@ -1182,11 +1182,18 @@ export async function assignDriver(
     return { success: false, error: "Fahrt nicht gefunden" }
   }
 
-  // Availability / absence guard (Issue #104): only when a *new* driver is
-  // being assigned. Block absent drivers; remember out-of-availability so we
-  // can note it in the communication_log after a successful update.
+  // Availability / absence guard (Issue #104): whenever the call results in a
+  // (new or renewed) request — a new driver, or a re-request to the SAME
+  // driver on a rejected ride (SEC-M15-199-001: the guard must hang on the
+  // operation, not the driver change, or the rejected→planned path would
+  // bypass the absence check). Block absent drivers; remember
+  // out-of-availability so we can note it in the communication_log after a
+  // successful update.
   let driverStatus: DriverDayStatus | null = null
-  if (driverId && driverId !== currentRide.driver_id) {
+  if (
+    driverId &&
+    (driverId !== currentRide.driver_id || currentRide.status === "rejected")
+  ) {
     driverStatus = await getDriverDayStatus(
       supabase,
       driverId,
@@ -1215,6 +1222,13 @@ export async function assignDriver(
     updateData.status = "planned"
   }
 
+  // Auto-transition: rejected -> planned on re-assignment (state machine allows
+  // it; #169). Triggers the regular request side effects below, so the new
+  // driver gets a fresh acceptance request instead of a silently rejected ride.
+  if (currentRide.status === "rejected" && driverId) {
+    updateData.status = "planned"
+  }
+
   // Auto-transition: planned -> unplanned when driver is removed
   if (
     currentRide.status === "planned" &&
@@ -1237,9 +1251,11 @@ export async function assignDriver(
   const newStatus = updateData.status ?? currentRide.status
 
   // Manipulation-safe audit trail for every assignment/removal (finding #181):
-  // assignDriver previously wrote no audit_log entry. "assign" when a driver is
-  // set, "reassign" when a driver is removed or replaced.
-  if (driverChanged) {
+  // "assign" when a driver is set, "reassign" when a driver is removed or
+  // replaced. Also logged when only the STATUS changes (re-request to the same
+  // driver after a rejection, rejected→planned) — SEC-M15-199-003: that path
+  // sends a fresh request mail and must not escape the audit_log.
+  if (driverChanged || updateData.status !== undefined) {
     logAudit({
       userId: auth.userId,
       userRole: auth.role,
@@ -1250,6 +1266,7 @@ export async function assignDriver(
         driver_id: { old: currentRide.driver_id, new: driverId },
         status: { old: currentRide.status, new: newStatus },
       },
+      ...(driverChanged ? {} : { metadata: { re_request: true } }),
     }).catch(() => {})
   }
 
@@ -1439,9 +1456,10 @@ export async function assignDriverWithReturn(
 
   for (const { row, role } of legRows) {
     let driverStatus: DriverDayStatus | null = null
-    // Only guard when a *different* driver is being assigned (matches the
-    // single-assign flow — reassigning the same driver skips the check).
-    if (driverId !== row.driver_id) {
+    // Guard when a *different* driver is assigned OR the leg is re-requested
+    // after a rejection (rejected→planned also fires for the same driver;
+    // SEC-M15-199-001 — matches the single-assign flow).
+    if (driverId !== row.driver_id || row.status === "rejected") {
       driverStatus = await getDriverDayStatus(
         supabase,
         driverId,
@@ -1514,8 +1532,10 @@ export async function assignDriverWithReturn(
     const row = source.row
     assignedRideIds.push(leg.rideId)
 
-    // Manipulation-safe audit trail for every assignment (#181).
-    if (leg.driverChanged) {
+    // Manipulation-safe audit trail for every assignment (#181). Status-only
+    // changes (rejected→planned re-request to the same driver) are logged too
+    // (SEC-M15-199-003).
+    if (leg.driverChanged || leg.statusChanged) {
       logAudit({
         userId: auth.userId,
         userRole: auth.role,
@@ -1526,7 +1546,11 @@ export async function assignDriverWithReturn(
           driver_id: { old: row.driver_id, new: driverId },
           status: { old: row.status, new: leg.targetStatus },
         },
-        metadata: { co_assign: true, leg: leg.role },
+        metadata: {
+          co_assign: true,
+          leg: leg.role,
+          ...(leg.driverChanged ? {} : { re_request: true }),
+        },
       }).catch(() => {})
     }
 

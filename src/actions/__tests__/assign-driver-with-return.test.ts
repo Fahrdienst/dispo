@@ -346,6 +346,60 @@ describe("assignDriverWithReturn", () => {
     expect(mockCreateTracking).not.toHaveBeenCalled()
   })
 
+  it("blocks a re-request to the SAME driver on a rejected leg when absent (SEC-M15-199-001)", async () => {
+    // rejectAssignment leaves driver_id in place, so re-requesting the same
+    // driver from an Abgelehnt card is the NORMAL case — the absence guard
+    // must fire even though the driver does not change.
+    store.rows.set(OUTBOUND, {
+      id: OUTBOUND,
+      status: "rejected",
+      driver_id: DRIVER,
+      date: "2026-08-01",
+      pickup_time: "09:00:00",
+      parent_ride_id: null,
+    })
+    mockGetDriverDayStatus.mockResolvedValue(statusAbsent())
+
+    const result = await assignDriverWithReturn(OUTBOUND, DRIVER, {
+      includeReturn: false,
+    })
+
+    expect(result.success).toBe(false)
+    expect(store.updateCalls).toHaveLength(0)
+    expect(store.rows.get(OUTBOUND)?.status).toBe("rejected")
+    expect(mockSendNotification).not.toHaveBeenCalled()
+  })
+
+  it("audits + re-requests a rejected leg for the SAME driver (SEC-M15-199-003)", async () => {
+    store.rows.set(OUTBOUND, {
+      id: OUTBOUND,
+      status: "rejected",
+      driver_id: DRIVER,
+      date: "2026-08-01",
+      pickup_time: "09:00:00",
+      parent_ride_id: null,
+    })
+
+    const result = await assignDriverWithReturn(OUTBOUND, DRIVER, {
+      includeReturn: false,
+    })
+
+    expect(result.success).toBe(true)
+    expect(store.rows.get(OUTBOUND)?.status).toBe("planned")
+    // Fresh request fired despite driverChanged === false…
+    expect(mockSendNotification).toHaveBeenCalledWith(OUTBOUND, DRIVER)
+    expect(mockCreateTracking).toHaveBeenCalledTimes(1)
+    // …and the status-only change lands in the audit_log, marked as re-request.
+    expect(mockLogAudit).toHaveBeenCalledTimes(1)
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "assign",
+        entityId: OUTBOUND,
+        metadata: expect.objectContaining({ re_request: true }),
+      })
+    )
+  })
+
   it("rejects unauthenticated callers", async () => {
     mockRequireAuth.mockResolvedValue({
       authorized: false,

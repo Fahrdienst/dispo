@@ -31,8 +31,9 @@ function formatEventTime(iso: string): string {
  * Build the "Von → Nach" label from trip direction. The patient's home town is
  * one end, the facility the other. Falls back gracefully when the city is
  * missing (only operationally relevant location data is shown — #179).
+ * Exported for the assign confirm dialog (#169), which names the same trip.
  */
-function tripLabel(ride: SplitRide): string {
+export function tripLabel(ride: SplitRide): string {
   const home = ride.patient_city?.trim() || "Zuhause"
   const facility = ride.destination_name
   switch (ride.direction) {
