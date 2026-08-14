@@ -26,12 +26,16 @@ interface RideColumnProps {
 
 /**
  * Left column of the split-view: status tabs with counters + the filtered ride
- * list (M15, #168).
+ * list (M15, #168/#171).
  *
  * Exactly four buckets (concept §0). The "Abgelehnt" tab is only rendered when
  * its count > 0 (reduces noise on quiet days, Kim §2); the other three are
- * always visible even at 0. No "Alle" tab — the four buckets are complete and
- * non-overlapping for the assignment question.
+ * always visible even at 0. No "Alle" tab.
+ *
+ * Rejected rides «spring back» into the Offen view (#171, concept §2.1/§3.2):
+ * the Offen tab additionally shows them PINNED ON TOP with their ⛔ note, ready
+ * for reassignment — its counter includes them (it counts actionable rides).
+ * The dedicated Abgelehnt tab stays as the focused filter view.
  */
 export function RideColumn({
   rides,
@@ -52,13 +56,24 @@ export function RideColumn({
       abgelehnt: 0,
     }
     for (const ride of rides) c[ride.assignmentStatus]++
+    // Offen counts everything needing (re)assignment — incl. rejected rides,
+    // which are pinned into the Offen view (#171).
+    c.offen += c.abgelehnt
     return c
   }, [rides])
 
-  const visibleRides = useMemo(
-    () => rides.filter((r) => r.assignmentStatus === activeTab),
-    [rides, activeTab]
-  )
+  const visibleRides = useMemo(() => {
+    // «Abgelehnt springt zurück auf Offen» (#171): the Offen tab shows the
+    // rejected rides first (most urgent — a driver just bailed), then the
+    // regular open rides. Both groups keep their date/time order.
+    if (activeTab === "offen") {
+      return [
+        ...rides.filter((r) => r.assignmentStatus === "abgelehnt"),
+        ...rides.filter((r) => r.assignmentStatus === "offen"),
+      ]
+    }
+    return rides.filter((r) => r.assignmentStatus === activeTab)
+  }, [rides, activeTab])
 
   return (
     <div className="space-y-4">

@@ -101,6 +101,12 @@ export interface AngefragtTiming {
   overdue: boolean
   /** Absolute instant of the next escalation, or null if none pending. */
   dueAt: Date | null
+  /**
+   * Which escalation the deadline leads to — `reminder_1` (Erinnerungsmail)
+   * or `timed_out` (Dispo-Alarm). Labels the countdown (#171); null when
+   * there is no pending deadline.
+   */
+  nextStage: "reminder_1" | "timed_out" | null
 }
 
 export function deriveAngefragtTiming(
@@ -108,19 +114,21 @@ export function deriveAngefragtTiming(
   now: Date = new Date()
 ): AngefragtTiming {
   if (!tracking) {
-    return { overdue: false, dueAt: null }
+    return { overdue: false, dueAt: null, nextStage: null }
   }
   // Already escalated to timeout: overdue, nothing left to count down to.
   if (tracking.stage === "timed_out") {
-    return { overdue: true, dueAt: null }
+    return { overdue: true, dueAt: null, nextStage: null }
   }
   const deadline = nextDeadline(tracking)
   if (!deadline) {
-    return { overdue: false, dueAt: null }
+    return { overdue: false, dueAt: null, nextStage: null }
   }
   return {
     overdue: now.getTime() >= deadline.dueAt.getTime(),
     dueAt: deadline.dueAt,
+    // nextDeadline only ever escalates to reminder_1 or timed_out (§3.3).
+    nextStage: deadline.nextStage === "reminder_1" ? "reminder_1" : "timed_out",
   }
 }
 

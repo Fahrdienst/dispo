@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { CornerDownLeft, AlertTriangle } from "lucide-react"
+import { CornerDownLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { AssignmentStatusBadge } from "@/components/dispatch/assignment-status-badge"
+import { AcceptanceCountdown } from "@/components/dispatch/acceptance-countdown"
 import { ASSIGNMENT_STATUS_BORDER_COLORS } from "@/lib/dispatch/assignment-status"
 import {
   RIDE_REQUIREMENT_LABELS,
@@ -132,14 +133,13 @@ export function RideCard({
           {formatDayLabel(ride.date)} {"·"} {formatTime(ride.pickup_time)}
         </span>
         <div className="flex items-center gap-1.5">
-          {ride.assignmentStatus === "angefragt" && ride.overdue && (
-            <Badge
-              variant="outline"
-              className="border-red-300 bg-red-50 text-red-700"
-            >
-              <AlertTriangle className="mr-1 h-3 w-3" aria-hidden="true" />
-              Überfällig
-            </Badge>
+          {/* Live-Countdown bis zur nächsten SLA-Frist bzw. «Überfällig» (#171). */}
+          {ride.assignmentStatus === "angefragt" && (
+            <AcceptanceCountdown
+              dueAt={ride.next_deadline_at}
+              nextStage={ride.next_deadline_stage}
+              initialOverdue={ride.overdue}
+            />
           )}
           {isReturn && (
             <Badge variant="outline" className="text-xs">
