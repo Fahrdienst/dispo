@@ -216,10 +216,10 @@ async function renderSplitView(weekStart: string, today: string) {
     const destination = r.destinations as { display_name: string } | null
 
     const tracking = trackingByRideId.get(r.id) ?? null
-    const overdue =
+    const timing =
       assignmentStatus === "angefragt"
-        ? deriveAngefragtTiming(tracking, now).overdue
-        : false
+        ? deriveAngefragtTiming(tracking, now)
+        : null
 
     const rejection = rejectionByRideId.get(r.id)
 
@@ -242,7 +242,9 @@ async function renderSplitView(weekStart: string, today: string) {
         ? driverNameById.get(r.driver_id) ?? null
         : null,
       linked_return_time: returnByParentId.get(r.id) ?? null,
-      overdue,
+      overdue: timing?.overdue ?? false,
+      next_deadline_at: timing?.dueAt?.toISOString() ?? null,
+      next_deadline_stage: timing?.nextStage ?? null,
       rejected_by_name:
         assignmentStatus === "abgelehnt" && rejection?.driver_id
           ? driverNameById.get(rejection.driver_id) ?? null

@@ -33,6 +33,8 @@ function makeRide(overrides: Partial<SplitRide> = {}): SplitRide {
     assigned_driver_name: null,
     linked_return_time: null,
     overdue: false,
+    next_deadline_at: null,
+    next_deadline_stage: null,
     rejected_by_name: null,
     rejected_at: null,
     ...overrides,

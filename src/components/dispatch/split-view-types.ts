@@ -43,10 +43,19 @@ export interface SplitRide {
   /** Pickup time of the linked return ride, if any ("↩ Rückfahrt 11:00"). */
   linked_return_time: string | null
   /**
-   * Whether the acceptance request is past its next SLA deadline. Static
-   * server snapshot — the live countdown is Issue #171.
+   * Whether the acceptance request is past its next SLA deadline at request
+   * time. Initial SSR value — the live countdown (#171) keeps ticking client-
+   * side and flips to «Überfällig» without a reload.
    */
   overdue: boolean
+  /**
+   * Absolute instant (ISO) of the next SLA deadline, computed via the shared
+   * `nextDeadline` single source of truth. Null when no deadline is pending
+   * (no active tracking, or already timed out).
+   */
+  next_deadline_at: string | null
+  /** What that deadline escalates to — labels the countdown tooltip (#171). */
+  next_deadline_stage: "reminder_1" | "timed_out" | null
   /** Driver who declined (Abgelehnt cards). */
   rejected_by_name: string | null
   /** When the decline happened (ISO). */

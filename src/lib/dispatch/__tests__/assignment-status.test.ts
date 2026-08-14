@@ -86,7 +86,11 @@ describe("deriveAngefragtTiming — SLA overdue marker (reuses nextDeadline)", (
   const NOTIFIED = "2026-07-16T08:00:00.000Z"
 
   it("no tracking → not overdue, no deadline", () => {
-    expect(deriveAngefragtTiming(null)).toEqual({ overdue: false, dueAt: null })
+    expect(deriveAngefragtTiming(null)).toEqual({
+      overdue: false,
+      dueAt: null,
+      nextStage: null,
+    })
   })
 
   it("fresh 'notified' before the reminder window → pending, not overdue", () => {
@@ -101,6 +105,21 @@ describe("deriveAngefragtTiming — SLA overdue marker (reuses nextDeadline)", (
     expect(timing.overdue).toBe(false)
     // dueAt = notified + 24h (normal reminder window).
     expect(timing.dueAt?.toISOString()).toBe("2026-07-17T08:00:00.000Z")
+    expect(timing.nextStage).toBe("reminder_1")
+  })
+
+  it("'reminder_1' stage counts down to the dispatcher alarm (timed_out)", () => {
+    const tracking: DeadlineInput = {
+      stage: "reminder_1",
+      is_short_notice: false,
+      notified_at: NOTIFIED,
+    }
+    const now = new Date("2026-07-17T09:00:00.000Z")
+    const timing = deriveAngefragtTiming(tracking, now)
+    // dueAt = notified + 48h (normal timeout window).
+    expect(timing.dueAt?.toISOString()).toBe("2026-07-18T08:00:00.000Z")
+    expect(timing.nextStage).toBe("timed_out")
+    expect(timing.overdue).toBe(false)
   })
 
   it("'notified' past the reminder window → overdue", () => {
@@ -136,6 +155,7 @@ describe("deriveAngefragtTiming — SLA overdue marker (reuses nextDeadline)", (
     expect(deriveAngefragtTiming(tracking)).toEqual({
       overdue: true,
       dueAt: null,
+      nextStage: null,
     })
   })
 })
