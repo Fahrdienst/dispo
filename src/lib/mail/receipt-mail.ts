@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin"
-import { mailTransport } from "@/lib/mail/transport"
+import { sendGuardedMail } from "@/lib/mail/send"
 import { escapeHtml } from "@/lib/mail/utils"
 
 // Storage bucket holding the immutable receipt PDFs (private).
@@ -184,13 +184,16 @@ export async function sendReceiptMail(
     orgName: org?.org_name ?? "Fahrdienst",
   })
 
-  // 5. Send with the PDF attached (never a link).
+  // 5. Send with the PDF attached (never a link), through the sandbox guard.
+  let guardAuditLabel = recipientEmail
+  let guardStatus: "sent" | "logged" = "sent"
   try {
-    await mailTransport.sendMail({
+    const guard = await sendGuardedMail({
       from: process.env.MAIL_FROM ?? process.env.GMAIL_USER,
       to: recipientEmail,
       subject,
       html,
+      template: "receipt",
       attachments: [
         {
           filename: `${receipt.receipt_number}.pdf`,
@@ -199,6 +202,8 @@ export async function sendReceiptMail(
         },
       ],
     })
+    guardAuditLabel = guard.auditLabel
+    guardStatus = guard.logStatus
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unbekannter Fehler"
     console.error("[receipt-mail] send failed:", message)
@@ -209,7 +214,7 @@ export async function sendReceiptMail(
     }
   }
 
-  await logReceiptMail(supabase, recipientEmail, "sent", null)
+  await logReceiptMail(supabase, guardAuditLabel, guardStatus, null)
   return { ok: true, recipient: recipientEmail }
 }
 
@@ -221,7 +226,7 @@ export async function sendReceiptMail(
 async function logReceiptMail(
   supabase: ReturnType<typeof createAdminClient>,
   recipient: string,
-  status: "sent" | "failed",
+  status: "sent" | "failed" | "logged",
   error: string | null
 ): Promise<void> {
   try {
